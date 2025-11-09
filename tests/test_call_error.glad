@@ -1,0 +1,10 @@
+PRINT "--- Type Error Tester ---"
+PRINT "Testing what happens when calling a non-function."
+
+LET x = 10
+PRINT "x = " + x
+
+PRINT "Attempting to call x(5)..."
+LET y = x(5) # This line should crash, as 'x' is a Number
+
+PRINT "This line should NOT be printed."

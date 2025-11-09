@@ -1,0 +1,35 @@
+PRINT "--- SELF Keyword Tester ---"
+
+CLASS Counter
+  DEF init(self)
+    SELF.count = 0
+  ENDEF
+  
+  # A helper method
+  DEF _increment(self)
+    SELF.count = SELF.count + 1
+  ENDEF
+  
+  # A public method that calls another method using SELF
+  DEF add_two(self)
+    PRINT "Adding two..."
+    SELF._increment() # Call 1
+    SELF._increment() # Call 2
+  ENDEF
+  
+  DEF get_count(self)
+    RETURN SELF.count
+  ENDEF
+ENDCLASS
+
+PRINT "Creating counter..."
+LET c = NEW Counter()
+PRINT "Initial count: " + c.get_count() # Should be 0
+
+PRINT "Calling add_two..."
+c.add_two()
+PRINT "Count after add_two: " + c.get_count() # Should be 2
+
+PRINT "Calling add_two again..."
+c.add_two()
+PRINT "Count after second add_two: " + c.get_count() # Should be 4

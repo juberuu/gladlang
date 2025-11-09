@@ -1,0 +1,24 @@
+PRINT "--- Function Tester ---"
+
+# Define a function that adds two numbers and returns the result
+DEF add(a, b)
+  PRINT "Running function 'add'..."
+  LET result = a + b
+  RETURN result
+ENDEF
+
+# Define a function with no return (it will return NULL)
+DEF say_hello(name)
+  PRINT "Hello, " + name
+ENDEF
+
+# --- Test Function 1 (with RETURN) ---
+PRINT "Calling add(10, 5)..."
+LET sum = add(10, 5)
+PRINT "Result of add: " + sum
+PRINT "sum * 2 = " + (sum * 2)
+
+# --- Test Function 2 (no RETURN) ---
+PRINT "Calling say_hello('World')..."
+LET greeting_result = say_hello("World")
+PRINT "Result of say_hello: " + greeting_result # This should be NULL (0)

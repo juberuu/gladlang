@@ -1,0 +1,10 @@
+PRINT "--- Runtime Error Tester ---"
+PRINT "This script will test for a division by zero error."
+
+LET a = 10
+LET b = 0
+
+PRINT "Attempting to calculate a / b..."
+LET c = a / b # This line should crash
+
+PRINT "This line should NOT be printed."

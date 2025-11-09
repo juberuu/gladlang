@@ -1,0 +1,8 @@
+PRINT "--- Type Error Tester (Math on String) ---"
+PRINT "Enter a number (e.g., 5):"
+LET num_str = INPUT() # This is a String, e.g., "5"
+
+PRINT "Attempting to calculate num_str * 10..."
+LET result = num_str * 10 # This should crash (String * Number)
+
+PRINT "This line should NOT be printed."

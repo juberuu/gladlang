@@ -1,0 +1,38 @@
+PRINT "--- OOP & Inheritance Tester ---"
+
+# --- Define Base Class ---
+CLASS Pet
+  DEF init(self, name)
+    SELF.name = name
+    PRINT "A new pet is born!"
+  ENDEF
+  
+  DEF speak(self)
+    PRINT SELF.name + " makes a generic pet sound."
+  ENDEF
+ENDCLASS
+
+# --- Define Subclass ---
+CLASS Dog INHERITS Pet
+  # This class automatically uses the 'init' from Pet
+  
+  # Override the 'speak' method
+  DEF speak(self)
+    PRINT SELF.name + " says: Woof!"
+  ENDEF
+  
+  # Add a new method
+  DEF wag_tail(self)
+    PRINT SELF.name + " wags its tail."
+  ENDEF
+ENDCLASS
+
+PRINT "--- Creating a Pet ---"
+LET generic_pet = NEW Pet("Sammy")
+generic_pet.speak()
+# generic_pet.wag_tail() # This would (correctly) cause an error if uncommented
+
+PRINT "--- Creating a Dog ---"
+LET my_dog = NEW Dog("Buddy")
+my_dog.speak()     # Should use the overridden method
+my_dog.wag_tail()  # Should use the new method

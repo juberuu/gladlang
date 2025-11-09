@@ -1,0 +1,35 @@
+PRINT "--- Increment/Decrement Tester ---"
+
+LET i = 5
+PRINT "Initial i = " + i
+
+PRINT "--- Post-Increment ---"
+PRINT "LET j = i++"
+LET j = i++
+PRINT "j = " + j + " (should be 5)"
+PRINT "i = " + i + " (should be 6)"
+
+PRINT "--- Pre-Increment ---"
+PRINT "LET k = ++i"
+LET k = ++i
+PRINT "k = " + k + " (should be 7)"
+PRINT "i = " + i + " (should be 7)"
+
+PRINT "--- Post-Decrement ---"
+PRINT "LET m = i--"
+LET m = i--
+PRINT "m = " + m + " (should be 7)"
+PRINT "i = " + i + " (should be 6)"
+
+PRINT "--- Pre-Decrement ---"
+PRINT "LET n = --i"
+LET n = --i
+PRINT "n = " + n + " (should be 5)"
+PRINT "i = " + i + " (should be 5)"
+
+PRINT "--- Test on Lists ---"
+LET my_list = [10, 20, 30]
+PRINT "my_list[1]++ = " + (my_list[1]++)
+PRINT "my_list[1] = " + my_list[1]
+PRINT "++my_list[1] = " + (++my_list[1])
+PRINT "my_list[1] = " + my_list[1]

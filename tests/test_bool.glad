@@ -1,0 +1,26 @@
+PRINT "--- BOOL Casting Tester ---"
+PRINT "NOTE: 1 is TRUE, 0 is FALSE"
+
+PRINT "BOOL(123) = " + BOOL(123)     # Number (True)
+PRINT "BOOL(-1) = " + BOOL(-1)      # Number (True)
+PRINT "BOOL(0) = " + BOOL(0)        # Number (False)
+PRINT "BOOL(0.5) = " + BOOL(0.5)    # Number (True)
+PRINT "BOOL(0.0) = " + BOOL(0.0)    # Number (False)
+
+PRINT "BOOL(\"hello\") = " + BOOL("hello") # String (True)
+PRINT "BOOL(\"0\") = " + BOOL("0")       # String (True)
+PRINT "BOOL(\"\") = " + BOOL("")         # String (False)
+
+PRINT "BOOL(TRUE) = " + BOOL(TRUE)   # Built-in (True)
+PRINT "BOOL(FALSE) = " + BOOL(FALSE) # Built-in (False)
+PRINT "BOOL(NULL) = " + BOOL(NULL)   # Built-in (False)
+
+PRINT "BOOL(INPUT) = " + BOOL(INPUT) # Function (True)
+
+IF BOOL("") THEN
+  PRINT "This should NOT print."
+ENDIF
+
+IF BOOL("hello") THEN
+  PRINT "This SHOULD print."
+ENDIF

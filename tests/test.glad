@@ -1,0 +1,14 @@
+CLASS Person
+  DEF init(self, name)
+    SELF.name = name
+  ENDEF
+  DEF say_hi(self)
+    PRINT "Hi, I am " + SELF.name
+  ENDEF
+ENDCLASS
+
+LET p = NEW Person("Alex")
+p.say_hi()
+
+p.name = "Bob"
+p.say_hi()

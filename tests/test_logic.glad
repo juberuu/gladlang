@@ -1,0 +1,28 @@
+PRINT "--- Logic Tester ---"
+LET num = -5 # Change this value to test
+
+PRINT "Testing number: " + num
+
+IF num > 0 THEN
+  PRINT "It is positive."
+ENDIF
+
+IF num < 0 THEN
+  PRINT "It is negative."
+ENDIF
+
+IF num == 0 THEN
+  PRINT "It is zero."
+ENDIF
+
+PRINT "--- Boolean Test ---"
+LET is_ready = TRUE
+PRINT "Is ready: " + is_ready
+
+IF is_ready AND (num < 0) THEN
+  PRINT "Ready and negative."
+ENDIF
+
+IF NOT is_ready THEN
+  PRINT "This should not print."
+ENDIF

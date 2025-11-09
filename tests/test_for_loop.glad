@@ -1,0 +1,29 @@
+PRINT "--- FOR Loop Tester ---"
+
+LET my_list = ["apple", "banana", "STOP", "cherry", "date"]
+PRINT "Iterating over list: " + STR(my_list)
+
+PRINT "--- Test 1: Full Iteration ---"
+FOR item IN my_list
+  PRINT "Item: " + item
+ENDFOR
+
+PRINT "--- Test 2: FOR loop with BREAK ---"
+PRINT "Looping until we find 'STOP'..."
+FOR item IN my_list
+  IF item == "STOP" THEN
+    PRINT "Found STOP, breaking loop."
+    BREAK
+  ENDIF
+  PRINT "Item: " + item
+ENDFOR
+
+PRINT "--- Test 3: FOR loop with CONTINUE ---"
+PRINT "Looping, but skipping 'STOP'..."
+FOR item IN my_list
+  IF item == "STOP" THEN
+    PRINT "(Skipping an item)"
+    CONTINUE
+  ENDIF
+  PRINT "Item: " + item
+ENDFOR

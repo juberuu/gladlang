@@ -1,0 +1,41 @@
+PRINT "--- Polymorphism Tester ---"
+
+CLASS Pet
+  DEF init(self, name)
+    SELF.name = name
+  ENDEF
+  
+  # This method is NOT overridden by Dog or Cat
+  DEF introduce(self)
+    PRINT "My name is " + SELF.name + ". I am a pet and I say:"
+    # This call to SELF.speak() should use the
+    # child's version if it exists.
+    SELF.speak()
+  ENDEF
+  
+  DEF speak(self)
+    PRINT "(Generic pet sound)"
+  ENDEF
+ENDCLASS
+
+CLASS Dog INHERITS Pet
+  # Override speak
+  DEF speak(self)
+    PRINT "Woof!"
+  ENDEF
+ENDCLASS
+
+CLASS Cat INHERITS Pet
+  # Override speak
+  DEF speak(self)
+    PRINT "Meow!"
+  ENDEF
+ENDCLASS
+
+PRINT "--- Creating Dog ---"
+LET my_dog = NEW Dog("Buddy")
+my_dog.introduce() # This calls Pet.introduce, which should call Dog.speak
+
+PRINT "--- Creating Cat ---"
+LET my_cat = NEW Cat("Whiskers")
+my_cat.introduce() # This calls Pet.introduce, which should call Cat.speak

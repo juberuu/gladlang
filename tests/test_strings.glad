@@ -1,0 +1,16 @@
+PRINT "--- Escape Character Tester ---"
+
+LET newline = "Hello\nWorld"
+PRINT newline
+
+LET tabbed = "Column 1\tColumn 2"
+PRINT tabbed
+
+LET quoted = "She said, \"This language is cool!\""
+PRINT quoted
+
+LET path = "C:\\Users\\Glad\\My Lang"
+PRINT path
+
+LET combined = "Line 1\n\tLine 2 (indented)\nLine 3"
+PRINT combined

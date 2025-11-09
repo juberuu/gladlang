@@ -1,0 +1,20 @@
+PRINT "--- Operator Precedence Tester ---"
+
+LET math_result = 1 + 2 * 3 # Should be 1 + 6 = 7
+PRINT "1 + 2 * 3 = " + math_result
+
+LET math_result = (1 + 2) * 3 # Should be 3 * 3 = 9
+PRINT "(1 + 2) * 3 = " + math_result
+
+LET math_result = 10 - 4 / 2 # Should be 10 - 2 = 8
+PRINT "10 - 4 / 2 = " + math_result
+
+PRINT "--- String Comparison Tester ---"
+LET s1 = "apple"
+LET s2 = "banana"
+
+PRINT "s1 < s2 (TRUE): " + (s1 < s2)
+PRINT "s1 > s2 (FALSE): " + (s1 > s2)
+PRINT "s1 == \"apple\" (TRUE): " + (s1 == "apple")
+PRINT "s1 >= \"apple\" (TRUE): " + (s1 >= "apple")
+PRINT "s2 <= \"banana\" (TRUE): " + (s2 <= "banana")

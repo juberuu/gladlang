@@ -1,0 +1,27 @@
+PRINT "--- Closure Tester ---"
+
+# This function creates and returns *another* function
+DEF make_adder(a)
+  # 'adder_func' is defined *inside* make_adder
+  DEF adder_func(b)
+    # This function "closes over" or "captures" the variable 'a'
+    # from its parent's scope (the 'make_adder' function).
+    RETURN a + b
+  ENDEF
+  
+  RETURN adder_func
+ENDEF
+
+PRINT "Creating add_five..."
+# 'add_five' is now a function that holds 'a = 5' in its memory
+LET add_five = make_adder(5)
+
+PRINT "Creating add_ten..."
+# 'add_ten' is a different function that holds 'a = 10'
+LET add_ten = make_adder(10)
+
+PRINT "--- Testing Closures ---"
+# Now we call the new functions
+PRINT "add_five(3) = " + add_five(3)   # Should be 8
+PRINT "add_ten(3) = " + add_ten(3)     # Should be 13
+PRINT "add_five(10) = " + add_five(10) # Should be 15

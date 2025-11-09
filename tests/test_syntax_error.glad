@@ -1,0 +1,6 @@
+PRINT "--- Syntax Error Tester ---"
+PRINT "This test has a mismatched parenthesis."
+
+LET a = (10 + 5 # <-- Missing the closing ')'
+
+PRINT "This line should NOT be reached."

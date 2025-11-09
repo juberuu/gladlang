@@ -1,0 +1,15 @@
+PRINT "--- Anonymous Function Tester ---"
+
+# Define an anonymous function and assign it to a variable
+LET double = DEF(x)
+  RETURN x * 2
+ENDEF
+
+PRINT "Calling anonymous 'double' function..."
+PRINT "double(5) = " + double(5)
+PRINT "double(21) = " + double(21)
+
+# You can even use them immediately (though this is rare)
+PRINT "--- IIFE (Immediately Invoked Function Expression) Test ---"
+LET iife_result = (DEF(a, b) RETURN a * b ENDEF)(6, 7)
+PRINT "IIFE (6, 7) Result: " + iife_result

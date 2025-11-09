@@ -1,0 +1,34 @@
+PRINT "--- Loop Tester ---"
+
+PRINT "Test 1: Simple countdown"
+LET i = 5
+WHILE i > 0
+  PRINT "i = " + i
+  LET i = i - 1
+ENDWHILE
+PRINT "Loop 1 finished."
+
+PRINT "--- Test 2: CONTINUE (print even numbers) ---"
+LET i = 10
+WHILE i > 0
+  LET i = i - 1
+  # If the number is odd, skip the PRINT
+  IF (i - (INT(i / 2) * 2)) != 0 THEN
+    CONTINUE
+  ENDIF
+  PRINT "Even number: " + i
+ENDWHILE
+PRINT "Loop 2 finished."
+
+PRINT "--- Test 3: BREAK (find first multiple of 7) ---"
+LET i = 100
+LET found = NULL
+WHILE i > 0
+  IF (i - (INT(i / 7) * 7)) == 0 THEN
+    LET found = i
+    BREAK # Exit the loop
+  ENDIF
+  LET i = i - 1
+ENDWHILE
+PRINT "Loop 3 finished."
+PRINT "Found first multiple of 7 (under 100): " + found

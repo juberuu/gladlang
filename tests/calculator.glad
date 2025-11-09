@@ -1,0 +1,16 @@
+PRINT "--- SimpleLang Calculator ---"
+PRINT "Enter first number:"
+LET a = 10  # Note: SimpleLang doesn't have an 'INPUT' yet,
+            # so we'll just hard-code the numbers for this example.
+
+PRINT "Enter second number:"
+LET b = 5   # Change this number to test!
+
+PRINT "-----------------------------"
+PRINT "a = " + a
+PRINT "b = "b
+
+PRINT "a + b = " + (a + b)
+PRINT "a - b = " + (a - b)
+PRINT "a * b = " + (a * b)
+PRINT "a / b = " + (a / b)

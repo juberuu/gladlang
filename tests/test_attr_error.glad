@@ -1,0 +1,15 @@
+PRINT "--- Attribute Error Tester ---"
+
+CLASS Person
+  DEF init(self, name)
+    SELF.name = name
+  ENDEF
+ENDCLASS
+
+LET p = NEW Person("Alex")
+PRINT "Person's name: " + p.name
+
+PRINT "Attempting to access 'p.age'..."
+LET age = p.age # This line should crash, 'age' was never defined
+
+PRINT "This line should NOT be printed."

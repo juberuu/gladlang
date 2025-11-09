@@ -1,0 +1,8 @@
+PRINT "--- Name Error Tester ---"
+LET a = 10
+PRINT "a = " + a
+
+PRINT "Attempting to access 'b'..."
+LET c = a + b # This line should crash, because 'b' is not defined
+
+PRINT "This line should NOT be printed."

@@ -1,0 +1,24 @@
+PRINT "--- Type Casting Tester ---"
+PRINT "Enter a number (e.g., 123.5):"
+LET num_str = INPUT() # e.g., "123.5"
+
+PRINT "--- Conversions ---"
+LET num_int = INT(num_str)
+LET num_float = FLOAT(num_str)
+
+PRINT "String as INT: " + num_int
+PRINT "String as FLOAT: " + num_float
+PRINT "FLOAT as STR: " + STR(num_float)
+
+PRINT "--- Math Test ---"
+LET result = num_int * 2
+PRINT "INT * 2 = " + result
+
+LET result = num_float * 2
+PRINT "FLOAT * 2 = " + result
+
+PRINT "--- Error Test ---"
+PRINT "Attempting to cast 'hello' to INT..."
+LET error_test = INT("hello") # This line should crash
+
+PRINT "This line should NOT be printed."

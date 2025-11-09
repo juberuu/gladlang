@@ -1,0 +1,14 @@
+PRINT "--- Recursion Tester (Fibonacci) ---"
+
+DEF fib(n)
+  IF n <= 1 THEN
+    RETURN n
+  ENDIF
+  
+  RETURN fib(n - 1) + fib(n - 2)
+ENDEF
+
+LET num = 7 # Change this number to test (keep it small, < 20)
+PRINT "Calculating fib(" + num + ")..."
+LET result = fib(num)
+PRINT "Result: " + result

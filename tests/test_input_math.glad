@@ -1,0 +1,20 @@
+PRINT "--- Interactive Math Tester ---"
+
+PRINT "Please enter your name:"
+LET name = INPUT()
+
+PRINT "Hello, " + name + "!"
+
+PRINT "Please enter a number:"
+LET num1_str = INPUT()
+
+PRINT "Please enter another number:"
+LET num2_str = INPUT()
+
+# Convert the input strings to numbers
+LET num1 = INT(num1_str)
+LET num2 = INT(num2_str)
+
+LET sum = num1 + num2
+
+PRINT "The sum of " + num1_str + " and " + num2_str + " is: " + sum

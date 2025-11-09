@@ -1,0 +1,27 @@
+PRINT "--- List Tester ---"
+
+LET my_list = [1, "hello", 2 * 3, TRUE]
+
+PRINT "Initial list: " + STR(my_list)
+
+PRINT "--- List Access ---"
+PRINT "Element at index 0: " + STR(my_list[0])
+PRINT "Element at index 1: " + STR(my_list[1])
+PRINT "Element at index 2: " + STR(my_list[2])
+
+PRINT "--- List Set ---"
+PRINT "Setting my_list[1] = \"world\""
+LET my_list[1] = "world"
+PRINT "New list: " + STR(my_list)
+PRINT "New element at index 1: " + STR(my_list[1])
+
+PRINT "--- List Concatenation ---"
+LET other_list = [FALSE, 100]
+LET combined_list = my_list + other_list
+PRINT "Combined list: " + STR(combined_list)
+
+PRINT "--- Out of Bounds Error Test ---"
+PRINT "Attempting to access my_list[99]..."
+LET bad_access = my_list[99] # This line should crash
+
+PRINT "This line should NOT be printed."

@@ -1,0 +1,38 @@
+PRINT "--- Logic & Comparison Operator Tester ---"
+
+LET a = 10
+LET b = 20
+LET t = TRUE
+LET f = FALSE
+
+PRINT "--- Comparisons ---"
+PRINT "a != b (TRUE): " + (a != b)
+PRINT "a != 10 (FALSE): " + (a != 10)
+PRINT "a <= 10 (TRUE): " + (a <= 10)
+PRINT "a <= 9 (FALSE): " + (a <= 9)
+PRINT "a >= 10 (TRUE): " + (a >= 10)
+PRINT "a >= 11 (FALSE): " + (a >= 11)
+PRINT "a < b (TRUE): " + (a < b)
+PRINT "b > a (TRUE): " + (b > a)
+
+PRINT "--- Logic ---"
+PRINT "t AND t (TRUE): " + (t AND t)
+PRINT "t AND f (FALSE): " + (t AND f)
+PRINT "f AND f (FALSE): " + (f AND f)
+
+PRINT "t OR t (TRUE): " + (t OR t)
+# The typo 'E ' has been removed from this line
+PRINT "t OR f (TRUE): " + (t OR f)
+PRINT "f OR f (FALSE): " + (f OR f)
+
+# The illegal ':' has been removed from this line
+PRINT "NOT t (FALSE): " + (NOT t)
+PRINT "NOT f (TRUE): " + (NOT f)
+
+PRINT "--- Complex Logic ---"
+# This tests operator precedence (AND before OR)
+# (f OR t) AND (t AND t) => (TRUE) AND (TRUE) => TRUE
+PRINT "f OR t AND t (TRUE): " + (f OR t AND t)
+
+# (a < b) AND (b > 15) => TRUE AND TRUE => TRUE
+PRINT "(a < b) AND (b > 15) (TRUE): " + ((a < b) AND (b > 15))
