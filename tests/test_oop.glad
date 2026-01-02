@@ -2,12 +2,12 @@ PRINT "--- OOP & Inheritance Tester ---"
 
 # --- Define Base Class ---
 CLASS Pet
-  DEF init(self, name)
+  DEF init(SELF, name)
     SELF.name = name
     PRINT "A new pet is born!"
   ENDEF
   
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " makes a generic pet sound."
   ENDEF
 ENDCLASS
@@ -17,12 +17,12 @@ CLASS Dog INHERITS Pet
   # This class automatically uses the 'init' from Pet
   
   # Override the 'speak' method
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " says: Woof!"
   ENDEF
   
   # Add a new method
-  DEF wag_tail(self)
+  DEF wag_tail(SELF)
     PRINT SELF.name + " wags its tail."
   ENDEF
 ENDCLASS

@@ -1,0 +1,55 @@
+PRINT "--- Test 1: System Error (Division by Zero) ---"
+TRY
+    LET x = 10 / 0
+CATCH err
+    PRINT "Caught system error: " + err
+FINALLY
+    PRINT "Finally 1 executed."
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 2: Basic Throw (String) ---"
+TRY
+    PRINT "Throwing a simple string..."
+    THROW "Something went wrong!"
+CATCH msg
+    PRINT "Caught message: " + msg
+FINALLY
+    PRINT "Finally 2 executed."
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 3: Advanced Throw (Object/Dictionary) ---"
+TRY
+    PRINT "Throwing a detailed error object..."
+    
+    # Define a dictionary with error details
+    LET error_obj = {
+        "code": 404,
+        "type": "NotFound",
+        "message": "The requested resource was missing"
+    }
+    
+    THROW error_obj
+CATCH e
+    PRINT "Caught complex error object!"
+    PRINT "Error Code: " + e["code"]
+    PRINT "Error Type: " + e["type"]
+    PRINT "Error Msg:  " + e["message"]
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 4: Scope Isolation Check ---"
+# The variable 'e' from Test 3 should NOT exist here anymore.
+# If we try to access it, it should throw a runtime error ("'e' is not defined").
+
+TRY
+    PRINT "Attempting to access catch variable 'e' outside scope..."
+    PRINT e
+CATCH accessErr
+    PRINT "SUCCESS! Variable 'e' is not accessible here."
+    PRINT "Error details: " + accessErr
+ENDTRY

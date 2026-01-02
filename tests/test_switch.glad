@@ -1,0 +1,84 @@
+PRINT "--- Testing Switch Case Feature ---"
+
+# Test 1: Basic Matching
+PRINT "\n1. Testing Basic Match (Expected: 'Value is 10')"
+LET a = 10
+SWITCH a
+    CASE 5:
+        PRINT "Value is 5"
+    CASE 10:
+        PRINT "Value is 10"
+    DEFAULT:
+        PRINT "Value is unknown"
+ENDSWITCH
+
+# Test 2: Default Case
+PRINT "\n2. Testing Default Case (Expected: 'Value is unknown')"
+LET b = 99
+SWITCH b
+    CASE 1:
+        PRINT "Value is 1"
+    CASE 2:
+        PRINT "Value is 2"
+    DEFAULT:
+        PRINT "Value is unknown"
+ENDSWITCH
+
+# Test 3: Expressions in Cases
+PRINT "\n3. Testing Expressions (Expected: 'Matched 5 + 5')"
+LET c = 10
+SWITCH c
+    CASE 2 * 3:
+        PRINT "Matched 2 * 3"
+    CASE 5 + 5:
+        PRINT "Matched 5 + 5"
+    DEFAULT:
+        PRINT "No match"
+ENDSWITCH
+
+# Test 4: Nested Switches
+PRINT "\n4. Testing Nested Switches (Expected: 'Outer A', 'Inner B')"
+LET x = "A"
+LET y = "B"
+
+SWITCH x
+    CASE "A":
+        PRINT "Outer A"
+        SWITCH y
+            CASE "A":
+                PRINT "Inner A"
+            CASE "B":
+                PRINT "Inner B"
+            DEFAULT:
+                PRINT "Inner Default"
+        ENDSWITCH
+    DEFAULT:
+        PRINT "Outer Default"
+ENDSWITCH
+
+PRINT "\n--- Testing Multi-Case Match ---"
+
+LET x = 2
+
+SWITCH x
+    CASE 1, 2, 3:
+        PRINT "x is 1, 2, or 3 (Small Number)"
+    CASE 4, 5, 6:
+        PRINT "x is 4, 5, or 6 (Medium Number)"
+    DEFAULT:
+        PRINT "x is large"
+ENDSWITCH
+
+PRINT "\n--- Testing Strings ---"
+LET s = "apple"
+
+SWITCH s
+    CASE "banana", "orange":
+        PRINT "It's a common fruit"
+    CASE "apple", "pear":
+        PRINT "It's a pome fruit"
+    DEFAULT:
+        PRINT "Unknown fruit"
+ENDSWITCH
+
+PRINT "\n--- End of Tests ---"

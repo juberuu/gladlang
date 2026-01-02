@@ -1,0 +1,104 @@
+PRINT "=== COMPREHENSIVE FINAL & SCOPE TEST ==="
+PRINT ""
+
+PRINT "--- Test 1: Valid Constant Usage ---"
+FINAL pi = 3.14159
+PRINT "Constant 'pi' created: " + pi
+LET radius = 5
+LET area = pi * (radius ^ 2)
+PRINT "Area calculation result: " + area
+
+
+PRINT ""
+PRINT "--- Test 2: Simple Reassignment Check ---"
+TRY
+    PRINT "Attempting: LET pi = 3.0"
+    LET pi = 3.0
+    PRINT "FAIL: Interpreter did not stop reassignment!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 3: Loophole - Array Destructuring ---"
+TRY
+    PRINT "Attempting: LET [pi] = [100]"
+    LET [pi] = [100]
+    PRINT "FAIL: Interpreter did not stop destructuring assignment!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 4: Loophole - For Loop Iterator ---"
+TRY
+    PRINT "Attempting: FOR pi IN [1, 2, 3] ..."
+    FOR pi IN [1, 2, 3]
+        PRINT "Loop running..."
+    ENDFOR
+    PRINT "FAIL: Interpreter did not stop for-loop overwrite!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 5: Loophole - List Comprehension ---"
+TRY
+    PRINT "Attempting: [x FOR pi IN [1, 2]]"
+    LET list = [x FOR pi IN [1, 2]]
+    PRINT "FAIL: Interpreter did not stop comprehension overwrite!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 6: Loophole - Re-declaration ---"
+TRY
+    PRINT "Attempting: FINAL pi = 0.0"
+    FINAL pi = 0.0
+    PRINT "FAIL: Interpreter did not stop re-declaration!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 7: Loophole - Increment Operator (++) ---"
+TRY
+    PRINT "Attempting: pi++"
+    pi++
+    PRINT "FAIL: Interpreter did not stop incrementing a constant!"
+CATCH e
+    PRINT "SUCCESS: Caught error: " + e
+ENDTRY
+
+
+PRINT ""
+PRINT "--- Test 8: Bug Fix - Global Scope Update ---"
+LET count = 0
+PRINT "Global count starts at: " + count
+
+DEF increment_count()
+    # This should update the GLOBAL variable, not create a local one
+    count++
+ENDEF
+
+PRINT "Calling function increment_count()..."
+increment_count()
+PRINT "Global count is now: " + count
+
+IF count == 1 THEN
+    PRINT "SUCCESS: Global variable updated correctly."
+ENDIF
+IF NOT count == 1 THEN
+    PRINT "FAIL: Global variable did not change (Scope bug exists)."
+ENDIF
+
+
+PRINT ""
+PRINT "--- Final Integrity Check ---"
+PRINT "Value of 'pi' should still be 3.14159: " + pi

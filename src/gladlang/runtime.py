@@ -4,6 +4,7 @@ from .errors import RTError
 class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
+        self.finals = []
         self.parent = parent
 
     def get(self, name):
@@ -12,11 +13,28 @@ class SymbolTable:
             return self.parent.get(name)
         return value
 
-    def set(self, name, value):
+    def set(self, name, value, as_final=False):
         self.symbols[name] = value
+        if as_final:
+            self.finals.append(name)
 
     def remove(self, name):
         del self.symbols[name]
+        if name in self.finals:
+            self.finals.remove(name)
+
+    def update(self, name, value):
+        if name in self.symbols:
+            if name in self.finals:
+                return f"Cannot reassign constant '{name}'"
+
+            self.symbols[name] = value
+            return None
+
+        if self.parent:
+            return self.parent.update(name, value)
+
+        return f"'{name}' is not defined"
 
 
 class Context:

@@ -31,12 +31,21 @@ TT_RSQUARE = "TT_RSQUARE"
 TT_PLUSPLUS = "TT_PLUSPLUS"
 TT_MINUSMINUS = "TT_MINUSMINUS"
 TT_COLON = "TT_COLON"
+TT_PLUSEQ = "PLUSEQ"
+TT_MINUSEQ = "MINUSEQ"
+TT_MULEQ = "MULEQ"
+TT_DIVEQ = "DIVEQ"
+TT_POWEQ = "POWEQ"
+TT_MODEQ = "MODEQ"
+TT_FLOORDIVEQ = "FLOORDIVEQ"
 
 KEYWORDS = [
     "LET",
+    "FINAL",
     "PRINT",
     "IF",
     "THEN",
+    "ELSE",
     "ENDIF",
     "AND",
     "OR",
@@ -56,6 +65,15 @@ KEYWORDS = [
     "FOR",
     "IN",
     "ENDFOR",
+    "TRY",
+    "CATCH",
+    "FINALLY",
+    "ENDTRY",
+    "THROW",
+    "SWITCH",
+    "CASE",
+    "DEFAULT",
+    "ENDSWITCH",
     "is",
     "and",
     "or",

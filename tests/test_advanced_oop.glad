@@ -14,12 +14,12 @@ LET say_hi = create_greeter("Hi")
 
 # Create a class that holds a function
 CLASS Person
-  DEF init(self, name, greeter_func)
+  DEF init(SELF, name, greeter_func)
     SELF.name = name
     SELF.greeter = greeter_func # Store the function as an attribute
   ENDEF
   
-  DEF greet(self)
+  DEF greet(SELF)
     # Call the stored function, passing in our name
     LET message = SELF.greeter(SELF.name)
     PRINT message

@@ -74,11 +74,16 @@ class UnaryOpNode:
 
 
 class IfNode:
-    def __init__(self, condition_node, body_node):
-        self.condition_node = condition_node
-        self.body_node = body_node
-        self.pos_start = self.condition_node.pos_start
-        self.pos_end = self.body_node.pos_end
+    def __init__(self, cases, else_case):
+        self.cases = cases
+        self.else_case = else_case
+
+        self.pos_start = self.cases[0][0].pos_start
+
+        if self.else_case:
+            self.pos_end = self.else_case.pos_end
+        else:
+            self.pos_end = self.cases[len(self.cases) - 1][1].pos_end
 
 
 class PrintNode:
@@ -259,3 +264,51 @@ class SliceAccessNode:
         self.end_node = end_node
         self.pos_start = node_to_slice.pos_start
         self.pos_end = end_node.pos_end if end_node else start_node.pos_end
+
+
+class TryCatchNode:
+    def __init__(
+        self,
+        try_body_node,
+        catch_var_node,
+        catch_body_node,
+        finally_body_node,
+        pos_start,
+        pos_end,
+    ):
+        self.try_body_node = try_body_node
+        self.catch_var_node = catch_var_node
+        self.catch_body_node = catch_body_node
+        self.finally_body_node = finally_body_node
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
+class ThrowNode:
+    def __init__(self, node_to_throw, pos_start, pos_end):
+        self.node_to_throw = node_to_throw
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
+class FinalVarAssignNode:
+    def __init__(self, var_name_tok, value_node):
+        self.var_name_tok = var_name_tok
+        self.value_node = value_node
+        self.pos_start = self.var_name_tok.pos_start
+        self.pos_end = self.value_node.pos_end
+
+
+class SwitchNode:
+    def __init__(self, switch_value_node, cases, default_case):
+        self.switch_value_node = switch_value_node
+        self.cases = cases
+        self.default_case = default_case
+        self.pos_start = switch_value_node.pos_start
+
+        if default_case:
+            self.pos_end = default_case.pos_end
+        elif cases:
+            self.pos_end = cases[-1][1].pos_end
+        else:
+            self.pos_end = switch_value_node.pos_end

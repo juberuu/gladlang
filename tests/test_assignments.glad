@@ -1,0 +1,153 @@
+PRINT "--- GLADLANG OPERATOR TEST SUITE ---"
+
+# ==========================================
+# 1. ADDITION (+)
+# ==========================================
+PRINT "\n[Testing Addition +]"
+LET a1 = 10
+a1 = a1 + 5
+PRINT "Manual (10 + 5): " + a1
+
+LET b1 = 10
+b1 += 5
+PRINT "Compound (10 += 5): " + b1
+
+IF a1 == b1 THEN
+    PRINT "SUCCESS: Addition Verified"
+ELSE
+    PRINT "FAIL: Addition Mismatch"
+ENDIF
+
+# ==========================================
+# 2. SUBTRACTION (-)
+# ==========================================
+PRINT "\n[Testing Subtraction -]"
+LET a2 = 20
+a2 = a2 - 8
+PRINT "Manual (20 - 8): " + a2
+
+LET b2 = 20
+b2 -= 8
+PRINT "Compound (20 -= 8): " + b2
+
+IF a2 == b2 THEN
+    PRINT "SUCCESS: Subtraction Verified"
+ELSE
+    PRINT "FAIL: Subtraction Mismatch"
+ENDIF
+
+# ==========================================
+# 3. MULTIPLICATION (*)
+# ==========================================
+PRINT "\n[Testing Multiplication *]"
+LET a3 = 5
+a3 = a3 * 4
+PRINT "Manual (5 * 4): " + a3
+
+LET b3 = 5
+b3 *= 4
+PRINT "Compound (5 *= 4): " + b3
+
+IF a3 == b3 THEN
+    PRINT "SUCCESS: Multiplication Verified"
+ELSE
+    PRINT "FAIL: Multiplication Mismatch"
+ENDIF
+
+# ==========================================
+# 4. DIVISION (/)
+# ==========================================
+PRINT "\n[Testing Division /]"
+LET a4 = 100
+a4 = a4 / 2
+PRINT "Manual (100 / 2): " + a4
+
+LET b4 = 100
+b4 /= 2
+PRINT "Compound (100 /= 2): " + b4
+
+IF a4 == b4 THEN
+    PRINT "SUCCESS: Division Verified"
+ELSE
+    PRINT "FAIL: Division Mismatch"
+ENDIF
+
+# ==========================================
+# 5. MODULO (%)
+# ==========================================
+PRINT "\n[Testing Modulo %]"
+# Modulo finds the remainder (e.g., 14 divided by 3 is 4 with a remainder of 2)
+LET a5 = 14
+a5 = a5 % 3
+PRINT "Manual (14 % 3): " + a5
+
+LET b5 = 14
+b5 %= 3
+PRINT "Compound (14 %= 3): " + b5
+
+IF a5 == b5 THEN
+    PRINT "SUCCESS: Modulo Verified"
+ELSE
+    PRINT "FAIL: Modulo Mismatch"
+ENDIF
+
+PRINT "\n--- End of Test Suite ---"
+
+PRINT "--- GLADLANG EDGE CASE TESTS ---"
+
+# ==========================================
+# 1. NEGATIVE NUMBERS
+# ==========================================
+PRINT "\n[Testing Negative Logic]"
+
+# Test: Adding a negative (Should decrease the value)
+LET neg1 = 10
+neg1 += -5
+PRINT "10 += -5 Result: " + neg1
+IF neg1 == 5 THEN PRINT "PASS" ELSE PRINT "FAIL" ENDIF
+
+# Test: Subtracting a negative (Should increase the value: Double Negative)
+LET neg2 = 10
+neg2 -= -5
+PRINT "10 -= -5 Result: " + neg2
+IF neg2 == 15 THEN PRINT "PASS" ELSE PRINT "FAIL" ENDIF
+
+# Test: Multiplying by negative
+LET neg3 = 10
+neg3 *= -2
+PRINT "10 *= -2 Result: " + neg3
+IF neg3 == -20 THEN PRINT "PASS" ELSE PRINT "FAIL" ENDIF
+
+# ==========================================
+# 2. ZERO LOGIC
+# ==========================================
+PRINT "\n[Testing Zero Logic]"
+
+# Test: Multiply by Zero
+LET z1 = 50
+z1 *= 0
+PRINT "50 *= 0 Result: " + z1
+IF z1 == 0 THEN PRINT "PASS" ELSE PRINT "FAIL" ENDIF
+
+# Test: Add Zero (Identity)
+LET z2 = 50
+z2 += 0
+IF z2 == 50 THEN PRINT "PASS: Add Zero Identity verified" ELSE PRINT "FAIL" ENDIF
+
+# ==========================================
+# 3. THE DANGER ZONE (Division by Zero)
+# ==========================================
+PRINT "\n[Testing Division by Zero]"
+PRINT "WARNING: This next step may crash the program if not handled."
+
+LET danger = 100
+# Expected behaviors in different languages:
+# 1. Crash / Error
+# 2. Infinity
+# 3. NaN (Not a Number)
+# 4. 0 (Rare/Incorrect)
+
+danger /= 0
+PRINT "Result of 100 /= 0 is: " + danger
+
+PRINT "\n--- End of Edge Cases ---"

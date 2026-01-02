@@ -14,18 +14,25 @@ from .lexer import Lexer
 from .parser import Parser
 from .interpreter import Interpreter
 
-global_symbol_table = SymbolTable()
-global_symbol_table.set("NULL", Number.null)
-global_symbol_table.set("FALSE", Number.false)
-global_symbol_table.set("TRUE", Number.true)
-global_symbol_table.set("INPUT", BuiltInFunction("INPUT"))
-global_symbol_table.set("STR", BuiltInFunction("STR"))
-global_symbol_table.set("INT", BuiltInFunction("INT"))
-global_symbol_table.set("FLOAT", BuiltInFunction("FLOAT"))
-global_symbol_table.set("BOOL", BuiltInFunction("BOOL"))
+
+def get_fresh_global_scope():
+    scope = SymbolTable()
+
+    scope.set("NULL", Number.null)
+    scope.set("FALSE", Number.false)
+    scope.set("TRUE", Number.true)
+
+    scope.set("INPUT", BuiltInFunction("INPUT"))
+    scope.set("STR", BuiltInFunction("STR"))
+    scope.set("INT", BuiltInFunction("INT"))
+    scope.set("FLOAT", BuiltInFunction("FLOAT"))
+    scope.set("BOOL", BuiltInFunction("BOOL"))
+    scope.set("PRINT", BuiltInFunction("PRINT"))
+
+    return scope
 
 
-def run(fn, text):
+def run(fn, text, context=None):
     lexer = Lexer(fn, text)
     tokens, error = lexer.make_tokens()
     if error:
@@ -37,8 +44,11 @@ def run(fn, text):
         return None, ast.error
 
     interpreter = Interpreter()
-    context = Context("<program>")
-    context.symbol_table = global_symbol_table
+
+    if context is None:
+        context = Context("<program>")
+        context.symbol_table = get_fresh_global_scope()
+
     result = interpreter.visit(ast.node, context)
 
     if result.should_return:
@@ -72,29 +82,33 @@ def is_complete(text):
     depth = 0
     bracket_level = 0
 
-    pattern = (
-        r"(\[|\]|\b(DEF|CLASS|IF|WHILE|FOR|ENDEF|ENDCLASS|ENDIF|ENDWHILE|ENDFOR)\b)"
-    )
+    pattern = r"(\[|\]|\b(DEF|CLASS|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDEF|ENDCLASS|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
+
     tokens = re.finditer(pattern, temp_text)
 
-    start_keys = {"DEF", "CLASS", "IF", "WHILE"}
-    end_keys = {"ENDEF", "ENDCLASS", "ENDIF", "ENDWHILE", "ENDFOR"}
+    start_keys = {"DEF", "CLASS", "IF", "WHILE", "FOR", "TRY", "SWITCH"}
+    end_keys = {
+        "ENDEF",
+        "ENDCLASS",
+        "ENDIF",
+        "ENDWHILE",
+        "ENDFOR",
+        "ENDTRY",
+        "ENDSWITCH",
+    }
 
     for match in tokens:
         token = match.group()
+
+        if token in ("ELSE", "ELSE IF"):
+            continue
 
         if token == "[":
             bracket_level += 1
         elif token == "]":
             bracket_level -= 1
-
-        elif token == "FOR":
-            if bracket_level == 0:
-                depth += 1
-
         elif token in start_keys:
             depth += 1
-
         elif token in end_keys:
             depth -= 1
 
@@ -102,7 +116,7 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.2"
+    GLADLANG_VERSION = "0.1.3"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 
@@ -119,7 +133,11 @@ Commands:
         print("Type 'exit' or 'quit' to close the shell.")
         print("--------------------------------------------------")
 
+        repl_context = Context("<repl>")
+        repl_context.symbol_table = get_fresh_global_scope()
+
         full_text = ""
+
         while True:
             try:
                 prompt = "GladLang > " if not full_text else "...        > "
@@ -135,7 +153,7 @@ Commands:
                         full_text = ""
                         continue
 
-                    result, error = run("<stdin>", full_text)
+                    result, error = run("<stdin>", full_text, repl_context)
 
                     if error:
                         print(error.as_string())

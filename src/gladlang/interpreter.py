@@ -1,4 +1,4 @@
-from .runtime import RTResult, Context
+from .runtime import RTResult, Context, SymbolTable
 from .values import Number, String, Function, Class, List, Dict
 from .nodes import *
 from .errors import RTError
@@ -126,6 +126,17 @@ class Interpreter:
 
         for i, var_name_tok in enumerate(node.var_name_toks):
             var_name = var_name_tok.value
+
+            if var_name in context.symbol_table.finals:
+                return res.failure(
+                    RTError(
+                        var_name_tok.pos_start,
+                        var_name_tok.pos_end,
+                        f"Cannot reassign constant '{var_name}'",
+                        context,
+                    )
+                )
+
             val = list_val.elements[i]
             context.symbol_table.set(var_name, val)
 
@@ -134,6 +145,16 @@ class Interpreter:
     def visit_ListCompNode(self, node, context):
         res = RTResult()
         output_list = []
+
+        if node.var_name_tok.value in context.symbol_table.finals:
+            return res.failure(
+                RTError(
+                    node.var_name_tok.pos_start,
+                    node.var_name_tok.pos_end,
+                    f"Cannot use constant '{node.var_name_tok.value}' as comprehension variable",
+                    context,
+                )
+            )
 
         iterable_val = res.register(self.visit(node.iterable_node, context))
         if res.error:
@@ -271,24 +292,45 @@ class Interpreter:
     def visit_IfNode(self, node, context):
         res = RTResult()
 
-        condition_value = res.register(self.visit(node.condition_node, context))
-        if res.error:
-            return res
+        for condition, body in node.cases:
+            condition_value = res.register(self.visit(condition, context))
+            if res.error:
+                return res
 
-        if condition_value.is_true():
-            body_value = res.register(self.visit(node.body_node, context))
+            if condition_value.is_true():
+                expr_value = res.register(self.visit(body, context))
+                if res.error:
+                    return res
+
+                if res.should_return or res.should_break or res.should_continue:
+                    return res
+
+                return res.success(expr_value)
+
+        if node.else_case:
+            expr_value = res.register(self.visit(node.else_case, context))
             if res.error:
                 return res
 
             if res.should_return or res.should_break or res.should_continue:
                 return res
 
-            return res.success(body_value)
+            return res.success(expr_value)
 
         return res.success(Number.null)
 
     def visit_ForNode(self, node, context):
         res = RTResult()
+
+        if node.var_name_tok.value in context.symbol_table.finals:
+            return res.failure(
+                RTError(
+                    node.var_name_tok.pos_start,
+                    node.var_name_tok.pos_end,
+                    f"Cannot use constant '{node.var_name_tok.value}' as for loop variable",
+                    context,
+                )
+            )
 
         iterable_value = res.register(self.visit(node.iterable_node, context))
         if res.error:
@@ -666,6 +708,15 @@ class Interpreter:
                 return res.failure(error)
 
             if isinstance(target_node, VarAccessNode):
+                err = context.symbol_table.update(var_name, new_value)
+                if err:
+                    return res.failure(
+                        RTError(
+                            target_node.pos_start, target_node.pos_end, err, context
+                        )
+                    )
+
+            if isinstance(target_node, VarAccessNode):
                 context.symbol_table.set(var_name, new_value)
 
             elif isinstance(target_node, GetAttrNode):
@@ -770,7 +821,11 @@ class Interpreter:
             return res.failure(error)
 
         if isinstance(target_node, VarAccessNode):
-            context.symbol_table.set(var_name, new_value)
+            err = context.symbol_table.update(var_name, new_value)
+            if err:
+                return res.failure(
+                    RTError(target_node.pos_start, target_node.pos_end, err, context)
+                )
 
         elif isinstance(target_node, GetAttrNode):
             _, error = obj.set_attr(target_node.attr_name_tok, new_value)
@@ -783,3 +838,158 @@ class Interpreter:
                 return res.failure(error)
 
         return res.success(old_value.copy().set_pos(node.pos_start, node.pos_end))
+
+    def visit_TryCatchNode(self, node, context):
+        res = RTResult()
+
+        try_res = self.visit(node.try_body_node, context)
+
+        if try_res.error:
+            if node.catch_body_node:
+                catch_context = Context("CATCH", context, node.pos_start)
+                catch_context.symbol_table = SymbolTable(context.symbol_table)
+
+                if node.catch_var_node:
+                    error_msg = try_res.error.details
+                    val_to_assign = getattr(try_res.error, "thrown_value", None)
+                    if val_to_assign is None:
+                        val_to_assign = String(error_msg)
+                    catch_context.symbol_table.set(
+                        node.catch_var_node.value, val_to_assign
+                    )
+
+                catch_res = res.register(
+                    self.visit(node.catch_body_node, catch_context)
+                )
+
+                if res.error:
+                    if node.finally_body_node:
+                        fin_res = self.visit(node.finally_body_node, context)
+                        if fin_res.error:
+                            return res.failure(fin_res.error)
+
+                    return res
+
+            else:
+                if node.finally_body_node:
+                    fin_res = self.visit(node.finally_body_node, context)
+                    if fin_res.error:
+                        return fin_res
+                return try_res
+        else:
+            res.register(try_res)
+            if res.should_return or res.should_break or res.should_continue:
+                if node.finally_body_node:
+                    self.visit(node.finally_body_node, context)
+                return res
+
+        if node.finally_body_node:
+            fin_res = res.register(self.visit(node.finally_body_node, context))
+            if res.error:
+                return res
+
+        return res.success(Number.null)
+
+    def visit_ThrowNode(self, node, context):
+        res = RTResult()
+
+        value = res.register(self.visit(node.node_to_throw, context))
+        if res.error:
+            return res
+
+        error_message = str(value)
+
+        return res.failure(
+            RTError(
+                node.pos_start, node.pos_end, error_message, context, thrown_value=value
+            )
+        )
+
+    def visit_FinalVarAssignNode(self, node, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+
+        if var_name in context.symbol_table.symbols:
+            return res.failure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    f"Variable '{var_name}' is already defined",
+                    context,
+                )
+            )
+
+        value = res.register(self.visit(node.value_node, context))
+        if res.error:
+            return res
+
+        context.symbol_table.set(var_name, value, as_final=True)
+        return res.success(value)
+
+    def visit_VarAssignNode(self, node, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+
+        if var_name in context.symbol_table.finals:
+            return res.failure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    f"Cannot reassign constant '{var_name}'",
+                    context,
+                )
+            )
+
+        value = res.register(self.visit(node.value_node, context))
+        if res.error:
+            return res
+
+        context.symbol_table.set(var_name, value)
+        return res.success(value)
+
+    def visit_SwitchNode(self, node, context):
+        res = RTResult()
+
+        switch_val = res.register(self.visit(node.switch_value_node, context))
+        if res.error:
+            return res
+
+        for case_conditions, body_node in node.cases:
+            should_execute = False
+
+            for cond_node in case_conditions:
+                case_val = res.register(self.visit(cond_node, context))
+                if res.error:
+                    return res
+
+                is_eq, error = switch_val.get_comparison_eq(case_val)
+                if error:
+                    return res.failure(error)
+
+                if is_eq.is_true():
+                    should_execute = True
+                    break
+
+            if should_execute:
+                val = res.register(self.visit(body_node, context))
+                if (
+                    res.error
+                    or res.should_return
+                    or res.should_break
+                    or res.should_continue
+                ):
+                    return res
+                return res.success(val)
+
+        if node.default_case:
+            val = res.register(self.visit(node.default_case, context))
+            if (
+                res.error
+                or res.should_return
+                or res.should_break
+                or res.should_continue
+            ):
+                return res
+            return res.success(val)
+
+        return res.success(Number.null)

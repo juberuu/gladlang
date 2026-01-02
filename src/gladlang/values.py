@@ -499,7 +499,7 @@ class BaseFunction(Value):
             if isinstance(arg_value, BaseFunction):
                 pass
             else:
-                arg_value.set_context(new_context)
+                pass
 
             new_context.symbol_table.set(arg_name, arg_value)
 
@@ -683,16 +683,17 @@ class BoundMethod(BaseFunction):
         interpreter = Interpreter()
 
         new_context = self.function_to_bind.generate_new_context()
-        new_context.symbol_table.set("SELF", self.instance)
-
         original_arg_names = self.function_to_bind.arg_names
 
-        if len(original_arg_names) == 0 or original_arg_names[0] != "self":
+        if len(original_arg_names) > 0 and original_arg_names[0] == "SELF":
+            new_context.symbol_table.set("SELF", self.instance)
+
+        if len(original_arg_names) == 0 or original_arg_names[0] != "SELF":
             return res.failure(
                 RTError(
                     self.function_to_bind.pos_start,
                     self.function_to_bind.pos_end,
-                    f"Method '{self.name}' must have 'self' as its first argument",
+                    f"Method '{self.name}' must have 'SELF' as its first argument",
                     self.context,
                 )
             )
@@ -734,12 +735,22 @@ class BuiltInFunction(BaseFunction):
         res = RTResult()
 
         if self.name == "INPUT":
-            res.register(self.check_args([], args))
-            if res.error:
-                return res
+            if len(args) > 1:
+                return res.failure(
+                    RTError(
+                        self.pos_start,
+                        self.pos_end,
+                        "INPUT takes at most 1 argument",
+                        self.context,
+                    )
+                )
+
+            prompt = ""
+            if len(args) == 1:
+                prompt = str(args[0].value)
 
             try:
-                text = input()
+                text = input(prompt)
             except EOFError:
                 text = ""
             return res.success(String(text))

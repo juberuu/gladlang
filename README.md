@@ -31,6 +31,7 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Increment / Decrement](#increment--decrement)
     - [4. Control Flow](#4-control-flow)
         - [IF Statements](#if-statements)
+        - [Switch Statements](#switch-statements)
         - [WHILE Loops](#while-loops)
         - [FOR Loops](#for-loops)
     - [5. Functions](#5-functions)
@@ -78,15 +79,16 @@ GladLang supports a rich, modern feature set:
       * **Multi-line Strings:** Triple-quoted strings (`"""..."""`) for large text blocks.
   * **List Comprehensions:** Pythonic one-line list creation (`[x * 2 FOR x IN list]`).
   * **Dictionaries:** Key-value data structures (`{'key': 'value'}`).
-  * **Control Flow:** `IF`, `WHILE`, `FOR`, `BREAK`, `CONTINUE`.
+  * **Control Flow:** Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`, `WHILE` loops, and `FOR` loops with `BREAK` / `CONTINUE`
   * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support.
-  * **Object-Oriented Programming:** Classes, Inheritance, Polymorphism, `SELF` context.
+  * **Object-Oriented:** Define classes, methods, and inherit behavior using `CLASS` and `INHERITS`.
+  * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
+  * **Constants:** Declare immutable values using `FINAL`.
   * **Built-ins:** `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`.
   * **Error Handling:** Robust, user-friendly runtime error reporting with full tracebacks.
-  * **Advanced Math:** Power (`**`), Floor Division (`//`), and Modulo (`%`) operators.
+  * **Advanced Math:** Compound assignments (`+=`, `*=`), Power (`**`), Modulo (`%`), and automatic float division.
   * **Rich Comparisons:** Chained comparisons (`1 < x < 10`) and Identity checks (`is`).
   * **Flexible Logic:** Support for `and` / `or` (case-insensitive).
-
 -----
 
 ## Getting Started
@@ -108,7 +110,7 @@ pip install gladlang
 If you want to modify the codebase, clone the repository and install it in **editable mode**:
 
 ```bash
-git clone https://github.com/gladw-in/gladlang.git
+git clone --depth 1 https://github.com/gladw-in/gladlang.git
 cd gladlang
 pip install -e .
 
@@ -190,6 +192,10 @@ LET a = 10 # This is an inline comment
 Variables are assigned using the `LET` keyword. You can also unpack lists directly into variables using **Destructuring**.
 
 ```glad
+# Immutable Constants
+FINAL PI = 3.14159
+
+# Variable Assignment
 LET a = 10
 LET b = "Hello"
 LET my_list = [a, b, 123]
@@ -298,6 +304,11 @@ The `NULL` keyword represents a null or "nothing" value. It is falsy and prints 
 GladLang supports standard arithmetic plus advanced operators like Modulo, Floor Division, and Power.
 
 ```glad
+LET sum = 10 + 5    # 15
+LET diff = 20 - 8   # 12
+LET prod = 5 * 4    # 20
+LET quot = 100 / 2  # 50.0 (Always Float)
+
 PRINT 2 ** 3      # Power: 8
 PRINT 10 // 3     # Floor Division: 3
 PRINT 10 % 3      # Modulo: 1
@@ -306,6 +317,21 @@ PRINT 10 % 3      # Modulo: 1
 PRINT 2 + 3 * 4   # 14
 PRINT 1 + 2 * 3   # 7
 PRINT (1 + 2) * 3 # 9
+```
+
+#### Compound Assignments
+
+GladLang supports syntactic sugar for updating variables in place.
+
+```glad
+LET score = 10
+
+score += 5   # score is now 15
+score -= 2   # score is now 13
+score *= 2   # score is now 26
+score /= 2   # score is now 13.0
+score %= 5   # score is now 3.0
+
 ```
 
 #### Comparisons & Logic
@@ -362,10 +388,31 @@ PRINT my_list[1]   # 21
 Uses `IF...THEN...ENDIF` syntax.
 
 ```glad
-LET num = -5
-IF num < 0 THEN
-  PRINT "It is negative."
+IF x > 10 THEN
+    PRINT "Large"
+ELSE IF x > 5 THEN
+    PRINT "Medium"
+ELSE
+    PRINT "Small"
 ENDIF
+```
+
+#### Switch Statements
+
+Use `SWITCH` to match a value against multiple possibilities. It supports single values, comma-separated lists for multiple matches, and expressions.
+
+```glad
+LET status = 200
+
+SWITCH status
+    CASE 200:
+        PRINT "OK"
+    CASE 404, 500:
+        PRINT "Error"
+    DEFAULT:
+        PRINT "Unknown Status"
+ENDSWITCH
+
 ```
 
 #### WHILE Loops
@@ -469,15 +516,15 @@ Use `CLASS...ENDCLASS` to define classes and `NEW` to create instances. The cons
 
 ```glad
 CLASS Counter
-  DEF init(self)
+  DEF init(SELF)
     SELF.count = 0 # 'SELF' is the instance
   ENDEF
   
-  DEF increment(self)
+  DEF increment(SELF)
     SELF.count = SELF.count + 1
   ENDEF
   
-  DEF get_count(self)
+  DEF get_count(SELF)
     RETURN SELF.count
   ENDEF
 ENDCLASS
@@ -499,18 +546,18 @@ Use the `INHERITS` keyword. Methods can be overridden by the child class.
 
 ```glad
 CLASS Pet
-  DEF init(self, name)
+  DEF init(SELF, name)
     SELF.name = name
   ENDEF
   
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " makes a generic pet sound."
   ENDEF
 ENDCLASS
 
 CLASS Dog INHERITS Pet
   # Override the 'speak' method
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " says: Woof!"
   ENDEF
 ENDCLASS
@@ -525,18 +572,18 @@ When a base class method calls another method on `SELF`, it will correctly use t
 
 ```glad
 CLASS Pet
-  DEF introduce(self)
+  DEF introduce(SELF)
     PRINT "I am a pet and I say:"
     SELF.speak() # This will call the child's 'speak'
   ENDEF
   
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT "(Generic pet sound)"
   ENDEF
 ENDCLASS
 
 CLASS Cat INHERITS Pet
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT "Meow!"
   ENDEF
 ENDCLASS
@@ -562,6 +609,27 @@ my_cat.introduce()
 -----
 
 ## Error Handling
+
+You can handle runtime errors gracefully or throw your own exceptions.
+
+```glad
+TRY
+    # Attempt dangerous code
+    LET result = 10 / 0
+    PRINT result
+CATCH error
+    # Handle the error
+    PRINT "Caught an error: " + error
+FINALLY
+    # Always runs
+    PRINT "Cleanup complete."
+ENDTRY
+
+# Manually throwing errors
+IF age < 0 THEN
+    THROW "Age cannot be negative!"
+ENDIF
+```
 
 GladLang features detailed error handling and prints full tracebacks for runtime errors, making debugging easy.
 
@@ -595,15 +663,6 @@ Runtime Error: Incorrect argument count for 'add'. Expected 2, got 3
 ## Running Tests
 
 The `tests/` directory contains a comprehensive suite of `.glad` files to test every feature of the language. You can run any test by executing it with the interpreter:
-
-```bash
-python gladlang.py "test_closures.glad"
-python gladlang.py "test_lists.glad"
-python gladlang.py "test_polymorphism.glad"
-
-```
-
-or 
 
 ```bash
 gladlang "test_closures.glad"

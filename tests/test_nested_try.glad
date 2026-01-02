@@ -1,0 +1,21 @@
+PRINT "--- Test: Nested Try-Catch & Rethrowing ---"
+
+TRY
+    PRINT "Outer TRY started..."
+    
+    TRY
+        PRINT "  Inner TRY started..."
+        THROW "Error from Inner"
+    CATCH innerErr
+        PRINT "  Inner CATCH caught: " + innerErr
+        PRINT "  Rethrowing error to Outer..."
+        THROW innerErr
+    FINALLY
+        PRINT "  Inner FINALLY executed."
+    ENDTRY
+
+CATCH outerErr
+    PRINT "Outer CATCH caught rethrown error: " + outerErr
+FINALLY
+    PRINT "Outer FINALLY executed."
+ENDTRY

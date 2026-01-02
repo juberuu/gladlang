@@ -1,16 +1,16 @@
 PRINT "--- Inherited SELF Tester ---"
 
 CLASS Pet
-  DEF init(self, name)
+  DEF init(SELF, name)
     SELF.name = name
   ENDEF
   
   # This method uses SELF
-  DEF get_name(self)
+  DEF get_name(SELF)
     RETURN SELF.name
   ENDEF
   
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " says ???"
   ENDEF
 ENDCLASS
@@ -19,7 +19,7 @@ CLASS Dog INHERITS Pet
   # No init, so it uses Pet's init
   
   # Override speak
-  DEF speak(self)
+  DEF speak(SELF)
     PRINT SELF.name + " says Woof!"
   ENDEF
   

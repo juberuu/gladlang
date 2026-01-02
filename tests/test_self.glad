@@ -1,23 +1,23 @@
 PRINT "--- SELF Keyword Tester ---"
 
 CLASS Counter
-  DEF init(self)
+  DEF init(SELF)
     SELF.count = 0
   ENDEF
   
   # A helper method
-  DEF _increment(self)
+  DEF _increment(SELF)
     SELF.count = SELF.count + 1
   ENDEF
   
   # A public method that calls another method using SELF
-  DEF add_two(self)
+  DEF add_two(SELF)
     PRINT "Adding two..."
     SELF._increment() # Call 1
     SELF._increment() # Call 2
   ENDEF
   
-  DEF get_count(self)
+  DEF get_count(SELF)
     RETURN SELF.count
   ENDEF
 ENDCLASS
