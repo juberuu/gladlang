@@ -29,6 +29,9 @@ def get_fresh_global_scope():
     scope.set("BOOL", BuiltInFunction("BOOL"))
     scope.set("PRINT", BuiltInFunction("PRINT"))
 
+    scope.set("LEN", BuiltInFunction("LEN"))
+    scope.set("LENGTH", BuiltInFunction("LEN"))
+
     return scope
 
 
@@ -116,7 +119,7 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.3"
+    GLADLANG_VERSION = "0.1.4"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 

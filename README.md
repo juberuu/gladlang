@@ -27,6 +27,8 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Null](#null)
     - [3. Operators](#3-operators)
         - [Math Operations](#math-operations)
+        - [Compound Assignments](#compound-assignments)
+        - [Bitwise Operators](#bitwise-operators)
         - [Comparisons & Logic](#comparisons--logic)
         - [Increment / Decrement](#increment--decrement)
     - [4. Control Flow](#4-control-flow)
@@ -55,13 +57,13 @@ This is the full overview of the GladLang language, its features, and how to run
 
 GladLang is an interpreter for a custom scripting language. It was built as a complete system, demonstrating the core components of a programming language:
 
-  * **Lexer (`lexer.py`):** A tokenizer that scans source code and converts it into a stream of tokens (e.g., `NUMBER`, `STRING`, `IDENTIFIER`, `KEYWORD`, `PLUS`).
-  * **Parser (`parser.py`):** A parser that takes the token stream and builds an Abstract Syntax Tree (AST), representing the code's structure.
-  * **AST Nodes (`nodes.py`):** A comprehensive set of nodes that define every syntactic structure in the language (e.g., `BinOpNode`, `IfNode`, `FunDefNode`, `ClassNode`).
-  * **Runtime (`runtime.py`):** Defines the `Context` and `SymbolTable` for managing variable scope, context (for tracebacks), and closures.
-  * **Values (`values.py`):** Defines the language's internal data types (`Number`, `String`, `List`, `Function`, `Class`, `Instance`).
-  * **Interpreter (`interpreter.py`):** The core engine that walks the AST and executes the program by visiting each node.
-  * **Entry Point (`gladlang.py`):** The main file that ties everything together. It handles command-line arguments, runs files, and starts the interactive shell.
+  * **Lexer:** A tokenizer that scans source code and converts it into a stream of tokens (e.g., `NUMBER`, `STRING`, `IDENTIFIER`, `KEYWORD`, `PLUS`).
+  * **Parser:** A parser that takes the token stream and builds an Abstract Syntax Tree (AST), representing the code's structure.
+  * **AST Nodes:** A comprehensive set of nodes that define every syntactic structure in the language (e.g., `BinOpNode`, `IfNode`, `FunDefNode`, `ClassNode`).
+  * **Runtime:** Defines the `Context` and `SymbolTable` for managing variable scope, context (for tracebacks), and closures.
+  * **Values:** Defines the language's internal data types (`Number`, `String`, `List`, `Dict`, `Function`, `Class`, `Instance`).
+  * **Interpreter:** The core engine that walks the AST and executes the program by visiting each node.
+  * **Entry Point:** The main file that ties everything together. It handles command-line arguments, runs files, and starts the interactive shell.
 
 -----
 
@@ -84,7 +86,7 @@ GladLang supports a rich, modern feature set:
   * **Object-Oriented:** Define classes, methods, and inherit behavior using `CLASS` and `INHERITS`.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
   * **Constants:** Declare immutable values using `FINAL`.
-  * **Built-ins:** `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`.
+  * **Built-ins:** `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`, `LEN`.
   * **Error Handling:** Robust, user-friendly runtime error reporting with full tracebacks.
   * **Advanced Math:** Compound assignments (`+=`, `*=`), Power (`**`), Modulo (`%`), and automatic float division.
   * **Rich Comparisons:** Chained comparisons (`1 < x < 10`) and Identity checks (`is`).
@@ -235,6 +237,14 @@ LET menu = """
 3. Exit
 """
 
+# Indexing
+LET char = "GladLang"[0]  # "G"
+PRINT "Hello"[1]          # "e"
+
+# Escapes (work in "..." and `...`)
+PRINT "Line 1\nLine 2"
+PRINT `Column 1\tColumn 2`
+
 # Interpolation (Template Strings)
 LET name = "Glad"
 PRINT `Welcome back, ${name}!`
@@ -332,6 +342,26 @@ score *= 2   # score is now 26
 score /= 2   # score is now 13.0
 score %= 5   # score is now 3.0
 
+```
+
+#### Bitwise Operators
+
+Perform binary manipulation on integers.
+
+```glad
+LET a = 5  # Binary 101
+LET b = 3  # Binary 011
+
+PRINT a & b   # 1 (AND)
+PRINT a | b   # 7 (OR)
+PRINT a ^ b   # 6 (XOR)
+PRINT ~a      # -6 (NOT)
+PRINT 1 << 2  # 4 (Left Shift)
+PRINT 8 >> 2  # 2 (Right Shift)
+
+# Compound Assignment
+LET x = 1
+x <<= 2       # x is now 4
 ```
 
 #### Comparisons & Logic
@@ -605,6 +635,7 @@ my_cat.introduce()
   * `INT(value)`: Casts a String or Float to an Integer.
   * `FLOAT(value)`: Casts a String or Integer to a Float.
   * `BOOL(value)`: Casts a value to its Boolean representation (`TRUE` or `FALSE`).
+  * `LEN(value)`: Returns the length of a String, List, Dict, or Number. Alias: `LENGTH()`.
 
 -----
 

@@ -1,0 +1,28 @@
+PRINT "=== 1. Standard String Escapes (Double Quotes) ==="
+PRINT "Line 1\nLine 2"           # Should print on two lines
+PRINT "Column 1\tColumn 2"      # Should have a tab space
+PRINT "Quote: \"Hello\""        # Should print: Quote: "Hello"
+PRINT "Backslash: \\"           # Should print: Backslash: \
+
+PRINT ""
+PRINT "=== 2. Template String Escapes (Backticks) ==="
+LET name = "GladLang"
+
+# Test 1: Standard escapes inside backticks
+PRINT `Line A\nLine B`          # Should print on two lines
+PRINT `Start\tEnd`              # Should have a tab space
+
+# Test 2: Escaping the backtick itself
+PRINT `This contains a backtick: \` inside the string` 
+
+# Test 3: Escaping the interpolation marker
+PRINT `The value is ${name}`    # Should print: The value is GladLang
+PRINT `Use \${name} to interpolate` # Should print: Use ${name} to interpolate
+
+# Test 4: Mixed complex case
+PRINT `
+Summary:
+\t* Name: ${name}
+\t* Code: \${name}
+\t* File: "C:\\Program Files\\GladLang"
+`

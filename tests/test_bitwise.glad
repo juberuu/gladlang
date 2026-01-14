@@ -1,0 +1,66 @@
+PRINT "=== Bitwise Operator Tests ==="
+
+# 1. Basic Binary Operators
+# A = 5 (0101), B = 3 (0011)
+LET a = 5
+LET b = 3
+
+PRINT "a = " + STR(a) + ", b = " + STR(b)
+PRINT "a & b (AND): " + STR(a & b)  # Expected: 1 (0001)
+PRINT "a | b (OR):  " + STR(a | b)  # Expected: 7 (0111)
+PRINT "a ^ b (XOR): " + STR(a ^ b)  # Expected: 6 (0110)
+
+# 2. Unary Operator
+# ~a (NOT) = -a - 1
+PRINT "~a (NOT):    " + STR(~a)     # Expected: -6
+
+# 3. Shift Operators
+PRINT "1 << 2 (LSHIFT): " + STR(1 << 2) # Expected: 4 (001 -> 100)
+PRINT "8 >> 2 (RSHIFT): " + STR(8 >> 2) # Expected: 2 (1000 -> 0010)
+
+PRINT ""
+PRINT "=== Compound Assignment Tests ==="
+LET c = 10 
+PRINT "Initial c: " + STR(c)
+
+c &= 3  # 1010 & 0011 = 0010 (2)
+PRINT "c &= 3: " + STR(c)
+
+c |= 5  # 0010 | 0101 = 0111 (7)
+PRINT "c |= 5: " + STR(c)
+
+c <<= 1 # 7 << 1 = 14
+PRINT "c <<= 1: " + STR(c)
+
+PRINT ""
+PRINT "=== Precedence Tests ==="
+
+# Precedence Order: + > << > & > ^ > |
+# 1 << 2 + 3  -> 1 << (2 + 3) -> 1 << 5 -> 32
+# If wrong: (1 << 2) + 3 -> 4 + 3 -> 7
+PRINT "1 << 2 + 3 (Check + vs <<): " + STR(1 << 2 + 3)
+
+# 4 ^ 2 & 3 -> 4 ^ (2 & 3) -> 4 ^ 2 -> 6
+# If wrong: (4 ^ 2) & 3 -> 6 & 3 -> 2
+PRINT "4 ^ 2 & 3  (Check & vs ^):  " + STR(4 ^ 2 & 3)
+
+PRINT ""
+PRINT "=== Comparison Logic Test ==="
+# This verifies the fix in parser.py (allowing bitwise ops in conditions)
+LET flags = 5 # 101
+LET MASK = 4  # 100
+
+IF flags & MASK == MASK THEN
+    PRINT "Bitwise AND in IF condition works correctly!"
+ELSE
+    PRINT "Bitwise AND in IF condition FAILED!"
+ENDIF
+
+PRINT ""
+PRINT "=== Error Handling Test ==="
+TRY
+    PRINT "Attempting negative shift..."
+    PRINT 1 << -1
+CATCH error
+    PRINT "Success! Caught expected error: " + error
+ENDTRY

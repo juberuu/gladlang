@@ -593,48 +593,55 @@ class Interpreter:
         if res.error:
             return res
 
-        if node.op_tok.type == TT_PLUS:
+        if node.op_tok.type == GL_PLUS:
             result, error = left.added_to(right)
-        elif node.op_tok.type == TT_MINUS:
+        elif node.op_tok.type == GL_MINUS:
             result, error = left.subbed_by(right)
-        elif node.op_tok.type == TT_MUL:
+        elif node.op_tok.type == GL_MUL:
             result, error = left.multed_by(right)
-        elif node.op_tok.type == TT_DIV:
+        elif node.op_tok.type == GL_DIV:
             result, error = left.dived_by(right)
-        elif node.op_tok.type == TT_MOD:
+        elif node.op_tok.type == GL_MOD:
             result, error = left.modded_by(right)
-        elif node.op_tok.type == TT_FLOORDIV:
+        elif node.op_tok.type == GL_FLOORDIV:
             result, error = left.floordived_by(right)
-        elif node.op_tok.type == TT_POW:
+        elif node.op_tok.type == GL_POW:
             result, error = left.powed_by(right)
-        elif node.op_tok.type == TT_DIV:
-            result, error = left.dived_by(right)
-        elif node.op_tok.type == TT_POW:
-            result, error = left.powed_by(right)
-        elif node.op_tok.type == TT_EE:
+        elif node.op_tok.type == GL_EE:
             result, error = left.get_comparison_eq(right)
-        elif node.op_tok.type == TT_NE:
+        elif node.op_tok.type == GL_NE:
             result, error = left.get_comparison_ne(right)
-        elif node.op_tok.type == TT_LT:
+        elif node.op_tok.type == GL_LT:
             result, error = left.get_comparison_lt(right)
-        elif node.op_tok.type == TT_GT:
+        elif node.op_tok.type == GL_GT:
             result, error = left.get_comparison_gt(right)
-        elif node.op_tok.type == TT_LTE:
+        elif node.op_tok.type == GL_LTE:
             result, error = left.get_comparison_lte(right)
-        elif node.op_tok.type == TT_GTE:
+        elif node.op_tok.type == GL_GTE:
             result, error = left.get_comparison_gte(right)
-        elif node.op_tok.matches(TT_KEYWORD, "AND") or node.op_tok.matches(
-            TT_KEYWORD, "and"
+        elif node.op_tok.matches(GL_KEYWORD, "AND") or node.op_tok.matches(
+            GL_KEYWORD, "and"
         ):
             result, error = left.anded_by(right)
-        elif node.op_tok.matches(TT_KEYWORD, "OR") or node.op_tok.matches(
-            TT_KEYWORD, "or"
+        elif node.op_tok.matches(GL_KEYWORD, "OR") or node.op_tok.matches(
+            GL_KEYWORD, "or"
         ):
             result, error = left.ored_by(right)
-        elif node.op_tok.matches(TT_KEYWORD, "IS") or node.op_tok.matches(
-            TT_KEYWORD, "is"
+        elif node.op_tok.matches(GL_KEYWORD, "IS") or node.op_tok.matches(
+            GL_KEYWORD, "is"
         ):
             result, error = left.get_comparison_is(right)
+
+        elif node.op_tok.type == GL_BIT_AND:
+            result, error = left.bitted_and_by(right)
+        elif node.op_tok.type == GL_BIT_OR:
+            result, error = left.bitted_or_by(right)
+        elif node.op_tok.type == GL_BIT_XOR:
+            result, error = left.bitted_xor_by(right)
+        elif node.op_tok.type == GL_LSHIFT:
+            result, error = left.lshifted_by(right)
+        elif node.op_tok.type == GL_RSHIFT:
+            result, error = left.rshifted_by(right)
 
         if error:
             return res.failure(error)
@@ -644,7 +651,7 @@ class Interpreter:
     def visit_UnaryOpNode(self, node, context):
         res = RTResult()
 
-        if node.op_tok.type in (TT_PLUSPLUS, TT_MINUSMINUS):
+        if node.op_tok.type in (GL_PLUSPLUS, GL_MINUSMINUS):
             target_node = node.node
 
             if isinstance(target_node, VarAccessNode):
@@ -699,7 +706,7 @@ class Interpreter:
                     )
                 )
 
-            if node.op_tok.type == TT_PLUSPLUS:
+            if node.op_tok.type == GL_PLUSPLUS:
                 new_value, error = value.added_to(Number(1))
             else:
                 new_value, error = value.subbed_by(Number(1))
@@ -738,7 +745,7 @@ class Interpreter:
         number = number.copy()
 
         error = None
-        if node.op_tok.type == TT_MINUS:
+        if node.op_tok.type == GL_MINUS:
             if isinstance(number, Number):
                 number, error = number.multed_by(Number(-1))
             else:
@@ -748,8 +755,11 @@ class Interpreter:
                     "Unary '-' can only be applied to numbers",
                     context,
                 )
-        elif node.op_tok.matches(TT_KEYWORD, "NOT"):
+        elif node.op_tok.matches(GL_KEYWORD, "NOT"):
             number, error = number.notted()
+
+        elif node.op_tok.type == GL_BIT_NOT:
+            number, error = number.bitted_not()
 
         if error:
             return res.failure(error)
@@ -812,7 +822,7 @@ class Interpreter:
                 )
             )
 
-        if node.op_tok.type == TT_PLUSPLUS:
+        if node.op_tok.type == GL_PLUSPLUS:
             new_value, error = old_value.added_to(Number(1))
         else:
             new_value, error = old_value.subbed_by(Number(1))

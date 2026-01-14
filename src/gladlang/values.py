@@ -1,6 +1,6 @@
 from .errors import RTError
 from .runtime import SymbolTable, Context, RTResult
-from .constants import TT_IDENTIFIER
+from .constants import GL_IDENTIFIER
 from .lexer import Token
 from .nodes import *
 
@@ -115,6 +115,24 @@ class Value:
 
     def copy(self):
         raise Exception("No copy method defined")
+
+    def bitted_and_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def bitted_or_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def bitted_xor_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def lshifted_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def rshifted_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def bitted_not(self):
+        return None, self.illegal_operation()
 
     def illegal_operation(self, other=None):
         if not other:
@@ -255,6 +273,52 @@ class Number(Value):
     def notted(self):
         return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
+    def bitted_and_by(self, other):
+        if isinstance(other, Number):
+            return (
+                Number(int(self.value) & int(other.value)).set_context(self.context),
+                None,
+            )
+        return None, Value.illegal_operation(self, other)
+
+    def bitted_or_by(self, other):
+        if isinstance(other, Number):
+            return (
+                Number(int(self.value) | int(other.value)).set_context(self.context),
+                None,
+            )
+        return None, Value.illegal_operation(self, other)
+
+    def bitted_xor_by(self, other):
+        if isinstance(other, Number):
+            return (
+                Number(int(self.value) ^ int(other.value)).set_context(self.context),
+                None,
+            )
+        return None, Value.illegal_operation(self, other)
+
+    def lshifted_by(self, other):
+        if isinstance(other, Number):
+            try:
+                result = int(self.value) << int(other.value)
+                return Number(result).set_context(self.context), None
+            except ValueError:
+                return None, RTError(
+                    other.pos_start, other.pos_end, "Negative shift count", self.context
+                )
+        return None, Value.illegal_operation(self, other)
+
+    def rshifted_by(self, other):
+        if isinstance(other, Number):
+            return (
+                Number(int(self.value) >> int(other.value)).set_context(self.context),
+                None,
+            )
+        return None, Value.illegal_operation(self, other)
+
+    def bitted_not(self):
+        return Number(~int(self.value)).set_context(self.context), None
+
     def is_true(self):
         return self.value != 0
 
@@ -334,11 +398,25 @@ class String(Value):
         else:
             return None, Value.illegal_operation(self, other)
 
-    def added_to(self, other):
-        if isinstance(other, String):
-            return String(self.value + other.value).set_context(self.context), None
-        else:
-            return String(self.value + str(other)).set_context(self.context), None
+    def get_element_at(self, index):
+        if not isinstance(index, Number):
+            return None, RTError(
+                self.pos_start,
+                self.pos_end,
+                "String index must be a Number",
+                self.context,
+            )
+
+        try:
+            val = self.value[int(index.value)]
+            return String(val).set_context(self.context), None
+        except IndexError:
+            return None, RTError(
+                self.pos_start,
+                self.pos_end,
+                f"String index {index.value} out of bounds",
+                self.context,
+            )
 
     def is_true(self):
         return len(self.value) > 0
@@ -576,7 +654,7 @@ class Class(BaseFunction):
         res = RTResult()
         instance = Instance(self)
 
-        fake_init_tok = Token(TT_IDENTIFIER, "init", self.pos_start, self.pos_end)
+        fake_init_tok = Token(GL_IDENTIFIER, "init", self.pos_start, self.pos_end)
 
         init_method, error = self.get_attr(fake_init_tok)
 
@@ -831,6 +909,26 @@ class BuiltInFunction(BaseFunction):
 
             is_true = args[0].is_true()
             return res.success(Number.true if is_true else Number.false)
+
+        elif self.name == "LEN":
+            res.register(self.check_args(["value"], args))
+            if res.error:
+                return res
+
+            arg = args[0]
+
+            if isinstance(arg, String):
+                return res.success(Number(len(arg.value)))
+            elif isinstance(arg, List):
+                return res.success(Number(len(arg.elements)))
+            elif isinstance(arg, Dict):
+                return res.success(Number(len(arg.elements)))
+            elif isinstance(arg, Number):
+                return res.success(Number(len(str(arg.value))))
+            elif isinstance(arg, (Function, BuiltInFunction, Class)):
+                return res.success(Number(1))
+
+            return res.success(Number(0))
 
         return res.failure(
             RTError(

@@ -46,8 +46,8 @@ class Parser:
         statements = []
         pos_start = self.current_tok.pos_start.copy()
 
-        while self.current_tok.type != TT_EOF:
-            if self.current_tok.type == TT_KEYWORD and self.current_tok.value in (
+        while self.current_tok.type != GL_EOF:
+            if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
                 "ENDEF",
                 "ENDIF",
                 "ENDCLASS",
@@ -76,8 +76,8 @@ class Parser:
         statements = []
         pos_start = self.current_tok.pos_start.copy()
 
-        while self.current_tok.type != TT_EOF and not (
-            self.current_tok.type == TT_KEYWORD
+        while self.current_tok.type != GL_EOF and not (
+            self.current_tok.type == GL_KEYWORD
             and self.current_tok.value in end_keywords
         ):
             statements.append(res.register(self.statement()))
@@ -91,7 +91,7 @@ class Parser:
     def statement(self):
         res = ParseResult()
 
-        if self.current_tok.matches(TT_KEYWORD, "PRINT"):
+        if self.current_tok.matches(GL_KEYWORD, "PRINT"):
             res.register_advancement()
             self.advance()
 
@@ -100,7 +100,7 @@ class Parser:
                 return res
             return res.success(PrintNode(expr))
 
-        if self.current_tok.matches(TT_KEYWORD, "IF"):
+        if self.current_tok.matches(GL_KEYWORD, "IF"):
             res.register_advancement()
             self.advance()
 
@@ -111,7 +111,7 @@ class Parser:
             if res.error:
                 return res
 
-            if not self.current_tok.matches(TT_KEYWORD, "THEN"):
+            if not self.current_tok.matches(GL_KEYWORD, "THEN"):
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -127,11 +127,11 @@ class Parser:
                 return res
             cases.append((condition, body))
 
-            while self.current_tok.matches(TT_KEYWORD, "ELSE"):
+            while self.current_tok.matches(GL_KEYWORD, "ELSE"):
 
                 is_else_if = False
                 if self.tok_idx + 1 < len(self.tokens):
-                    if self.tokens[self.tok_idx + 1].matches(TT_KEYWORD, "IF"):
+                    if self.tokens[self.tok_idx + 1].matches(GL_KEYWORD, "IF"):
                         is_else_if = True
 
                 if is_else_if:
@@ -144,7 +144,7 @@ class Parser:
                     if res.error:
                         return res
 
-                    if not self.current_tok.matches(TT_KEYWORD, "THEN"):
+                    if not self.current_tok.matches(GL_KEYWORD, "THEN"):
                         return res.failure(
                             InvalidSyntaxError(
                                 self.current_tok.pos_start,
@@ -170,7 +170,7 @@ class Parser:
 
                     break
 
-            if not self.current_tok.matches(TT_KEYWORD, "ENDIF"):
+            if not self.current_tok.matches(GL_KEYWORD, "ENDIF"):
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -184,19 +184,19 @@ class Parser:
 
             return res.success(IfNode(cases, else_case))
 
-        if self.current_tok.matches(TT_KEYWORD, "WHILE"):
+        if self.current_tok.matches(GL_KEYWORD, "WHILE"):
             return self.while_expr()
 
-        if self.current_tok.matches(TT_KEYWORD, "FOR"):
+        if self.current_tok.matches(GL_KEYWORD, "FOR"):
             return self.for_expr()
 
-        if self.current_tok.matches(TT_KEYWORD, "BREAK"):
+        if self.current_tok.matches(GL_KEYWORD, "BREAK"):
             pos_start = self.current_tok.pos_start.copy()
             res.register_advancement()
             self.advance()
             return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
 
-        if self.current_tok.matches(TT_KEYWORD, "CONTINUE"):
+        if self.current_tok.matches(GL_KEYWORD, "CONTINUE"):
             pos_start = self.current_tok.pos_start.copy()
             res.register_advancement()
             self.advance()
@@ -204,26 +204,26 @@ class Parser:
                 ContinueNode(pos_start, self.current_tok.pos_start.copy())
             )
 
-        if self.current_tok.matches(TT_KEYWORD, "LET"):
+        if self.current_tok.matches(GL_KEYWORD, "LET"):
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type == TT_LSQUARE:
+            if self.current_tok.type == GL_LSQUARE:
                 res.register_advancement()
                 self.advance()
 
                 var_names = []
 
-                if self.current_tok.type == TT_IDENTIFIER:
+                if self.current_tok.type == GL_IDENTIFIER:
                     var_names.append(self.current_tok)
                     res.register_advancement()
                     self.advance()
 
-                    while self.current_tok.type == TT_COMMA:
+                    while self.current_tok.type == GL_COMMA:
                         res.register_advancement()
                         self.advance()
 
-                        if self.current_tok.type == TT_IDENTIFIER:
+                        if self.current_tok.type == GL_IDENTIFIER:
                             var_names.append(self.current_tok)
                             res.register_advancement()
                             self.advance()
@@ -236,7 +236,7 @@ class Parser:
                                 )
                             )
 
-                if self.current_tok.type != TT_RSQUARE:
+                if self.current_tok.type != GL_RSQUARE:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_tok.pos_start,
@@ -247,7 +247,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-                if self.current_tok.type != TT_EQ:
+                if self.current_tok.type != GL_EQ:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_tok.pos_start,
@@ -264,12 +264,12 @@ class Parser:
 
                 return res.success(MultiVarAssignNode(var_names, expr))
 
-            elif self.current_tok.type == TT_IDENTIFIER:
+            elif self.current_tok.type == GL_IDENTIFIER:
                 var_name = self.current_tok
                 res.register_advancement()
                 self.advance()
 
-                if self.current_tok.type == TT_LSQUARE:
+                if self.current_tok.type == GL_LSQUARE:
                     res.register_advancement()
                     self.advance()
 
@@ -277,7 +277,7 @@ class Parser:
                     if res.error:
                         return res
 
-                    if self.current_tok.type != TT_RSQUARE:
+                    if self.current_tok.type != GL_RSQUARE:
                         return res.failure(
                             InvalidSyntaxError(
                                 self.current_tok.pos_start,
@@ -288,7 +288,7 @@ class Parser:
                     res.register_advancement()
                     self.advance()
 
-                    if self.current_tok.type != TT_EQ:
+                    if self.current_tok.type != GL_EQ:
                         return res.failure(
                             InvalidSyntaxError(
                                 self.current_tok.pos_start,
@@ -307,7 +307,7 @@ class Parser:
                         ListSetNode(VarAccessNode(var_name), index_expr, value_expr)
                     )
 
-                elif self.current_tok.type == TT_EQ:
+                elif self.current_tok.type == GL_EQ:
                     res.register_advancement()
                     self.advance()
 
@@ -334,11 +334,11 @@ class Parser:
                     )
                 )
 
-        if self.current_tok.matches(TT_KEYWORD, "FINAL"):
+        if self.current_tok.matches(GL_KEYWORD, "FINAL"):
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type != TT_IDENTIFIER:
+            if self.current_tok.type != GL_IDENTIFIER:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -351,7 +351,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type != TT_EQ:
+            if self.current_tok.type != GL_EQ:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -369,7 +369,7 @@ class Parser:
 
             return res.success(FinalVarAssignNode(var_name, expr))
 
-        if self.current_tok.matches(TT_KEYWORD, "RETURN"):
+        if self.current_tok.matches(GL_KEYWORD, "RETURN"):
             res.register_advancement()
             self.advance()
             pos_start = self.current_tok.pos_start.copy()
@@ -380,16 +380,16 @@ class Parser:
 
             return res.success(ReturnNode(expr, pos_start, expr.pos_end))
 
-        if self.current_tok.matches(TT_KEYWORD, "DEF"):
+        if self.current_tok.matches(GL_KEYWORD, "DEF"):
             return self.fun_def()
 
-        if self.current_tok.matches(TT_KEYWORD, "CLASS"):
+        if self.current_tok.matches(GL_KEYWORD, "CLASS"):
             return self.class_def()
 
-        if self.current_tok.matches(TT_KEYWORD, "TRY"):
+        if self.current_tok.matches(GL_KEYWORD, "TRY"):
             return self.try_expr()
 
-        if self.current_tok.matches(TT_KEYWORD, "THROW"):
+        if self.current_tok.matches(GL_KEYWORD, "THROW"):
             res.register_advancement()
             self.advance()
 
@@ -401,7 +401,7 @@ class Parser:
                 ThrowNode(expr, self.current_tok.pos_start, expr.pos_end)
             )
 
-        if self.current_tok.matches(TT_KEYWORD, "SWITCH"):
+        if self.current_tok.matches(GL_KEYWORD, "SWITCH"):
             res.register_advancement()
             self.advance()
             return self.switch_expr()
@@ -414,7 +414,7 @@ class Parser:
     def for_expr(self):
         res = ParseResult()
 
-        if not self.current_tok.matches(TT_KEYWORD, "FOR"):
+        if not self.current_tok.matches(GL_KEYWORD, "FOR"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -426,7 +426,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != TT_IDENTIFIER:
+        if self.current_tok.type != GL_IDENTIFIER:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -439,7 +439,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if not self.current_tok.matches(TT_KEYWORD, "IN"):
+        if not self.current_tok.matches(GL_KEYWORD, "IN"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -459,7 +459,7 @@ class Parser:
         if res.error:
             return res
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDFOR"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDFOR"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -476,7 +476,7 @@ class Parser:
     def while_expr(self):
         res = ParseResult()
 
-        if not self.current_tok.matches(TT_KEYWORD, "WHILE"):
+        if not self.current_tok.matches(GL_KEYWORD, "WHILE"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -496,7 +496,7 @@ class Parser:
         if res.error:
             return res
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDWHILE"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDWHILE"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -517,10 +517,10 @@ class Parser:
             self.bin_op(
                 self.comp_expr,
                 (
-                    (TT_KEYWORD, "AND"),
-                    (TT_KEYWORD, "OR"),
-                    (TT_KEYWORD, "and"),
-                    (TT_KEYWORD, "or"),
+                    (GL_KEYWORD, "AND"),
+                    (GL_KEYWORD, "OR"),
+                    (GL_KEYWORD, "and"),
+                    (GL_KEYWORD, "or"),
                 ),
             )
         )
@@ -529,14 +529,19 @@ class Parser:
             return res
 
         if self.current_tok.type in (
-            TT_EQ,
-            TT_PLUSEQ,
-            TT_MINUSEQ,
-            TT_MULEQ,
-            TT_DIVEQ,
-            TT_POWEQ,
-            TT_MODEQ,
-            TT_FLOORDIVEQ,
+            GL_EQ,
+            GL_PLUSEQ,
+            GL_MINUSEQ,
+            GL_MULEQ,
+            GL_DIVEQ,
+            GL_POWEQ,
+            GL_MODEQ,
+            GL_FLOORDIVEQ,
+            GL_BIT_ANDEQ,
+            GL_BIT_OREQ,
+            GL_BIT_XOREQ,
+            GL_LSHIFTEQ,
+            GL_RSHIFTEQ,
         ):
             op_tok = self.current_tok
             res.register_advancement()
@@ -546,22 +551,32 @@ class Parser:
             if res.error:
                 return res
 
-            if op_tok.type != TT_EQ:
+            if op_tok.type != GL_EQ:
                 bin_op_type = None
-                if op_tok.type == TT_PLUSEQ:
-                    bin_op_type = TT_PLUS
-                elif op_tok.type == TT_MINUSEQ:
-                    bin_op_type = TT_MINUS
-                elif op_tok.type == TT_MULEQ:
-                    bin_op_type = TT_MUL
-                elif op_tok.type == TT_DIVEQ:
-                    bin_op_type = TT_DIV
-                elif op_tok.type == TT_POWEQ:
-                    bin_op_type = TT_POW
-                elif op_tok.type == TT_MODEQ:
-                    bin_op_type = TT_MOD
-                elif op_tok.type == TT_FLOORDIVEQ:
-                    bin_op_type = TT_FLOORDIV
+                if op_tok.type == GL_PLUSEQ:
+                    bin_op_type = GL_PLUS
+                elif op_tok.type == GL_MINUSEQ:
+                    bin_op_type = GL_MINUS
+                elif op_tok.type == GL_MULEQ:
+                    bin_op_type = GL_MUL
+                elif op_tok.type == GL_DIVEQ:
+                    bin_op_type = GL_DIV
+                elif op_tok.type == GL_POWEQ:
+                    bin_op_type = GL_POW
+                elif op_tok.type == GL_MODEQ:
+                    bin_op_type = GL_MOD
+                elif op_tok.type == GL_FLOORDIVEQ:
+                    bin_op_type = GL_FLOORDIV
+                elif op_tok.type == GL_BIT_ANDEQ:
+                    bin_op_type = GL_BIT_AND
+                elif op_tok.type == GL_BIT_OREQ:
+                    bin_op_type = GL_BIT_OR
+                elif op_tok.type == GL_BIT_XOREQ:
+                    bin_op_type = GL_BIT_XOR
+                elif op_tok.type == GL_LSHIFTEQ:
+                    bin_op_type = GL_LSHIFT
+                elif op_tok.type == GL_RSHIFTEQ:
+                    bin_op_type = GL_RSHIFT
 
                 expr = BinOpNode(
                     node, Token(bin_op_type, pos_start=op_tok.pos_start), expr
@@ -587,7 +602,7 @@ class Parser:
     def comp_expr(self):
         res = ParseResult()
 
-        if self.current_tok.matches(TT_KEYWORD, "NOT"):
+        if self.current_tok.matches(GL_KEYWORD, "NOT"):
             op_tok = self.current_tok
             res.register_advancement()
             self.advance()
@@ -597,21 +612,21 @@ class Parser:
                 return res
             return res.success(UnaryOpNode(op_tok, node))
 
-        node = res.register(self.arith_expr())
+        node = res.register(self.bitwise_or_expr())
         if res.error:
             return res
 
         ops = []
 
-        while self.current_tok.type in (TT_EE, TT_NE, TT_LT, TT_GT, TT_LTE, TT_GTE) or (
-            self.current_tok.type == TT_KEYWORD
+        while self.current_tok.type in (GL_EE, GL_NE, GL_LT, GL_GT, GL_LTE, GL_GTE) or (
+            self.current_tok.type == GL_KEYWORD
             and self.current_tok.value in ("is", "IS")
         ):
             op_tok = self.current_tok
             res.register_advancement()
             self.advance()
 
-            right_expr = res.register(self.arith_expr())
+            right_expr = res.register(self.bitwise_or_expr())
             if res.error:
                 return res
 
@@ -633,7 +648,7 @@ class Parser:
             next_comp = BinOpNode(prev_right, op_tok, right_expr)
 
             and_tok = Token(
-                TT_KEYWORD, "and", pos_start=op_tok.pos_start, pos_end=op_tok.pos_end
+                GL_KEYWORD, "and", pos_start=op_tok.pos_start, pos_end=op_tok.pos_end
             )
 
             result_node = BinOpNode(result_node, and_tok, next_comp)
@@ -642,16 +657,16 @@ class Parser:
         return res.success(result_node)
 
     def arith_expr(self):
-        return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
+        return self.bin_op(self.term, (GL_PLUS, GL_MINUS))
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MUL, TT_DIV, TT_MOD, TT_FLOORDIV))
+        return self.bin_op(self.factor, (GL_MUL, GL_DIV, GL_MOD, GL_FLOORDIV))
 
     def factor(self):
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type in (TT_PLUS, TT_MINUS):
+        if tok.type in (GL_PLUS, GL_MINUS):
             res.register_advancement()
             self.advance()
             factor = res.register(self.factor())
@@ -659,7 +674,7 @@ class Parser:
                 return res
             return res.success(UnaryOpNode(tok, factor))
 
-        elif tok.type in (TT_PLUSPLUS, TT_MINUSMINUS):
+        elif tok.type in (GL_PLUSPLUS, GL_MINUSMINUS):
             op_tok = self.current_tok
             res.register_advancement()
             self.advance()
@@ -679,10 +694,18 @@ class Parser:
 
             return res.success(UnaryOpNode(op_tok, node))
 
+        elif tok.type == GL_BIT_NOT:
+            res.register_advancement()
+            self.advance()
+            factor = res.register(self.factor())
+            if res.error:
+                return res
+            return res.success(UnaryOpNode(tok, factor))
+
         return self.power()
 
     def power(self):
-        return self.bin_op(self.call, (TT_POW,), self.factor)
+        return self.bin_op(self.call, (GL_POW,), self.factor)
 
     def call(self):
         res = ParseResult()
@@ -691,17 +714,17 @@ class Parser:
             return res
 
         while True:
-            if self.current_tok.type == TT_LPAREN:
+            if self.current_tok.type == GL_LPAREN:
                 res.register_advancement()
                 self.advance()
                 arg_nodes = []
 
-                if self.current_tok.type != TT_RPAREN:
+                if self.current_tok.type != GL_RPAREN:
                     arg_nodes.append(res.register(self.expr()))
                     if res.error:
                         return res
 
-                    while self.current_tok.type == TT_COMMA:
+                    while self.current_tok.type == GL_COMMA:
                         res.register_advancement()
                         self.advance()
 
@@ -709,7 +732,7 @@ class Parser:
                         if res.error:
                             return res
 
-                if self.current_tok.type != TT_RPAREN:
+                if self.current_tok.type != GL_RPAREN:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_tok.pos_start,
@@ -722,11 +745,11 @@ class Parser:
                 self.advance()
                 atom = CallNode(atom, arg_nodes)
 
-            elif self.current_tok.type == TT_DOT:
+            elif self.current_tok.type == GL_DOT:
                 res.register_advancement()
                 self.advance()
 
-                if self.current_tok.type != TT_IDENTIFIER:
+                if self.current_tok.type != GL_IDENTIFIER:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_tok.pos_start,
@@ -741,7 +764,7 @@ class Parser:
 
                 atom = GetAttrNode(atom, attr_name_tok)
 
-            elif self.current_tok.type == TT_LSQUARE:
+            elif self.current_tok.type == GL_LSQUARE:
                 res.register_advancement()
                 self.advance()
 
@@ -749,17 +772,17 @@ class Parser:
                 if res.error:
                     return res
 
-                if self.current_tok.type == TT_COLON:
+                if self.current_tok.type == GL_COLON:
                     res.register_advancement()
                     self.advance()
 
                     end_node = None
-                    if self.current_tok.type != TT_RSQUARE:
+                    if self.current_tok.type != GL_RSQUARE:
                         end_node = res.register(self.expr())
                         if res.error:
                             return res
 
-                    if self.current_tok.type != TT_RSQUARE:
+                    if self.current_tok.type != GL_RSQUARE:
                         return res.failure(
                             InvalidSyntaxError(
                                 self.current_tok.pos_start,
@@ -773,7 +796,7 @@ class Parser:
                     atom = SliceAccessNode(atom, start_node, end_node)
 
                 else:
-                    if self.current_tok.type != TT_RSQUARE:
+                    if self.current_tok.type != GL_RSQUARE:
                         return res.failure(
                             InvalidSyntaxError(
                                 self.current_tok.pos_start,
@@ -789,7 +812,7 @@ class Parser:
             else:
                 break
 
-        if self.current_tok.type in (TT_PLUSPLUS, TT_MINUSMINUS):
+        if self.current_tok.type in (GL_PLUSPLUS, GL_MINUSMINUS):
             if not isinstance(atom, (VarAccessNode, GetAttrNode, ListAccessNode)):
                 return res.failure(
                     InvalidSyntaxError(
@@ -810,36 +833,36 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type == TT_LBRACE:
+        if tok.type == GL_LBRACE:
             return self.dict_expr()
 
-        if tok.type in (TT_INT, TT_FLOAT):
+        if tok.type in (GL_INT, GL_FLOAT):
             res.register_advancement()
             self.advance()
             return res.success(NumberNode(tok))
 
-        elif tok.type == TT_STRING:
+        elif tok.type == GL_STRING:
             res.register_advancement()
             self.advance()
             return res.success(StringNode(tok))
 
-        elif tok.type == TT_IDENTIFIER:
+        elif tok.type == GL_IDENTIFIER:
             res.register_advancement()
             self.advance()
             return res.success(VarAccessNode(tok))
 
-        elif tok.matches(TT_KEYWORD, "SELF"):
+        elif tok.matches(GL_KEYWORD, "SELF"):
             res.register_advancement()
             self.advance()
             return res.success(VarAccessNode(tok))
 
-        elif tok.type == TT_LPAREN:
+        elif tok.type == GL_LPAREN:
             res.register_advancement()
             self.advance()
             expr = res.register(self.expr())
             if res.error:
                 return res
-            if self.current_tok.type == TT_RPAREN:
+            if self.current_tok.type == GL_RPAREN:
                 res.register_advancement()
                 self.advance()
                 return res.success(expr)
@@ -852,16 +875,16 @@ class Parser:
                     )
                 )
 
-        elif tok.type == TT_LSQUARE:
+        elif tok.type == GL_LSQUARE:
             return self.list_expr()
 
-        elif tok.matches(TT_KEYWORD, "DEF"):
+        elif tok.matches(GL_KEYWORD, "DEF"):
             return self.fun_def()
 
-        elif tok.matches(TT_KEYWORD, "CLASS"):
+        elif tok.matches(GL_KEYWORD, "CLASS"):
             return self.class_def()
 
-        elif tok.matches(TT_KEYWORD, "NEW"):
+        elif tok.matches(GL_KEYWORD, "NEW"):
             return self.new_instance()
 
         return res.failure(
@@ -877,7 +900,7 @@ class Parser:
         element_nodes = []
         pos_start = self.current_tok.pos_start.copy()
 
-        if self.current_tok.type != TT_LSQUARE:
+        if self.current_tok.type != GL_LSQUARE:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start, self.current_tok.pos_end, "Expected '['"
@@ -887,7 +910,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type == TT_RSQUARE:
+        if self.current_tok.type == GL_RSQUARE:
             res.register_advancement()
             self.advance()
             return res.success(
@@ -898,11 +921,11 @@ class Parser:
         if res.error:
             return res
 
-        if self.current_tok.matches(TT_KEYWORD, "FOR"):
+        if self.current_tok.matches(GL_KEYWORD, "FOR"):
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type != TT_IDENTIFIER:
+            if self.current_tok.type != GL_IDENTIFIER:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -915,7 +938,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            if not self.current_tok.matches(TT_KEYWORD, "IN"):
+            if not self.current_tok.matches(GL_KEYWORD, "IN"):
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -931,7 +954,7 @@ class Parser:
             if res.error:
                 return res
 
-            if self.current_tok.type != TT_RSQUARE:
+            if self.current_tok.type != GL_RSQUARE:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -947,7 +970,7 @@ class Parser:
 
         element_nodes.append(first_expr)
 
-        while self.current_tok.type == TT_COMMA:
+        while self.current_tok.type == GL_COMMA:
             res.register_advancement()
             self.advance()
 
@@ -955,7 +978,7 @@ class Parser:
             if res.error:
                 return res
 
-        if self.current_tok.type != TT_RSQUARE:
+        if self.current_tok.type != GL_RSQUARE:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -974,7 +997,7 @@ class Parser:
     def fun_def(self):
         res = ParseResult()
 
-        if not self.current_tok.matches(TT_KEYWORD, "DEF"):
+        if not self.current_tok.matches(GL_KEYWORD, "DEF"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -986,11 +1009,11 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type == TT_IDENTIFIER:
+        if self.current_tok.type == GL_IDENTIFIER:
             var_name_tok = self.current_tok
             res.register_advancement()
             self.advance()
-            if self.current_tok.type != TT_LPAREN:
+            if self.current_tok.type != GL_LPAREN:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -1000,7 +1023,7 @@ class Parser:
                 )
         else:
             var_name_tok = None
-            if self.current_tok.type != TT_LPAREN:
+            if self.current_tok.type != GL_LPAREN:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -1013,10 +1036,10 @@ class Parser:
         self.advance()
         arg_name_toks = []
 
-        if self.current_tok.type != TT_RPAREN:
-            if self.current_tok.type == TT_IDENTIFIER:
+        if self.current_tok.type != GL_RPAREN:
+            if self.current_tok.type == GL_IDENTIFIER:
                 arg_name_toks.append(self.current_tok)
-            elif self.current_tok.matches(TT_KEYWORD, "SELF"):
+            elif self.current_tok.matches(GL_KEYWORD, "SELF"):
                 arg_name_toks.append(self.current_tok)
             else:
                 return res.failure(
@@ -1030,13 +1053,13 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            while self.current_tok.type == TT_COMMA:
+            while self.current_tok.type == GL_COMMA:
                 res.register_advancement()
                 self.advance()
 
-                if self.current_tok.type == TT_IDENTIFIER:
+                if self.current_tok.type == GL_IDENTIFIER:
                     arg_name_toks.append(self.current_tok)
-                elif self.current_tok.matches(TT_KEYWORD, "SELF"):
+                elif self.current_tok.matches(GL_KEYWORD, "SELF"):
                     arg_name_toks.append(self.current_tok)
                 else:
                     return res.failure(
@@ -1050,7 +1073,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-        if self.current_tok.type != TT_RPAREN:
+        if self.current_tok.type != GL_RPAREN:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1067,7 +1090,7 @@ class Parser:
         if res.error:
             return res
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDEF"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDEF"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1084,7 +1107,7 @@ class Parser:
     def class_def(self):
         res = ParseResult()
 
-        if not self.current_tok.matches(TT_KEYWORD, "CLASS"):
+        if not self.current_tok.matches(GL_KEYWORD, "CLASS"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1096,7 +1119,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != TT_IDENTIFIER:
+        if self.current_tok.type != GL_IDENTIFIER:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1110,10 +1133,10 @@ class Parser:
         self.advance()
 
         superclass_node = None
-        if self.current_tok.matches(TT_KEYWORD, "INHERITS"):
+        if self.current_tok.matches(GL_KEYWORD, "INHERITS"):
             res.register_advancement()
             self.advance()
-            if self.current_tok.type != TT_IDENTIFIER:
+            if self.current_tok.type != GL_IDENTIFIER:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -1127,10 +1150,10 @@ class Parser:
 
         method_nodes = []
 
-        while self.current_tok.type != TT_EOF and not self.current_tok.matches(
-            TT_KEYWORD, "ENDCLASS"
+        while self.current_tok.type != GL_EOF and not self.current_tok.matches(
+            GL_KEYWORD, "ENDCLASS"
         ):
-            if not self.current_tok.matches(TT_KEYWORD, "DEF"):
+            if not self.current_tok.matches(GL_KEYWORD, "DEF"):
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -1153,7 +1176,7 @@ class Parser:
 
             method_nodes.append(method_node)
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDCLASS"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDCLASS"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1170,7 +1193,7 @@ class Parser:
     def new_instance(self):
         res = ParseResult()
 
-        if not self.current_tok.matches(TT_KEYWORD, "NEW"):
+        if not self.current_tok.matches(GL_KEYWORD, "NEW"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1182,7 +1205,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != TT_IDENTIFIER:
+        if self.current_tok.type != GL_IDENTIFIER:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1195,7 +1218,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != TT_LPAREN:
+        if self.current_tok.type != GL_LPAREN:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1208,12 +1231,12 @@ class Parser:
         self.advance()
         arg_nodes = []
 
-        if self.current_tok.type != TT_RPAREN:
+        if self.current_tok.type != GL_RPAREN:
             arg_nodes.append(res.register(self.expr()))
             if res.error:
                 return res
 
-            while self.current_tok.type == TT_COMMA:
+            while self.current_tok.type == GL_COMMA:
                 res.register_advancement()
                 self.advance()
 
@@ -1221,7 +1244,7 @@ class Parser:
                 if res.error:
                     return res
 
-        if self.current_tok.type != TT_RPAREN:
+        if self.current_tok.type != GL_RPAREN:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1267,12 +1290,12 @@ class Parser:
 
         kv_pairs = []
 
-        if self.current_tok.type != TT_RBRACE:
+        if self.current_tok.type != GL_RBRACE:
             key = res.register(self.expr())
             if res.error:
                 return res
 
-            if self.current_tok.type != TT_COLON:
+            if self.current_tok.type != GL_COLON:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
@@ -1290,18 +1313,18 @@ class Parser:
 
             kv_pairs.append((key, value))
 
-            while self.current_tok.type == TT_COMMA:
+            while self.current_tok.type == GL_COMMA:
                 res.register_advancement()
                 self.advance()
 
-                if self.current_tok.type == TT_RBRACE:
+                if self.current_tok.type == GL_RBRACE:
                     break
 
                 key = res.register(self.expr())
                 if res.error:
                     return res
 
-                if self.current_tok.type != TT_COLON:
+                if self.current_tok.type != GL_COLON:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_tok.pos_start,
@@ -1319,7 +1342,7 @@ class Parser:
 
                 kv_pairs.append((key, value))
 
-        if self.current_tok.type != TT_RBRACE:
+        if self.current_tok.type != GL_RBRACE:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start, self.current_tok.pos_end, "Expected '}'"
@@ -1346,11 +1369,11 @@ class Parser:
         catch_body = None
         finally_body = None
 
-        if self.current_tok.matches(TT_KEYWORD, "CATCH"):
+        if self.current_tok.matches(GL_KEYWORD, "CATCH"):
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type == TT_IDENTIFIER:
+            if self.current_tok.type == GL_IDENTIFIER:
                 catch_var = self.current_tok
                 res.register_advancement()
                 self.advance()
@@ -1359,7 +1382,7 @@ class Parser:
             if res.error:
                 return res
 
-        if self.current_tok.matches(TT_KEYWORD, "FINALLY"):
+        if self.current_tok.matches(GL_KEYWORD, "FINALLY"):
             res.register_advancement()
             self.advance()
 
@@ -1367,7 +1390,7 @@ class Parser:
             if res.error:
                 return res
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDTRY"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDTRY"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1399,7 +1422,7 @@ class Parser:
         cases = []
         default_case = None
 
-        while self.current_tok.matches(TT_KEYWORD, "CASE"):
+        while self.current_tok.matches(GL_KEYWORD, "CASE"):
             res.register_advancement()
             self.advance()
 
@@ -1409,14 +1432,14 @@ class Parser:
             if res.error:
                 return res
 
-            while self.current_tok.type == TT_COMMA:
+            while self.current_tok.type == GL_COMMA:
                 res.register_advancement()
                 self.advance()
                 case_conditions.append(res.register(self.expr()))
                 if res.error:
                     return res
 
-            if self.current_tok.type == TT_COLON:
+            if self.current_tok.type == GL_COLON:
                 res.register_advancement()
                 self.advance()
 
@@ -1426,11 +1449,11 @@ class Parser:
 
             cases.append((case_conditions, body))
 
-        if self.current_tok.matches(TT_KEYWORD, "DEFAULT"):
+        if self.current_tok.matches(GL_KEYWORD, "DEFAULT"):
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type == TT_COLON:
+            if self.current_tok.type == GL_COLON:
                 res.register_advancement()
                 self.advance()
 
@@ -1438,7 +1461,7 @@ class Parser:
             if res.error:
                 return res
 
-        if not self.current_tok.matches(TT_KEYWORD, "ENDSWITCH"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDSWITCH"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
@@ -1451,3 +1474,15 @@ class Parser:
         self.advance()
 
         return res.success(SwitchNode(switch_value, cases, default_case))
+
+    def bitwise_or_expr(self):
+        return self.bin_op(self.bitwise_xor_expr, (GL_BIT_OR,))
+
+    def bitwise_xor_expr(self):
+        return self.bin_op(self.bitwise_and_expr, (GL_BIT_XOR,))
+
+    def bitwise_and_expr(self):
+        return self.bin_op(self.shift_expr, (GL_BIT_AND,))
+
+    def shift_expr(self):
+        return self.bin_op(self.arith_expr, (GL_LSHIFT, GL_RSHIFT))
