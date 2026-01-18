@@ -3,7 +3,7 @@ PRINT "--- Polymorphism Tester ---"
 CLASS Pet
   DEF init(SELF, name)
     SELF.name = name
-  ENDEF
+  ENDDEF
   
   # This method is NOT overridden by Dog or Cat
   DEF introduce(SELF)
@@ -11,25 +11,25 @@ CLASS Pet
     # This call to SELF.speak() should use the
     # child's version if it exists.
     SELF.speak()
-  ENDEF
+  ENDDEF
   
   DEF speak(SELF)
     PRINT "(Generic pet sound)"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 CLASS Dog INHERITS Pet
   # Override speak
   DEF speak(SELF)
     PRINT "Woof!"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 CLASS Cat INHERITS Pet
   # Override speak
   DEF speak(SELF)
     PRINT "Meow!"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 PRINT "--- Creating Dog ---"

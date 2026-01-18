@@ -4,9 +4,9 @@ PRINT "--- Advanced OOP & Closure Test ---"
 DEF create_greeter(greeting)
   DEF greeter_func(name)
     RETURN greeting + ", " + name + "!"
-  ENDEF
+  ENDDEF
   RETURN greeter_func
-ENDEF
+ENDDEF
 
 PRINT "Creating greeter functions..."
 LET say_hello = create_greeter("Hello")
@@ -17,13 +17,13 @@ CLASS Person
   DEF init(SELF, name, greeter_func)
     SELF.name = name
     SELF.greeter = greeter_func # Store the function as an attribute
-  ENDEF
+  ENDDEF
   
   DEF greet(SELF)
     # Call the stored function, passing in our name
     LET message = SELF.greeter(SELF.name)
     PRINT message
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 PRINT "--- Creating people ---"

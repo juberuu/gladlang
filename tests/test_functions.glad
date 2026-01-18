@@ -5,12 +5,12 @@ DEF add(a, b)
   PRINT "Running function 'add'..."
   LET result = a + b
   RETURN result
-ENDEF
+ENDDEF
 
 # Define a function with no return (it will return NULL)
 DEF say_hello(name)
   PRINT "Hello, " + name
-ENDEF
+ENDDEF
 
 # --- Test Function 1 (with RETURN) ---
 PRINT "Calling add(10, 5)..."

@@ -33,6 +33,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.tok_idx = -1
+        self.loop_count = 0
         self.advance()
 
     def advance(self):
@@ -48,7 +49,7 @@ class Parser:
 
         while self.current_tok.type != GL_EOF:
             if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
-                "ENDEF",
+                "ENDDEF",
                 "ENDIF",
                 "ENDCLASS",
                 "ENDWHILE",
@@ -191,12 +192,29 @@ class Parser:
             return self.for_expr()
 
         if self.current_tok.matches(GL_KEYWORD, "BREAK"):
+            if self.loop_count == 0:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "'BREAK' outside of loop",
+                    )
+                )
             pos_start = self.current_tok.pos_start.copy()
             res.register_advancement()
             self.advance()
             return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
 
         if self.current_tok.matches(GL_KEYWORD, "CONTINUE"):
+            if self.loop_count == 0:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "'CONTINUE' outside of loop",
+                    )
+                )
+
             pos_start = self.current_tok.pos_start.copy()
             res.register_advancement()
             self.advance()
@@ -314,7 +332,9 @@ class Parser:
                     expr = res.register(self.expr())
                     if res.error:
                         return res
-                    return res.success(VarAssignNode(var_name, expr))
+                    return res.success(
+                        VarAssignNode(var_name, expr, is_declaration=True)
+                    )
 
                 else:
                     return res.failure(
@@ -455,7 +475,9 @@ class Parser:
         if res.error:
             return res
 
+        self.loop_count += 1
         body_node = res.register(self.statement_list(("ENDFOR",)))
+        self.loop_count -= 1
         if res.error:
             return res
 
@@ -492,7 +514,12 @@ class Parser:
         if res.error:
             return res
 
+        self.loop_count += 1
+
         body = res.register(self.statement_list(("ENDWHILE",)))
+
+        self.loop_count -= 1
+
         if res.error:
             return res
 
@@ -583,7 +610,9 @@ class Parser:
                 )
 
             if isinstance(node, VarAccessNode):
-                return res.success(VarAssignNode(node.var_name_tok, expr))
+                return res.success(
+                    VarAssignNode(node.var_name_tok, expr, is_declaration=False)
+                )
             elif isinstance(node, GetAttrNode):
                 return res.success(
                     SetAttrNode(node.object_node, node.attr_name_tok, expr)
@@ -635,26 +664,11 @@ class Parser:
         if not ops:
             return res.success(node)
 
-        left_node = node
-        first_op, first_right = ops[0]
+        if len(ops) == 1:
+            op_tok, right_node = ops[0]
+            return res.success(BinOpNode(node, op_tok, right_node))
 
-        result_node = BinOpNode(left_node, first_op, first_right)
-
-        prev_right = first_right
-
-        for i in range(1, len(ops)):
-            op_tok, right_expr = ops[i]
-
-            next_comp = BinOpNode(prev_right, op_tok, right_expr)
-
-            and_tok = Token(
-                GL_KEYWORD, "and", pos_start=op_tok.pos_start, pos_end=op_tok.pos_end
-            )
-
-            result_node = BinOpNode(result_node, and_tok, next_comp)
-            prev_right = right_expr
-
-        return res.success(result_node)
+        return res.success(ChainedCompNode(node, ops))
 
     def arith_expr(self):
         return self.bin_op(self.term, (GL_PLUS, GL_MINUS))
@@ -1085,17 +1099,17 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        body = res.register(self.statement_list(("ENDEF",)))
+        body = res.register(self.statement_list(("ENDDEF",)))
 
         if res.error:
             return res
 
-        if not self.current_tok.matches(GL_KEYWORD, "ENDEF"):
+        if not self.current_tok.matches(GL_KEYWORD, "ENDDEF"):
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
                     self.current_tok.pos_end,
-                    "Expected 'ENDEF'",
+                    "Expected 'ENDDEF'",
                 )
             )
 

@@ -6,7 +6,7 @@ DEF fib(n)
   ENDIF
   
   RETURN fib(n - 1) + fib(n - 2)
-ENDEF
+ENDDEF
 
 LET num = 7 # Change this number to test (keep it small, < 20)
 PRINT "Calculating fib(" + num + ")..."

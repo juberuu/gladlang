@@ -1,10 +1,10 @@
 CLASS Person
   DEF init(SELF, name)
     SELF.name = name
-  ENDEF
+  ENDDEF
   DEF say_hi(SELF)
     PRINT "Hi, I am " + SELF.name
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 LET p = NEW Person("Alex")

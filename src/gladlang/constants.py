@@ -62,7 +62,7 @@ KEYWORDS = [
     "OR",
     "NOT",
     "DEF",
-    "ENDEF",
+    "ENDDEF",
     "RETURN",
     "CLASS",
     "ENDCLASS",

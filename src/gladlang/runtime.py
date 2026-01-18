@@ -43,6 +43,7 @@ class Context:
         self.parent = parent
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
+        self.depth = (parent.depth + 1) if parent else 0
 
 
 class RTResult:

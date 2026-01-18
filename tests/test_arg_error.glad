@@ -2,7 +2,7 @@ PRINT "--- Argument Error Tester ---"
 
 DEF add(a, b)
   RETURN a + b
-ENDEF
+ENDDEF
 
 PRINT "Calling add(10, 5, 20)..."
 LET c = add(10, 5, 20) # This line should crash

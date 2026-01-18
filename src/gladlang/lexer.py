@@ -1,8 +1,10 @@
 from .constants import *
 import codecs
+from functools import lru_cache
 from .errors import Position, IllegalCharError, InvalidSyntaxError
 
 
+@lru_cache(maxsize=1024)
 def decode_escapes(s):
     try:
         return codecs.decode(s, "unicode_escape")

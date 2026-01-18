@@ -41,20 +41,7 @@ class Value:
         return None, self.illegal_operation(other)
 
     def get_comparison_eq(self, other):
-        if not isinstance(other, List):
-            return None, Value.illegal_operation(self, other)
-
-        if len(self.elements) != len(other.elements):
-            return Number(0).set_context(self.context), None
-
-        for i in range(len(self.elements)):
-            result, error = self.elements[i].get_comparison_eq(other.elements[i])
-            if error:
-                return None, error
-            if not result.is_true():
-                return Number(0).set_context(self.context), None
-
-        return Number(1).set_context(self.context), None
+        return None, self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
         if not isinstance(other, List):
@@ -111,7 +98,7 @@ class Value:
         return None, self.illegal_operation()
 
     def is_true(self):
-        return False
+        return True
 
     def copy(self):
         raise Exception("No copy method defined")
@@ -436,6 +423,9 @@ class List(Value):
         super().__init__()
         self.elements = elements
 
+    def is_true(self):
+        return len(self.elements) > 0
+
     def added_to(self, other):
         if isinstance(other, List):
             new_list = List(self.elements + other.elements)
@@ -484,8 +474,34 @@ class List(Value):
                 self.context,
             )
 
-    def is_true(self):
-        return len(self.elements) > 0
+    def get_comparison_eq(self, other):
+        if not isinstance(other, List):
+            return None, Value.illegal_operation(self, other)
+
+        if len(self.elements) != len(other.elements):
+            return Number(0).set_context(self.context), None
+
+        for i in range(len(self.elements)):
+            result, error = self.elements[i].get_comparison_eq(other.elements[i])
+            if error:
+                return None, error
+            if not result.is_true():
+                return Number(0).set_context(self.context), None
+
+        return Number(1).set_context(self.context), None
+
+    def get_comparison_ne(self, other):
+        if not isinstance(other, List):
+            return None, Value.illegal_operation(self, other)
+
+        result, error = self.get_comparison_eq(other)
+        if error:
+            return None, error
+
+        if result.is_true():
+            return Number(0).set_context(self.context), None
+        else:
+            return Number(1).set_context(self.context), None
 
     def copy(self):
         copy = List(self.elements[:])
@@ -494,13 +510,24 @@ class List(Value):
         return copy
 
     def __repr__(self):
-        return f'[{", ".join([repr(x) for x in self.elements])}]'
+        return self.to_string([])
+
+    def to_string(self, visited):
+        if self in visited:
+            return "[...]"
+        visited.append(self)
+        s = f'[{", ".join([x.to_string(visited) if isinstance(x, (List, Dict)) else repr(x) for x in self.elements])}]'
+        visited.pop()
+        return s
 
 
 class Dict(Value):
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
+
+    def is_true(self):
+        return len(self.elements) > 0
 
     def copy(self):
         copy = Dict(self.elements.copy())
@@ -539,11 +566,58 @@ class Dict(Value):
         self.elements[key.value] = value
         return value, None
 
+    def get_comparison_eq(self, other):
+        if not isinstance(other, Dict):
+            return None, Value.illegal_operation(self, other)
+
+        if len(self.elements) != len(other.elements):
+            return Number(0).set_context(self.context), None
+
+        for key, value in self.elements.items():
+            if key not in other.elements:
+                return Number(0).set_context(self.context), None
+
+            other_val = other.elements[key]
+            result, error = value.get_comparison_eq(other_val)
+            if error:
+                return None, error
+
+            if not result.is_true():
+                return Number(0).set_context(self.context), None
+
+        return Number(1).set_context(self.context), None
+
+    def get_comparison_ne(self, other):
+        if not isinstance(other, Dict):
+            return None, Value.illegal_operation(self, other)
+
+        result, error = self.get_comparison_eq(other)
+        if error:
+            return None, error
+
+        if result.is_true():
+            return Number(0).set_context(self.context), None
+        else:
+            return Number(1).set_context(self.context), None
+
     def __repr__(self):
+        return self.to_string([])
+
+    def to_string(self, visited):
+        if self in visited:
+            return "{...}"
+        visited.append(self)
         kv_strings = []
         for key, value in self.elements.items():
-            kv_strings.append(f"{repr(key)}: {repr(value)}")
-        return f"{{{', '.join(kv_strings)}}}"
+            val_str = (
+                value.to_string(visited)
+                if isinstance(value, (List, Dict))
+                else repr(value)
+            )
+            kv_strings.append(f"{repr(key)}: {val_str}")
+        s = f"{{{', '.join(kv_strings)}}}"
+        visited.pop()
+        return s
 
 
 class BaseFunction(Value):
@@ -622,6 +696,16 @@ class Function(BaseFunction):
 
         new_context = self.generate_new_context()
 
+        if new_context.depth > 1000:
+            return res.failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "Recursion limit exceeded",
+                    self.context,
+                )
+            )
+
         res.register(self.check_and_populate_args(self.arg_names, args, new_context))
         if res.error:
             return res
@@ -650,7 +734,7 @@ class Class(BaseFunction):
         self.superclass = superclass
         self.methods = methods
 
-    def execute(self, args):
+    def instantiate(self, args):
         res = RTResult()
         instance = Instance(self)
 
@@ -677,6 +761,16 @@ class Class(BaseFunction):
             return res
 
         return res.success(instance)
+
+    def execute(self, args):
+        return RTResult().failure(
+            RTError(
+                self.pos_start,
+                self.pos_end,
+                f"Class '{self.name}' must be instantiated using 'NEW'",
+                self.context,
+            )
+        )
 
     def get_attr(self, name_tok):
         method_name = name_tok.value

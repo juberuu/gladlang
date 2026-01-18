@@ -6,10 +6,29 @@ from .constants import *
 
 
 class Interpreter:
+    _dispatch_cache = {}
+
     def visit(self, node, context):
-        method_name = f"visit_{type(node).__name__}"
-        method = getattr(self, method_name, self.no_visit_method)
-        result = method(node, context)
+        node_type = type(node)
+
+        method = Interpreter._dispatch_cache.get(node_type)
+
+        if method is None:
+            method_name = f"visit_{node_type.__name__}"
+            method = getattr(self, method_name, self.no_visit_method)
+            Interpreter._dispatch_cache[node_type] = method
+
+        try:
+            result = method(node, context)
+        except RecursionError:
+            return RTResult().failure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    "Runtime Error: Expression too complex (maximum recursion depth exceeded)",
+                    context,
+                )
+            )
 
         if isinstance(result, RTResult) and (
             result.should_return
@@ -170,10 +189,13 @@ class Interpreter:
                 )
             )
 
-        for element in iterable_val.elements:
-            context.symbol_table.set(node.var_name_tok.value, element)
+        comp_context = Context("COMPREHENSION", context, node.pos_start)
+        comp_context.symbol_table = SymbolTable(context.symbol_table)
 
-            value = res.register(self.visit(node.output_expr_node, context))
+        for element in iterable_val.elements:
+            comp_context.symbol_table.set(node.var_name_tok.value, element)
+
+            value = res.register(self.visit(node.output_expr_node, comp_context))
             if res.error:
                 return res
 
@@ -277,7 +299,22 @@ class Interpreter:
         if res.error:
             return res
 
-        context.symbol_table.set(var_name, value)
+        if node.is_declaration:
+            if var_name in context.symbol_table.finals:
+                return res.failure(
+                    RTError(
+                        node.var_name_tok.pos_start,
+                        node.var_name_tok.pos_end,
+                        f"Cannot reassign constant '{var_name}'",
+                        context,
+                    )
+                )
+            context.symbol_table.set(var_name, value)
+        else:
+            err = context.symbol_table.update(var_name, value)
+            if err:
+                return res.failure(RTError(node.pos_start, node.pos_end, err, context))
+
         return res.success(value)
 
     def visit_PrintNode(self, node, context):
@@ -347,9 +384,12 @@ class Interpreter:
             )
 
         for element in iterable_value.elements:
-            context.symbol_table.set(node.var_name_tok.value, element)
+            loop_context = Context("FOR", context, node.pos_start)
+            loop_context.symbol_table = SymbolTable(context.symbol_table)
 
-            value = res.register(self.visit(node.body_node, context))
+            loop_context.symbol_table.set(node.var_name_tok.value, element)
+
+            value = res.register(self.visit(node.body_node, loop_context))
             if res.error:
                 return res
 
@@ -454,6 +494,17 @@ class Interpreter:
             superclass = res.register(self.visit(node.superclass_node, context))
             if res.error:
                 return res
+
+            if superclass.name == class_name:
+                return res.failure(
+                    RTError(
+                        node.superclass_node.pos_start,
+                        node.superclass_node.pos_end,
+                        f"Class '{class_name}' cannot inherit from itself",
+                        context,
+                    )
+                )
+
             if not isinstance(superclass, Class):
                 return res.failure(
                     RTError(
@@ -510,7 +561,8 @@ class Interpreter:
             if res.error:
                 return res
 
-        instance = res.register(class_value.execute(args))
+        instance = res.register(class_value.instantiate(args))
+
         if res.error:
             return res
 
@@ -648,6 +700,46 @@ class Interpreter:
         else:
             return res.success(result.set_pos(node.pos_start, node.pos_end))
 
+    def visit_ChainedCompNode(self, node, context):
+        res = RTResult()
+
+        left_val = res.register(self.visit(node.left_node, context))
+        if res.error:
+            return res
+
+        for op_tok, right_node in node.ops_and_exprs:
+            right_val = res.register(self.visit(right_node, context))
+            if res.error:
+                return res
+
+            result = None
+            error = None
+
+            if op_tok.type == GL_EE:
+                result, error = left_val.get_comparison_eq(right_val)
+            elif op_tok.type == GL_NE:
+                result, error = left_val.get_comparison_ne(right_val)
+            elif op_tok.type == GL_LT:
+                result, error = left_val.get_comparison_lt(right_val)
+            elif op_tok.type == GL_GT:
+                result, error = left_val.get_comparison_gt(right_val)
+            elif op_tok.type == GL_LTE:
+                result, error = left_val.get_comparison_lte(right_val)
+            elif op_tok.type == GL_GTE:
+                result, error = left_val.get_comparison_gte(right_val)
+            elif op_tok.matches(GL_KEYWORD, "IS") or op_tok.matches(GL_KEYWORD, "is"):
+                result, error = left_val.get_comparison_is(right_val)
+
+            if error:
+                return res.failure(error)
+
+            if not result.is_true():
+                return res.success(Number.false)
+
+            left_val = right_val
+
+        return res.success(Number.true)
+
     def visit_UnaryOpNode(self, node, context):
         res = RTResult()
 
@@ -722,9 +814,6 @@ class Interpreter:
                             target_node.pos_start, target_node.pos_end, err, context
                         )
                     )
-
-            if isinstance(target_node, VarAccessNode):
-                context.symbol_table.set(var_name, new_value)
 
             elif isinstance(target_node, GetAttrNode):
                 _, error = obj.set_attr(target_node.attr_name_tok, new_value)
@@ -934,27 +1023,6 @@ class Interpreter:
             return res
 
         context.symbol_table.set(var_name, value, as_final=True)
-        return res.success(value)
-
-    def visit_VarAssignNode(self, node, context):
-        res = RTResult()
-        var_name = node.var_name_tok.value
-
-        if var_name in context.symbol_table.finals:
-            return res.failure(
-                RTError(
-                    node.pos_start,
-                    node.pos_end,
-                    f"Cannot reassign constant '{var_name}'",
-                    context,
-                )
-            )
-
-        value = res.register(self.visit(node.value_node, context))
-        if res.error:
-            return res
-
-        context.symbol_table.set(var_name, value)
         return res.success(value)
 
     def visit_SwitchNode(self, node, context):

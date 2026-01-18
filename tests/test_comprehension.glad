@@ -1,10 +1,10 @@
 LET numbers = [1, 2, 3, 4]
 
-PRINT "Original: " + numbers
+PRINT "Original: " + STR(numbers)
 
 # Square every number
-LET squares = [n ^ 2 FOR n IN numbers]
-PRINT "Squares: " + squares
+LET squares = [n ** 2 FOR n IN numbers]
+PRINT "Squares: " + STR(squares)
 
 # Strings
 LET names = ["alex", "bob"]

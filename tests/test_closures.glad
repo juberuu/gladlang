@@ -7,10 +7,10 @@ DEF make_adder(a)
     # This function "closes over" or "captures" the variable 'a'
     # from its parent's scope (the 'make_adder' function).
     RETURN a + b
-  ENDEF
+  ENDDEF
   
   RETURN adder_func
-ENDEF
+ENDDEF
 
 PRINT "Creating add_five..."
 # 'add_five' is now a function that holds 'a = 5' in its memory

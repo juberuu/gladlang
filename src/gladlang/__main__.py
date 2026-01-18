@@ -85,13 +85,13 @@ def is_complete(text):
     depth = 0
     bracket_level = 0
 
-    pattern = r"(\[|\]|\b(DEF|CLASS|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDEF|ENDCLASS|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
+    pattern = r"(\[|\]|\b(DEF|CLASS|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
 
     tokens = re.finditer(pattern, temp_text)
 
     start_keys = {"DEF", "CLASS", "IF", "WHILE", "FOR", "TRY", "SWITCH"}
     end_keys = {
-        "ENDEF",
+        "ENDDEF",
         "ENDCLASS",
         "ENDIF",
         "ENDWHILE",
@@ -119,7 +119,7 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.4"
+    GLADLANG_VERSION = "0.1.5"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 

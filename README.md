@@ -481,12 +481,12 @@ ENDFOR
 
 #### Named Functions
 
-Defined with `DEF...ENDEF`. Arguments are passed by value. `RETURN` sends a value back.
+Defined with `DEF...ENDDEF`. Arguments are passed by value. `RETURN` sends a value back.
 
 ```glad
 DEF add(a, b)
   RETURN a + b
-ENDEF
+ENDDEF
 
 LET sum = add(10, 5)
 PRINT sum # 15
@@ -499,7 +499,7 @@ Functions can be defined without a name, perfect for assigning to variables.
 ```glad
 LET double = DEF(x)
   RETURN x * 2
-ENDEF
+ENDDEF
 
 PRINT double(5) # 10
 ```
@@ -513,9 +513,9 @@ DEF create_greeter(greeting)
   DEF greeter_func(name)
     # 'greeting' is "closed over" from the parent
     RETURN greeting + ", " + name + "!"
-  ENDEF
+  ENDDEF
   RETURN greeter_func
-ENDEF
+ENDDEF
 
 LET say_hello = create_greeter("Hello")
 PRINT say_hello("Alex") # "Hello, Alex!"
@@ -531,7 +531,7 @@ DEF fib(n)
     RETURN n
   ENDIF
   RETURN fib(n - 1) + fib(n - 2)
-ENDEF
+ENDDEF
 
 PRINT fib(7) # 13
 ```
@@ -548,15 +548,15 @@ Use `CLASS...ENDCLASS` to define classes and `NEW` to create instances. The cons
 CLASS Counter
   DEF init(SELF)
     SELF.count = 0 # 'SELF' is the instance
-  ENDEF
+  ENDDEF
   
   DEF increment(SELF)
     SELF.count = SELF.count + 1
-  ENDEF
+  ENDDEF
   
   DEF get_count(SELF)
     RETURN SELF.count
-  ENDEF
+  ENDDEF
 ENDCLASS
 ```
 
@@ -578,18 +578,18 @@ Use the `INHERITS` keyword. Methods can be overridden by the child class.
 CLASS Pet
   DEF init(SELF, name)
     SELF.name = name
-  ENDEF
+  ENDDEF
   
   DEF speak(SELF)
     PRINT SELF.name + " makes a generic pet sound."
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 CLASS Dog INHERITS Pet
   # Override the 'speak' method
   DEF speak(SELF)
     PRINT SELF.name + " says: Woof!"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 LET my_dog = NEW Dog("Buddy")
@@ -605,17 +605,17 @@ CLASS Pet
   DEF introduce(SELF)
     PRINT "I am a pet and I say:"
     SELF.speak() # This will call the child's 'speak'
-  ENDEF
+  ENDDEF
   
   DEF speak(SELF)
     PRINT "(Generic pet sound)"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 CLASS Cat INHERITS Pet
   DEF speak(SELF)
     PRINT "Meow!"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 LET my_cat = NEW Cat("Whiskers")

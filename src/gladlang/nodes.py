@@ -43,9 +43,10 @@ class VarAccessNode:
 
 
 class VarAssignNode:
-    def __init__(self, var_name_tok, value_node):
+    def __init__(self, var_name_tok, value_node, is_declaration=False):
         self.var_name_tok = var_name_tok
         self.value_node = value_node
+        self.is_declaration = is_declaration
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.value_node.pos_end
 
@@ -84,6 +85,17 @@ class IfNode:
             self.pos_end = self.else_case.pos_end
         else:
             self.pos_end = self.cases[len(self.cases) - 1][1].pos_end
+
+
+class ChainedCompNode:
+    def __init__(self, left_node, ops_and_exprs):
+        self.left_node = left_node
+        self.ops_and_exprs = ops_and_exprs
+        self.pos_start = left_node.pos_start
+        self.pos_end = ops_and_exprs[-1][1].pos_end
+
+    def __repr__(self):
+        return f"({self.left_node}, {self.ops_and_exprs})"
 
 
 class PrintNode:

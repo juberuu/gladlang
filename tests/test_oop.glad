@@ -5,11 +5,11 @@ CLASS Pet
   DEF init(SELF, name)
     SELF.name = name
     PRINT "A new pet is born!"
-  ENDEF
+  ENDDEF
   
   DEF speak(SELF)
     PRINT SELF.name + " makes a generic pet sound."
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 # --- Define Subclass ---
@@ -19,12 +19,12 @@ CLASS Dog INHERITS Pet
   # Override the 'speak' method
   DEF speak(SELF)
     PRINT SELF.name + " says: Woof!"
-  ENDEF
+  ENDDEF
   
   # Add a new method
   DEF wag_tail(SELF)
     PRINT SELF.name + " wags its tail."
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 PRINT "--- Creating a Pet ---"

@@ -5,7 +5,7 @@ PRINT "--- Test 1: Valid Constant Usage ---"
 FINAL pi = 3.14159
 PRINT "Constant 'pi' created: " + pi
 LET radius = 5
-LET area = pi * (radius ^ 2)
+LET area = pi * (radius ** 2)
 PRINT "Area calculation result: " + area
 
 
@@ -85,7 +85,7 @@ PRINT "Global count starts at: " + count
 DEF increment_count()
     # This should update the GLOBAL variable, not create a local one
     count++
-ENDEF
+ENDDEF
 
 PRINT "Calling function increment_count()..."
 increment_count()

@@ -3,7 +3,7 @@ PRINT "--- Attribute Error Tester ---"
 CLASS Person
   DEF init(SELF, name)
     SELF.name = name
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 LET p = NEW Person("Alex")

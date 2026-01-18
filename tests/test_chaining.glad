@@ -4,21 +4,21 @@ CLASS Engine
   DEF start(SELF)
     PRINT "Engine starts. Vroom!"
     RETURN "Engine-OK"
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 CLASS Car
   DEF init(SELF)
     # A car "has a" engine
     SELF.engine = NEW Engine()
-  ENDEF
+  ENDDEF
   
   DEF start_car(SELF)
     PRINT "Turning key..."
     # This is a chained call: SELF.engine.start()
     LET status = SELF.engine.start()
     PRINT "Car start status: " + status
-  ENDEF
+  ENDDEF
 ENDCLASS
 
 PRINT "Creating car..."
