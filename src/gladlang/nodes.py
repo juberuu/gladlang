@@ -106,10 +106,19 @@ class PrintNode:
 
 
 class FunDefNode:
-    def __init__(self, var_name_tok, arg_name_toks, body_node):
+    def __init__(
+        self,
+        var_name_tok,
+        arg_name_toks,
+        body_node,
+        visibility="PUBLIC",
+        is_static=False,
+    ):
         self.var_name_tok = var_name_tok
         self.arg_name_toks = arg_name_toks
         self.body_node = body_node
+        self.visibility = visibility
+        self.is_static = is_static
 
         if self.var_name_tok:
             self.pos_start = self.var_name_tok.pos_start
@@ -119,6 +128,14 @@ class FunDefNode:
             self.pos_start = self.body_node.pos_start
 
         self.pos_end = self.body_node.pos_end
+
+
+class VisibilityStmtNode:
+    def __init__(self, visibility, assign_node):
+        self.visibility = visibility
+        self.assign_node = assign_node
+        self.pos_start = assign_node.pos_start
+        self.pos_end = assign_node.pos_end
 
 
 class CallNode:
@@ -141,10 +158,13 @@ class ReturnNode:
 
 
 class ClassNode:
-    def __init__(self, class_name_tok, superclass_node, method_nodes):
+    def __init__(
+        self, class_name_tok, superclass_node, method_nodes, static_field_nodes
+    ):
         self.class_name_tok = class_name_tok
         self.superclass_node = superclass_node
         self.method_nodes = method_nodes
+        self.static_field_nodes = static_field_nodes
 
         self.pos_start = self.class_name_tok.pos_start
         if len(method_nodes) > 0:

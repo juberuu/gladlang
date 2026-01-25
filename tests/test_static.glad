@@ -1,0 +1,123 @@
+PRINT "=== STARTING COMPREHENSIVE STATIC FEATURE TEST ==="
+
+# ---------------------------------------------------------
+# 1. DEFINE CLASSES
+# ---------------------------------------------------------
+
+CLASS Config
+    # Static Constants
+    STATIC FINAL MAX_USERS = 100
+    STATIC FINAL APP_NAME = "GladApp"
+    
+    # Static Private (Should not be seen outside)
+    STATIC PRIVATE LET secret_key = 12345
+
+    # Static Method to reveal secret (tests internal access)
+    STATIC PUBLIC DEF get_secret()
+        RETURN Config.secret_key
+    ENDDEF
+ENDCLASS
+
+CLASS BaseService
+    # Protected Static: Visible to Subclasses
+    STATIC PROTECTED LET service_name = "Base"
+    
+    STATIC PUBLIC DEF get_base_name()
+        RETURN BaseService.service_name
+    ENDDEF
+ENDCLASS
+
+CLASS UserService INHERITS BaseService
+    # Static Variable (Mutable)
+    STATIC PUBLIC LET user_count = 0
+
+    # Static Constructor Logic (Manual)
+    STATIC PUBLIC DEF init_static()
+        UserService.user_count = 10
+    ENDDEF
+
+    # Static Method modifying Static Field
+    STATIC PUBLIC DEF add_user()
+        UserService.user_count = UserService.user_count + 1
+        RETURN UserService.user_count
+    ENDDEF
+
+    # Test Accessing Parent Static (Protected)
+    STATIC PUBLIC DEF get_parent_name()
+        # Should be able to access 'service_name' from BaseService
+        RETURN BaseService.service_name
+    ENDDEF
+    
+    # Instance method accessing Static
+    PUBLIC DEF instance_info(SELF)
+        RETURN "Instance seeing static: " + UserService.user_count
+    ENDDEF
+ENDCLASS
+
+# ---------------------------------------------------------
+# 2. TEST EXECUTION
+# ---------------------------------------------------------
+
+PRINT "\n[TEST 1] Static Constants (FINAL)"
+PRINT "App Name: " + Config.APP_NAME
+PRINT "Max Users: " + Config.MAX_USERS
+
+PRINT "\n[TEST 2] Static Variables & Modification"
+UserService.init_static()
+PRINT "Initial Count: " + UserService.user_count
+PRINT "Adding user... New Count: " + UserService.add_user()
+PRINT "Adding user... New Count: " + UserService.add_user()
+
+PRINT "\n[TEST 3] Inheritance & Protected Access"
+PRINT "Direct Parent Access: " + BaseService.get_base_name()
+PRINT "Child Accessing Parent Static: " + UserService.get_parent_name()
+
+PRINT "\n[TEST 4] Instance Accessing Static Members (Java Style)"
+LET u = NEW UserService()
+# Calling static method via instance
+PRINT "Via Instance (Method): " + u.add_user() 
+# Accessing static field via instance (if supported by your logic, otherwise via getter)
+PRINT "Via Instance (Internal Logic): " + u.instance_info()
+
+# ---------------------------------------------------------
+# 3. NEGATIVE TESTS (ERROR HANDLING)
+# ---------------------------------------------------------
+PRINT "\n[TEST 5] Security & Error Handling"
+
+# A. Try to modify a FINAL static field
+PRINT "-> Attempting to modify STATIC FINAL..."
+TRY
+    Config.MAX_USERS = 200
+    PRINT "FAIL: Should not have allowed modification!"
+CATCH error
+    PRINT "PASS: Caught expected error: " + error
+ENDTRY
+
+# B. Try to access PRIVATE static field from outside
+PRINT "-> Attempting to access STATIC PRIVATE from outside..."
+TRY
+    PRINT Config.secret_key
+    PRINT "FAIL: Should not see private field!"
+CATCH error
+    PRINT "PASS: Caught expected error: " + error
+ENDTRY
+
+# C. Verify Private is accessible internally
+PRINT "-> Accessing PRIVATE via Public Static Method..."
+TRY
+    PRINT "Secret revealed: " + Config.get_secret()
+    PRINT "PASS: Internal access allowed."
+CATCH error
+    PRINT "FAIL: Internal access blocked: " + error
+ENDTRY
+
+# D. Try to call Instance Method statically
+PRINT "-> Attempting to call Instance Method on Class..."
+TRY
+    UserService.instance_info()
+    PRINT "FAIL: Should not allow instance call on Class!"
+CATCH error
+    PRINT "PASS: Caught expected error: " + error
+ENDTRY
+
+PRINT "\n=== ALL TESTS COMPLETED ==="

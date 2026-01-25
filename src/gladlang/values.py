@@ -1,3 +1,4 @@
+import sys
 from .errors import RTError
 from .runtime import SymbolTable, Context, RTResult
 from .constants import GL_IDENTIFIER
@@ -82,13 +83,13 @@ class Value:
     def notted(self):
         return None, self.illegal_operation()
 
-    def execute(self, args):
+    def execute(self, args, interpreter=None):
         return RTResult().failure(self.illegal_operation())
 
     def get_attr(self, name_tok):
         return None, self.illegal_operation()
 
-    def set_attr(self, name_tok, value):
+    def set_attr(self, name_tok, value, context=None, visibility=None):
         return None, self.illegal_operation()
 
     def get_element_at(self, index):
@@ -663,7 +664,7 @@ class BaseFunction(Value):
         self.populate_args(arg_names, args, new_context)
         return res.success(None)
 
-    def execute(self, args):
+    def execute(self, args, interpreter):
         return RTResult().failure(
             RTError(
                 self.pos_start,
@@ -681,22 +682,33 @@ class BaseFunction(Value):
 
 
 class Function(BaseFunction):
-    def __init__(self, name, body_node, arg_name_toks, parent_context):
+    def __init__(
+        self,
+        name,
+        body_node,
+        arg_name_toks,
+        parent_context,
+        visibility="PUBLIC",
+        defining_class=None,
+        is_static=False,
+    ):
         super().__init__(name)
         self.body_node = body_node
         self.arg_name_toks = arg_name_toks
         self.arg_names = [tok.value for tok in arg_name_toks]
         self.context = parent_context
+        self.visibility = visibility
+        self.defining_class = defining_class
+        self.is_static = is_static
 
-    def execute(self, args):
-        from .interpreter import Interpreter
-
+    def execute(self, args, interpreter):
         res = RTResult()
-        interpreter = Interpreter()
 
         new_context = self.generate_new_context()
 
-        if new_context.depth > 1000:
+        new_context.active_class = self.defining_class
+
+        if new_context.depth > 250:
             return res.failure(
                 RTError(
                     self.pos_start,
@@ -721,7 +733,15 @@ class Function(BaseFunction):
         return res.success(value_result.value or Number.null)
 
     def copy(self):
-        copy = Function(self.name, self.body_node, self.arg_name_toks, self.context)
+        copy = Function(
+            self.name,
+            self.body_node,
+            self.arg_name_toks,
+            self.context,
+            self.visibility,
+            self.defining_class,
+            self.is_static,
+        )
 
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
@@ -729,40 +749,44 @@ class Function(BaseFunction):
 
 
 class Class(BaseFunction):
-    def __init__(self, name, superclass, methods):
+    def __init__(self, name, superclass, methods, static_symbol_table=None):
         super().__init__(name)
         self.superclass = superclass
         self.methods = methods
+        self.static_symbol_table = (
+            static_symbol_table if static_symbol_table else SymbolTable()
+        )
 
-    def instantiate(self, args):
+    def instantiate(self, args, context=None, interpreter=None):
         res = RTResult()
         instance = Instance(self)
 
         fake_init_tok = Token(GL_IDENTIFIER, "init", self.pos_start, self.pos_end)
-
-        init_method, error = self.get_attr(fake_init_tok)
+        init_method, error = self.get_attr(fake_init_tok, context, allow_instance=True)
 
         if error:
-            if len(args) > 0:
-                return res.failure(
-                    RTError(
-                        self.pos_start,
-                        self.pos_end,
-                        f"'{self.name}' does not have an 'init' constructor that accepts {len(args)} arguments",
-                        self.context,
+            if "has no member 'init'" in error.details:
+                if len(args) > 0:
+                    return res.failure(
+                        RTError(
+                            self.pos_start,
+                            self.pos_end,
+                            f"'{self.name}' does not have an 'init' constructor that accepts arguments",
+                            self.context,
+                        )
                     )
-                )
-            else:
                 return res.success(instance)
 
+            return res.failure(error)
+
         bound_init = init_method.copy().bind_to_instance(instance)
-        res.register(bound_init.execute(args))
+        res.register(bound_init.execute(args, interpreter))
         if res.error:
             return res
 
         return res.success(instance)
 
-    def execute(self, args):
+    def execute(self, args, interpreter=None):
         return RTResult().failure(
             RTError(
                 self.pos_start,
@@ -772,30 +796,125 @@ class Class(BaseFunction):
             )
         )
 
-    def get_attr(self, name_tok):
-        method_name = name_tok.value
-        method = self.methods.get(method_name)
+    def set_attr(self, name_tok, value, context=None, visibility=None):
+        name = name_tok.value
 
-        if method:
-            return (
-                method.copy()
-                .set_context(self.context)
-                .set_pos(name_tok.pos_start, name_tok.pos_end),
-                None,
+        if visibility == "FINAL":
+            if name in self.static_symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot reassign constant '{name}'",
+                    context,
+                )
+            self.static_symbol_table.set(
+                name, value, visibility="PUBLIC", as_final=True
             )
+            return value, None
 
-        if self.superclass:
-            return self.superclass.get_attr(name_tok)
+        if self.static_symbol_table.get(name):
+            err = self.static_symbol_table.update(name, value)
+            if err:
+                return None, RTError(name_tok.pos_start, name_tok.pos_end, err, context)
+            return value, None
 
         return None, RTError(
             name_tok.pos_start,
             name_tok.pos_end,
-            f"Class '{self.name}' has no method '{method_name}'",
+            f"Class '{self.name}' has no static field '{name}'",
+            self.context,
+        )
+
+    def get_attr(self, name_tok, context=None, allow_instance=False):
+        method_name = name_tok.value
+
+        val = self.static_symbol_table.get(method_name)
+        if val:
+            visibility = self.static_symbol_table.get_visibility(method_name)
+            defining_class = self
+
+            if visibility == "PRIVATE":
+                if not context or context.active_class != defining_class:
+                    return None, RTError(
+                        name_tok.pos_start,
+                        name_tok.pos_end,
+                        f"Cannot access private static field '{method_name}'",
+                        context,
+                    )
+
+            if visibility == "PROTECTED":
+                allowed = False
+                if context and context.active_class:
+                    curr = context.active_class
+                    while curr:
+                        if curr == defining_class:
+                            allowed = True
+                            break
+                        curr = curr.superclass
+                if not allowed:
+                    return None, RTError(
+                        name_tok.pos_start,
+                        name_tok.pos_end,
+                        f"Cannot access protected static field '{method_name}'",
+                        context,
+                    )
+
+            return val, None
+
+        method = self.methods.get(method_name)
+
+        if method:
+            visibility = method.visibility
+            defining_class = method.defining_class
+
+            if visibility == "PRIVATE":
+                if not context or context.active_class != defining_class:
+                    return None, RTError(
+                        name_tok.pos_start,
+                        name_tok.pos_end,
+                        f"Cannot access private method '{method_name}' via Class",
+                        context,
+                    )
+
+            if visibility == "PROTECTED":
+                allowed = False
+                if context and context.active_class:
+                    curr = context.active_class
+                    while curr:
+                        if curr == defining_class:
+                            allowed = True
+                            break
+                        curr = curr.superclass
+                if not allowed:
+                    return None, RTError(
+                        name_tok.pos_start,
+                        name_tok.pos_end,
+                        f"Cannot access protected method '{method_name}' via Class",
+                        context,
+                    )
+
+            if method.is_static:
+                return (
+                    method.copy()
+                    .set_context(self.context)
+                    .set_pos(name_tok.pos_start, name_tok.pos_end),
+                    None,
+                )
+
+            return method, None
+
+        if self.superclass:
+            return self.superclass.get_attr(name_tok, context, allow_instance)
+
+        return None, RTError(
+            name_tok.pos_start,
+            name_tok.pos_end,
+            f"Class '{self.name}' has no member '{method_name}'",
             self.context,
         )
 
     def copy(self):
-        copy = Class(self.name, self.superclass, self.methods)
+        copy = Class(self.name, self.superclass, self.methods, self.static_symbol_table)
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
@@ -810,23 +929,117 @@ class Instance(Value):
         self.class_ref = class_ref
         self.symbol_table = SymbolTable()
 
-    def get_attr(self, name_tok):
+    def check_access(self, name_tok, visibility, defining_class, context):
+        if visibility == "PUBLIC":
+            return None
+
+        if visibility == "PRIVATE":
+            if not context or context.active_class != defining_class:
+                return RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot access private member '{name_tok.value}'",
+                    context,
+                )
+
+        if visibility == "PROTECTED":
+            allowed = False
+            if context and context.active_class:
+                curr = context.active_class
+                while curr:
+                    if curr == defining_class:
+                        allowed = True
+                        break
+                    curr = curr.superclass
+            if not allowed:
+                return RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot access protected member '{name_tok.value}'",
+                    context,
+                )
+        return None
+
+    def get_attr(self, name_tok, context=None):
         name = name_tok.value
+
+        if context and context.active_class:
+            mangled_name = f"_{context.active_class.name}__{name}"
+            val = self.symbol_table.get(mangled_name)
+            if val:
+                return val, None
 
         value = self.symbol_table.get(name)
         if value:
+            visibility = self.symbol_table.get_visibility(name)
+            error = self.check_access(name_tok, visibility, self.class_ref, context)
+            if error:
+                return None, error
             return value, None
 
-        method, error = self.class_ref.get_attr(name_tok)
+        method, error = self.class_ref.get_attr(name_tok, context, allow_instance=True)
+        if error:
+            return None, error
+
+        if isinstance(method, Function) and method.is_static:
+            return method, None
+
+        error = self.check_access(
+            name_tok, method.visibility, method.defining_class, context
+        )
+
         if error:
             return None, error
 
         bound_method = method.copy().bind_to_instance(self)
         return bound_method, None
 
-    def set_attr(self, name_tok, value):
+    def set_attr(self, name_tok, value, context=None, visibility=None):
         name = name_tok.value
-        self.symbol_table.set(name, value)
+
+        if visibility == "FINAL":
+            if name in self.symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot reassign constant '{name}'",
+                    context,
+                )
+            self.symbol_table.set(name, value, visibility="PUBLIC", as_final=True)
+            return value, None
+
+        if visibility == "PRIVATE" and context and context.active_class:
+            mangled_name = f"_{context.active_class.name}__{name}"
+            self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
+
+            if self.symbol_table.get(name):
+                if name in self.symbol_table.finals:
+                    return None, RTError(
+                        name_tok.pos_start,
+                        name_tok.pos_end,
+                        f"Cannot shadow constant '{name}' with a private variable",
+                        context,
+                    )
+                self.symbol_table.remove(name)
+
+            return value, None
+
+        if context and context.active_class:
+            mangled_name = f"_{context.active_class.name}__{name}"
+            if self.symbol_table.get(mangled_name):
+                self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
+                return value, None
+
+        if self.symbol_table.get(name):
+            current_vis = self.symbol_table.get_visibility(name)
+            error = self.check_access(name_tok, current_vis, self.class_ref, context)
+            if error:
+                return None, error
+
+        if visibility is None:
+            visibility = self.symbol_table.get_visibility(name)
+
+        self.symbol_table.set(name, value, visibility=visibility)
         return value, None
 
     def copy(self):
@@ -848,13 +1061,13 @@ class BoundMethod(BaseFunction):
         self.context = function_to_bind.context
         self.set_pos(function_to_bind.pos_start, function_to_bind.pos_end)
 
-    def execute(self, args):
-        from .interpreter import Interpreter
-
+    def execute(self, args, interpreter):
         res = RTResult()
-        interpreter = Interpreter()
 
         new_context = self.function_to_bind.generate_new_context()
+
+        new_context.active_class = self.function_to_bind.defining_class
+
         original_arg_names = self.function_to_bind.arg_names
 
         if len(original_arg_names) > 0 and original_arg_names[0] == "SELF":
@@ -903,7 +1116,7 @@ class BuiltInFunction(BaseFunction):
     def __init__(self, name):
         super().__init__(name)
 
-    def execute(self, args):
+    def execute(self, args, interpreter):
         res = RTResult()
 
         if self.name == "INPUT":
@@ -921,10 +1134,15 @@ class BuiltInFunction(BaseFunction):
             if len(args) == 1:
                 prompt = str(args[0].value)
 
-            try:
-                text = input(prompt)
-            except EOFError:
-                text = ""
+            if prompt:
+                sys.stdout.write(prompt)
+                sys.stdout.flush()
+
+            text = sys.stdin.readline(4096)
+
+            if text:
+                text = text.rstrip("\n")
+
             return res.success(String(text))
 
         elif self.name == "STR":

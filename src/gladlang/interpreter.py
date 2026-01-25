@@ -1,3 +1,4 @@
+import sys
 from .runtime import RTResult, Context, SymbolTable
 from .values import Number, String, Function, Class, List, Dict
 from .nodes import *
@@ -6,17 +7,18 @@ from .constants import *
 
 
 class Interpreter:
-    _dispatch_cache = {}
+    def __init__(self):
+        self.dispatch_cache = {}
 
     def visit(self, node, context):
         node_type = type(node)
 
-        method = Interpreter._dispatch_cache.get(node_type)
+        method = self.dispatch_cache.get(node_type)
 
         if method is None:
             method_name = f"visit_{node_type.__name__}"
             method = getattr(self, method_name, self.no_visit_method)
-            Interpreter._dispatch_cache[node_type] = method
+            self.dispatch_cache[node_type] = method
 
         try:
             result = method(node, context)
@@ -299,6 +301,8 @@ class Interpreter:
         if res.error:
             return res
 
+        visibility = getattr(node, "target_visibility", "PUBLIC")
+
         if node.is_declaration:
             if var_name in context.symbol_table.finals:
                 return res.failure(
@@ -309,7 +313,7 @@ class Interpreter:
                         context,
                     )
                 )
-            context.symbol_table.set(var_name, value)
+            context.symbol_table.set(var_name, value, visibility=visibility)
         else:
             err = context.symbol_table.update(var_name, value)
             if err:
@@ -323,7 +327,8 @@ class Interpreter:
         if res.error:
             return res
 
-        print(value)
+        sys.stdout.write(str(value) + "\n")
+
         return res.success(Number.null)
 
     def visit_IfNode(self, node, context):
@@ -470,7 +475,7 @@ class Interpreter:
             if res.error:
                 return res
 
-        return_value = res.register(value_to_call.execute(args))
+        return_value = res.register(value_to_call.execute(args, self))
         if res.error:
             return res
 
@@ -487,6 +492,7 @@ class Interpreter:
 
     def visit_ClassNode(self, node, context):
         res = RTResult()
+
         class_name = node.class_name_tok.value
 
         superclass = None
@@ -494,16 +500,6 @@ class Interpreter:
             superclass = res.register(self.visit(node.superclass_node, context))
             if res.error:
                 return res
-
-            if superclass.name == class_name:
-                return res.failure(
-                    RTError(
-                        node.superclass_node.pos_start,
-                        node.superclass_node.pos_end,
-                        f"Class '{class_name}' cannot inherit from itself",
-                        context,
-                    )
-                )
 
             if not isinstance(superclass, Class):
                 return res.failure(
@@ -515,19 +511,146 @@ class Interpreter:
                     )
                 )
 
+            if superclass.name == class_name:
+                return res.failure(
+                    RTError(
+                        node.superclass_node.pos_start,
+                        node.superclass_node.pos_end,
+                        f"Class '{class_name}' cannot inherit from itself",
+                        context,
+                    )
+                )
+
+            curr = superclass
+            while curr:
+                if curr.name == class_name:
+                    return res.failure(
+                        RTError(
+                            node.superclass_node.pos_start,
+                            node.superclass_node.pos_end,
+                            f"Circular inheritance detected: '{class_name}' cannot inherit from itself (indirectly)",
+                            context,
+                        )
+                    )
+                curr = curr.superclass
+
+        static_table = SymbolTable(parent=context.symbol_table)
+
+        class_value = Class(class_name, superclass, {}, static_table)
+        class_value.set_context(context).set_pos(node.pos_start, node.pos_end)
+
+        class_ctx = Context(f"<class {class_name}>", context, node.pos_start)
+        class_ctx.symbol_table = static_table
+
+        for field_node in node.static_field_nodes:
+            res.register(self.visit(field_node, class_ctx))
+            if res.error:
+                return res
+
+        static_table.parent = None
+
         methods = {}
         for method_node in node.method_nodes:
             method_name = method_node.var_name_tok.value
+
             method_value = Function(
-                method_name, method_node.body_node, method_node.arg_name_toks, context
+                method_name,
+                method_node.body_node,
+                method_node.arg_name_toks,
+                context,
+                getattr(method_node, "visibility", "PUBLIC"),
+                class_value,
+                getattr(method_node, "is_static", False),
             ).set_pos(method_node.pos_start, method_node.pos_end)
+
+            if superclass:
+                curr = superclass
+                parent_method = None
+                while curr:
+                    if method_name in curr.methods:
+                        parent_method = curr.methods[method_name]
+                        break
+                    curr = curr.superclass
+
+                if parent_method:
+                    vis_levels = {"PUBLIC": 3, "PROTECTED": 2, "PRIVATE": 1}
+                    parent_vis_score = vis_levels.get(parent_method.visibility, 3)
+                    child_vis_score = vis_levels.get(method_value.visibility, 3)
+
+                    if child_vis_score < parent_vis_score:
+                        return res.failure(
+                            RTError(
+                                method_node.pos_start,
+                                method_node.pos_end,
+                                f"Method '{method_name}' cannot be more restrictive than parent method (LSP Violation)",
+                                context,
+                            )
+                        )
+
             methods[method_name] = method_value
 
-        class_value = Class(class_name, superclass, methods)
-        class_value.set_context(context).set_pos(node.pos_start, node.pos_end)
+        class_value.methods = methods
 
         context.symbol_table.set(class_name, class_value)
         return res.success(class_value)
+
+    def visit_VisibilityStmtNode(self, node, context):
+        res = RTResult()
+
+        target_vis = getattr(node, "target_visibility", node.visibility)
+        if target_vis == "FINAL":
+            target_vis = "PUBLIC"
+
+        if isinstance(node.assign_node, SetAttrNode):
+            object_node = node.assign_node.object_node
+            attr_name = node.assign_node.attr_name_tok
+            value_node = node.assign_node.value_node
+
+            obj = res.register(self.visit(object_node, context))
+            if res.error:
+                return res
+
+            val = res.register(self.visit(value_node, context))
+            if res.error:
+                return res
+
+            _, error = obj.set_attr(attr_name, val, context, visibility=node.visibility)
+            if error:
+                return res.failure(error)
+
+            return res.success(val)
+
+        elif isinstance(node.assign_node, VarAssignNode):
+            var_name = node.assign_node.var_name_tok.value
+
+            val = res.register(self.visit(node.assign_node.value_node, context))
+            if res.error:
+                return res
+
+            if node.visibility == "FINAL":
+                if var_name in context.symbol_table.symbols:
+                    return res.failure(
+                        RTError(
+                            node.pos_start,
+                            node.pos_end,
+                            f"Variable '{var_name}' is already defined",
+                            context,
+                        )
+                    )
+                vis_to_use = getattr(node, "target_visibility", "PUBLIC")
+                context.symbol_table.set(
+                    var_name, val, visibility=vis_to_use, as_final=True
+                )
+                return res.success(val)
+
+            context.symbol_table.set(var_name, val, visibility=node.visibility)
+            return res.success(val)
+
+        return res.failure(
+            RTError(
+                node.pos_start, node.pos_end, "Invalid visibility statement", context
+            )
+        )
 
     def visit_NewInstanceNode(self, node, context):
         res = RTResult()
@@ -561,8 +684,9 @@ class Interpreter:
             if res.error:
                 return res
 
-        instance = res.register(class_value.instantiate(args))
-
+        instance = res.register(
+            class_value.instantiate(args, context, interpreter=self)
+        )
         if res.error:
             return res
 
@@ -575,7 +699,7 @@ class Interpreter:
         if res.error:
             return res
 
-        value, error = object.get_attr(node.attr_name_tok)
+        value, error = object.get_attr(node.attr_name_tok, context)
         if error:
             return res.failure(error)
 
@@ -592,7 +716,7 @@ class Interpreter:
         if res.error:
             return res
 
-        new_value, error = object.set_attr(node.attr_name_tok, value)
+        new_value, error = object.set_attr(node.attr_name_tok, value, context)
         if error:
             return res.failure(error)
 
@@ -641,6 +765,35 @@ class Interpreter:
         left = res.register(self.visit(node.left_node, context))
         if res.error:
             return res
+
+        if node.op_tok.matches(GL_KEYWORD, "AND") or node.op_tok.matches(
+            GL_KEYWORD, "and"
+        ):
+            if not left.is_true():
+                return res.success(Number.false)
+
+            right = res.register(self.visit(node.right_node, context))
+            if res.error:
+                return res
+            result, error = left.anded_by(right)
+            if error:
+                return res.failure(error)
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
+
+        elif node.op_tok.matches(GL_KEYWORD, "OR") or node.op_tok.matches(
+            GL_KEYWORD, "or"
+        ):
+            if left.is_true():
+                return res.success(Number.true)
+
+            right = res.register(self.visit(node.right_node, context))
+            if res.error:
+                return res
+            result, error = left.ored_by(right)
+            if error:
+                return res.failure(error)
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
+
         right = res.register(self.visit(node.right_node, context))
         if res.error:
             return res
@@ -671,19 +824,10 @@ class Interpreter:
             result, error = left.get_comparison_lte(right)
         elif node.op_tok.type == GL_GTE:
             result, error = left.get_comparison_gte(right)
-        elif node.op_tok.matches(GL_KEYWORD, "AND") or node.op_tok.matches(
-            GL_KEYWORD, "and"
-        ):
-            result, error = left.anded_by(right)
-        elif node.op_tok.matches(GL_KEYWORD, "OR") or node.op_tok.matches(
-            GL_KEYWORD, "or"
-        ):
-            result, error = left.ored_by(right)
         elif node.op_tok.matches(GL_KEYWORD, "IS") or node.op_tok.matches(
             GL_KEYWORD, "is"
         ):
             result, error = left.get_comparison_is(right)
-
         elif node.op_tok.type == GL_BIT_AND:
             result, error = left.bitted_and_by(right)
         elif node.op_tok.type == GL_BIT_OR:

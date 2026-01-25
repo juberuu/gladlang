@@ -1,0 +1,284 @@
+PRINT "=== GLADLANG MASTER OOP TEST SUITE ===\n"
+
+# --- HELPER TO CATCH ERRORS ---
+DEF assert_error(fn_wrapper, test_name)
+  TRY
+    fn_wrapper()
+    PRINT "[FAIL] " + test_name + " (Expected Error, but got Success)"
+  CATCH e
+    PRINT "[PASS] " + test_name + " (Caught: " + STR(e) + ")"
+  ENDTRY
+ENDDEF
+
+# ==========================================
+# SETUP CLASSES
+# ==========================================
+
+CLASS Base
+  PROTECTED DEF secret_family_recipe(SELF)
+    RETURN "Grandma's Secret Sauce"
+  ENDDEF
+ENDCLASS
+
+CLASS Child INHERITS Base
+  DEF init(SELF, name)
+    SELF.name = name
+    PRIVATE SELF.diary = "My Secrets"
+  ENDDEF
+
+  PUBLIC DEF get_name(SELF)
+    RETURN SELF.name
+  ENDDEF
+
+  PUBLIC DEF reveal_family_secret(SELF)
+    RETURN SELF.secret_family_recipe()
+  ENDDEF
+
+  PRIVATE DEF get_diary(SELF)
+    RETURN SELF.diary
+  ENDDEF
+
+  PUBLIC DEF read_peer_diary(SELF, other_child)
+    RETURN other_child.get_diary()
+  ENDDEF
+ENDCLASS
+
+CLASS Stranger
+  DEF init(SELF)
+  ENDDEF
+  
+  PUBLIC DEF try_steal(SELF, target)
+    RETURN target.get_diary()
+  ENDDEF
+ENDCLASS
+
+# ==========================================
+# EXECUTE BASIC TESTS (1-11)
+# ==========================================
+
+LET alice = NEW Child("Alice")
+LET bob = NEW Child("Bob")
+LET stranger = NEW Stranger()
+
+
+PRINT "--- TEST 1: Public Method Access ---"
+IF alice.get_name() == "Alice" THEN
+  PRINT "[PASS] Public method works"
+ELSE
+  PRINT "[FAIL] Public method returned wrong value"
+ENDIF
+
+
+PRINT "\n--- TEST 2: Private Method Access (External) ---"
+DEF test2_wrapper()
+  alice.get_diary()
+ENDDEF
+assert_error(test2_wrapper, "External Private Method Call")
+
+
+PRINT "\n--- TEST 3: Private Attribute Access (External) ---"
+DEF test3_wrapper()
+  PRINT alice.diary
+ENDDEF
+assert_error(test3_wrapper, "External Private Attribute Access")
+
+
+PRINT "\n--- TEST 4: Protected Method Access (From Subclass) ---"
+TRY
+  IF alice.reveal_family_secret() == "Grandma's Secret Sauce" THEN
+    PRINT "[PASS] Subclass accessed PROTECTED parent method"
+  ELSE
+    PRINT "[FAIL] Subclass got wrong value from protected method"
+  ENDIF
+CATCH e
+  PRINT "[FAIL] Subclass blocked from protected method: " + STR(e)
+ENDTRY
+
+
+PRINT "\n--- TEST 5: Protected Method Access (External) ---"
+DEF test5_wrapper()
+  alice.secret_family_recipe()
+ENDDEF
+assert_error(test5_wrapper, "External Protected Method Call")
+
+
+PRINT "\n--- TEST 6: Static Security Bypass (Method) ---"
+DEF test6_wrapper()
+  LET stolen_method = Child.get_diary
+  stolen_method(alice) 
+ENDDEF
+assert_error(test6_wrapper, "Static Class Bypass Attempt")
+
+
+PRINT "\n--- TEST 7: Peer Access (Same Class) ---"
+TRY
+  IF alice.read_peer_diary(bob) == "My Secrets" THEN
+    PRINT "[PASS] Peer object accessed private member of same class"
+  ELSE
+    PRINT "[FAIL] Peer access returned wrong value"
+  ENDIF
+CATCH e
+  PRINT "[FAIL] Peer access blocked: " + STR(e)
+ENDTRY
+
+
+PRINT "\n--- TEST 8: Stranger Danger ---"
+DEF test8_wrapper()
+  stranger.try_steal(alice)
+ENDDEF
+assert_error(test8_wrapper, "Stranger Class accessing Private Method")
+
+
+PRINT "\n--- TEST 9: Visibility Override (Property) ---"
+CLASS DataContainer
+  DEF init(SELF)
+    PUBLIC SELF.data = "Public"
+  ENDDEF
+  
+  PUBLIC DEF make_private(SELF)
+    PRIVATE SELF.data = "Now Private"
+  ENDDEF
+ENDCLASS
+
+LET d = NEW DataContainer()
+PRINT "Initial State: " + d.data
+d.make_private()
+PRINT "Made Private. Attempting access..."
+
+DEF test9_wrapper()
+  PRINT d.data
+ENDDEF
+assert_error(test9_wrapper, "Property Visibility Changed at Runtime")
+
+
+PRINT "\n--- TEST 10: Deep Inheritance ---"
+CLASS GrandChild INHERITS Child
+  DEF init(SELF)
+  ENDDEF
+  
+  PUBLIC DEF access_grandparent(SELF)
+    RETURN SELF.secret_family_recipe()
+  ENDDEF
+ENDCLASS
+
+LET junior = NEW GrandChild()
+TRY
+  IF junior.access_grandparent() == "Grandma's Secret Sauce" THEN
+    PRINT "[PASS] Deep inheritance (GrandChild -> Base) works"
+  ELSE
+    PRINT "[FAIL] Deep inheritance returned wrong value"
+  ENDIF
+CATCH e
+  PRINT "[FAIL] Deep inheritance blocked: " + STR(e)
+ENDTRY
+
+
+PRINT "\n--- TEST 11: Private Field Shadowing (Name Mangling) ---"
+CLASS ParentShadow
+  DEF init(SELF)
+    PRIVATE SELF.secret = "Parent Secret"
+  ENDDEF
+  
+  PUBLIC DEF get_parent_secret(SELF)
+    RETURN SELF.secret
+  ENDDEF
+ENDCLASS
+
+CLASS ChildShadow INHERITS ParentShadow
+  DEF init(SELF)
+    # Manual super call workaround
+    ParentShadow.init(SELF)
+    # This should NOT overwrite the parent's private 'secret'
+    PRIVATE SELF.secret = "Child Secret"
+  ENDDEF
+  
+  PUBLIC DEF get_child_secret(SELF)
+    RETURN SELF.secret
+  ENDDEF
+ENDCLASS
+
+LET shadow = NEW ChildShadow()
+
+TRY
+  LET p_secret = shadow.get_parent_secret()
+  LET c_secret = shadow.get_child_secret()
+  
+  PRINT "Parent Secret: " + p_secret
+  PRINT "Child Secret:  " + c_secret
+  
+  IF p_secret == "Parent Secret" AND c_secret == "Child Secret" THEN
+    PRINT "[PASS] Name Mangling Successful (Variables did not collide)"
+  ELSE
+    PRINT "[FAIL] Name Mangling Failed (Variables collided or overwrote each other)"
+  ENDIF
+CATCH e
+  PRINT "[FAIL] Error during shadowing test: " + STR(e)
+ENDTRY
+
+
+# ==========================================
+# EXECUTE NEW EDGE CASE TESTS (12-14)
+# ==========================================
+
+PRINT "\n--- TEST 12: LSP Violation Check (Strict Visibility) ---"
+# Attempt to define a class that hides a Public parent method
+DEF test12_wrapper()
+  CLASS ParentLSP
+    PUBLIC DEF hello(SELF) 
+      PRINT "Hi" 
+    ENDDEF
+  ENDCLASS
+
+  CLASS BadChild INHERITS ParentLSP
+    PRIVATE DEF hello(SELF) 
+      PRINT "Hidden" 
+    ENDDEF
+  ENDCLASS
+ENDDEF
+assert_error(test12_wrapper, "Subclass strictly reducing visibility")
+
+
+PRINT "\n--- TEST 13: Singleton Pattern (Factory Method) ---"
+CLASS Singleton
+  # Constructor must be PUBLIC (Strict Private Constructors are not supported)
+  PUBLIC DEF init(SELF)
+    SELF.value = 1
+  ENDDEF
+
+  PUBLIC DEF get_instance(SELF)
+    # Factory method returning a new instance
+    RETURN NEW Singleton()
+  ENDDEF
+ENDCLASS
+
+TRY
+  # Simulate a static call by passing the class itself as 'SELF'
+  LET fn = Singleton.get_instance
+  LET s = fn(Singleton)
+  
+  IF s.value == 1 THEN
+    PRINT "[PASS] Singleton instantiated via factory method"
+  ELSE
+    PRINT "[FAIL] Singleton instance invalid"
+  ENDIF
+CATCH e
+  PRINT "[FAIL] Factory method failed: " + STR(e)
+ENDTRY
+
+PRINT "\n--- TEST 14: Final Variable Protection ---"
+CLASS SecureConst
+  DEF init(SELF)
+    FINAL SELF.MAX_USERS = 100
+    
+    # Attack: Try to shadow it with a private variable (which deletes the public one)
+    PRIVATE SELF.MAX_USERS = 50
+  ENDDEF
+ENDCLASS
+
+DEF test14_wrapper()
+  NEW SecureConst()
+ENDDEF
+assert_error(test14_wrapper, "Shadowing a FINAL public variable")
+
+
+PRINT "\n=== SUITE COMPLETE ==="

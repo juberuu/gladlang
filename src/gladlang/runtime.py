@@ -5,6 +5,7 @@ class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
         self.finals = []
+        self.visibilities = {}
         self.parent = parent
 
     def get(self, name):
@@ -13,10 +14,14 @@ class SymbolTable:
             return self.parent.get(name)
         return value
 
-    def set(self, name, value, as_final=False):
+    def set(self, name, value, as_final=False, visibility="PUBLIC"):
         self.symbols[name] = value
+        self.visibilities[name] = visibility
         if as_final:
             self.finals.append(name)
+
+    def get_visibility(self, name):
+        return self.visibilities.get(name, "PUBLIC")
 
     def remove(self, name):
         del self.symbols[name]
@@ -44,6 +49,7 @@ class Context:
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
         self.depth = (parent.depth + 1) if parent else 0
+        self.active_class = None
 
 
 class RTResult:

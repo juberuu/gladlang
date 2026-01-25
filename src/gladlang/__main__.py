@@ -1,6 +1,7 @@
 import sys
 import re
 import io
+from pathlib import Path
 
 if hasattr(sys, "set_int_max_str_digits"):
     sys.set_int_max_str_digits(50000)
@@ -119,7 +120,7 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.5"
+    GLADLANG_VERSION = "0.1.6"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 
@@ -132,9 +133,9 @@ Commands:
 """
 
     if len(sys.argv) == 1:
-        print(f"Welcome to GladLang (v{GLADLANG_VERSION})")
-        print("Type 'exit' or 'quit' to close the shell.")
-        print("--------------------------------------------------")
+        sys.stdout.write(f"Welcome to GladLang (v{GLADLANG_VERSION})\n")
+        sys.stdout.write("Type 'exit' or 'quit' to close the shell.\n")
+        sys.stdout.write("--------------------------------------------------\n")
 
         repl_context = Context("<repl>")
         repl_context.symbol_table = get_fresh_global_scope()
@@ -144,7 +145,16 @@ Commands:
         while True:
             try:
                 prompt = "GladLang > " if not full_text else "...        > "
-                line = input(prompt)
+
+                sys.stdout.write(prompt)
+                sys.stdout.flush()
+
+                line = sys.stdin.readline()
+
+                if not line:
+                    raise EOFError
+
+                line = line.rstrip("\n")
 
                 if not full_text and line.strip().lower() in ("exit", "quit"):
                     break
@@ -159,7 +169,7 @@ Commands:
                     result, error = run("<stdin>", full_text, repl_context)
 
                     if error:
-                        print(error.as_string())
+                        sys.stdout.write(error.as_string() + "\n")
                     elif result:
                         clean_text = re.sub(r"#.*", "", full_text).strip()
 
@@ -174,29 +184,29 @@ Commands:
                         ):
                             pass
                         else:
-                            print(result)
+                            sys.stdout.write(str(result) + "\n")
 
                     full_text = ""
 
             except KeyboardInterrupt:
-                print("\nKeyboardInterrupt")
+                sys.stdout.write("\nKeyboardInterrupt\n")
                 full_text = ""
                 continue
             except EOFError:
-                print("\nExiting.")
+                sys.stdout.write("\nExiting.\n")
                 break
             except Exception as e:
-                print(f"Shell Error: {e}")
+                sys.stdout.write(f"Shell Error: {e}\n")
                 full_text = ""
 
     elif len(sys.argv) >= 2:
         arg = sys.argv[1]
 
         if arg == "--help":
-            print(GLADLANG_HELP)
+            sys.stdout.write(GLADLANG_HELP + "\n")
 
         elif arg == "--version":
-            print(f"GladLang v{GLADLANG_VERSION}")
+            sys.stdout.write(f"GladLang v{GLADLANG_VERSION}\n")
 
         else:
             try:
@@ -207,22 +217,21 @@ Commands:
                 if script_args:
                     sys.stdin = io.StringIO("\n".join(script_args) + "\n")
 
-                with open(filename, "r") as f:
-                    text = f.read()
+                text = Path(filename).read_text(encoding="utf-8")
 
                 result, error = run(filename, text)
 
                 if error:
-                    print(error.as_string(), file=sys.stderr)
+                    sys.stderr.write(error.as_string() + "\n")
 
             except FileNotFoundError:
-                print(f"File not found: '{filename}'", file=sys.stderr)
+                sys.stderr.write(f"File not found: '{filename}'\n")
             except Exception as e:
-                print(f"An unexpected error occurred: {e}", file=sys.stderr)
+                sys.stderr.write(f"An unexpected error occurred: {e}\n")
 
     else:
-        print("Error: Invalid arguments.")
-        print(GLADLANG_HELP)
+        sys.stdout.write("Error: Invalid arguments.\n")
+        sys.stdout.write(GLADLANG_HELP + "\n")
 
 
 if __name__ == "__main__":

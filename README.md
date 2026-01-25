@@ -2,6 +2,8 @@
 
 **GladLang is a dynamic, interpreted, object-oriented programming language.** This is a full interpreter built from scratch in Python, complete with a lexer, parser, and runtime environment. It supports modern programming features like closures, classes, inheritance, and robust error handling.
 
+GladLang source files use the `.glad` file extension.
+
 ![Lines of code](https://sloc.xyz/github/gladw-in/gladlang)
 
 This is the full overview of the GladLang language, its features, and how to run the interpreter.
@@ -46,6 +48,8 @@ This is the full overview of the GladLang language, its features, and how to run
         - [The `SELF` Keyword](#the-self-keyword)
         - [Inheritance](#inheritance)
         - [Polymorphism](#polymorphism)
+        - [Access Modifiers](#access-modifiers)
+        - [Static Members](#static-members)
     - [7. Built-in Functions](#7-built-in-functions)
 - [Error Handling](#error-handling)
 - [Running Tests](#running-tests)
@@ -62,7 +66,7 @@ GladLang is an interpreter for a custom scripting language. It was built as a co
   * **AST Nodes:** A comprehensive set of nodes that define every syntactic structure in the language (e.g., `BinOpNode`, `IfNode`, `FunDefNode`, `ClassNode`).
   * **Runtime:** Defines the `Context` and `SymbolTable` for managing variable scope, context (for tracebacks), and closures.
   * **Values:** Defines the language's internal data types (`Number`, `String`, `List`, `Dict`, `Function`, `Class`, `Instance`).
-  * **Interpreter:** The core engine that walks the AST and executes the program by visiting each node.
+  * **Interpreter:** The core engine that walks the AST. It uses a "Zero-Copy" architecture with Dependency Injection for high-performance execution and low memory overhead.
   * **Entry Point:** The main file that ties everything together. It handles command-line arguments, runs files, and starts the interactive shell.
 
 -----
@@ -83,9 +87,11 @@ GladLang supports a rich, modern feature set:
   * **Dictionaries:** Key-value data structures (`{'key': 'value'}`).
   * **Control Flow:** Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`, `WHILE` loops, and `FOR` loops with `BREAK` / `CONTINUE`
   * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support.
-  * **Object-Oriented:** Define classes, methods, and inherit behavior using `CLASS` and `INHERITS`.
+  * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, and Access Modifiers (`PUBLIC`, `PRIVATE`, `PROTECTED`).
+  * **Static Members:** Java-style `STATIC` fields, methods, and constants (`STATIC FINAL`).
+  * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, and secure encapsulation.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
-  * **Constants:** Declare immutable values using `FINAL`.
+  * **Constants:** Declare immutable values using `FINAL`, fully protected from shadowing..
   * **Built-ins:** `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`, `LEN`.
   * **Error Handling:** Robust, user-friendly runtime error reporting with full tracebacks.
   * **Advanced Math:** Compound assignments (`+=`, `*=`), Power (`**`), Modulo (`%`), and automatic float division.
@@ -572,7 +578,7 @@ PRINT c.get_count() # 1
 
 #### Inheritance
 
-Use the `INHERITS` keyword. Methods can be overridden by the child class.
+Use the `INHERITS` keyword. Methods can be overridden, but GladLang enforces strict visibility rules (LSP) and prevents circular inheritance loops.
 
 ```glad
 CLASS Pet
@@ -623,6 +629,54 @@ my_cat.introduce()
 # Prints:
 # I am a pet and I say:
 # Meow!
+```
+
+#### Access Modifiers
+
+You can control the visibility of methods and attributes using `PUBLIC`, `PRIVATE`, and `PROTECTED`.
+
+* **Encapsulation:** Private attributes are name-mangled to prevent collisions.
+* **Singleton Support:** Constructors (`init`) can be private to force factory usage.
+
+```glad
+CLASS SecureData
+  DEF init(SELF, data)
+    PRIVATE SELF.data = data
+  ENDDEF
+
+  PUBLIC DEF get_data(SELF)
+    RETURN SELF.data
+  ENDDEF
+ENDCLASS
+
+# External access to 'data' will raise a Runtime Error.
+```
+
+#### Static Members
+
+GladLang supports Java-style static fields and methods. These belong to the class itself rather than instances.
+
+* **Static Fields:** Shared across all instances.
+* **Static Constants:** `STATIC FINAL` creates class-level constants.
+* **Static Privacy:** `STATIC PRIVATE` fields are only visible within the class.
+
+```glad
+CLASS Config
+  # A constant shared by everyone
+  STATIC FINAL MAX_USERS = 100
+
+  # A private static variable
+  STATIC PRIVATE LET internal_count = 0
+
+  STATIC PUBLIC DEF increment()
+    Config.internal_count = Config.internal_count + 1
+    RETURN Config.internal_count
+  ENDDEF
+ENDCLASS
+
+# Access directly via the Class name
+PRINT Config.MAX_USERS      # 100
+PRINT Config.increment()    # 1
 ```
 
 -----

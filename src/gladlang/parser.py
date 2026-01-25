@@ -92,6 +92,35 @@ class Parser:
     def statement(self):
         res = ParseResult()
 
+        if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
+            "PUBLIC",
+            "PRIVATE",
+            "PROTECTED",
+            "FINAL",
+        ):
+            visibility = self.current_tok.value
+            res.register_advancement()
+            self.advance()
+
+            expr = res.register(self.expr())
+            if res.error:
+                return res
+
+            if isinstance(expr, SetAttrNode):
+                return res.success(VisibilityStmtNode(visibility, expr))
+            elif isinstance(expr, VarAssignNode):
+                return res.success(VisibilityStmtNode(visibility, expr))
+
+            if not isinstance(expr, SetAttrNode):
+                return res.failure(
+                    InvalidSyntaxError(
+                        expr.pos_start,
+                        expr.pos_end,
+                        "Visibility modifiers can only be used with attribute assignments",
+                    )
+                )
+            return res.success(VisibilityStmtNode(visibility, expr))
+
         if self.current_tok.matches(GL_KEYWORD, "PRINT"):
             res.register_advancement()
             self.advance()
@@ -353,41 +382,6 @@ class Parser:
                         "Expected identifier or '['",
                     )
                 )
-
-        if self.current_tok.matches(GL_KEYWORD, "FINAL"):
-            res.register_advancement()
-            self.advance()
-
-            if self.current_tok.type != GL_IDENTIFIER:
-                return res.failure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected identifier",
-                    )
-                )
-
-            var_name = self.current_tok
-            res.register_advancement()
-            self.advance()
-
-            if self.current_tok.type != GL_EQ:
-                return res.failure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected '='",
-                    )
-                )
-
-            res.register_advancement()
-            self.advance()
-
-            expr = res.register(self.expr())
-            if res.error:
-                return res
-
-            return res.success(FinalVarAssignNode(var_name, expr))
 
         if self.current_tok.matches(GL_KEYWORD, "RETURN"):
             res.register_advancement()
@@ -1163,32 +1157,90 @@ class Parser:
             self.advance()
 
         method_nodes = []
+        static_field_nodes = []
 
         while self.current_tok.type != GL_EOF and not self.current_tok.matches(
             GL_KEYWORD, "ENDCLASS"
         ):
-            if not self.current_tok.matches(GL_KEYWORD, "DEF"):
+
+            visibility = "PUBLIC"
+            is_static = False
+
+            if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
+                "PUBLIC",
+                "PRIVATE",
+                "PROTECTED",
+            ):
+                visibility = self.current_tok.value
+                res.register_advancement()
+                self.advance()
+
+            if self.current_tok.matches(GL_KEYWORD, "STATIC"):
+                is_static = True
+                res.register_advancement()
+                self.advance()
+
+            if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
+                "PUBLIC",
+                "PRIVATE",
+                "PROTECTED",
+            ):
+                if visibility == "PUBLIC":
+                    visibility = self.current_tok.value
+                    res.register_advancement()
+                    self.advance()
+
+            if self.current_tok.matches(GL_KEYWORD, "DEF"):
+                method_node = res.register(self.fun_def())
+                if res.error:
+                    return res
+
+                method_node.visibility = visibility
+                method_node.is_static = is_static
+
+                if method_node.var_name_tok.value == "init" and is_static:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            method_node.pos_start,
+                            method_node.pos_end,
+                            "Constructor 'init' cannot be STATIC",
+                        )
+                    )
+
+                method_nodes.append(method_node)
+
+            elif self.current_tok.matches(
+                GL_KEYWORD, "LET"
+            ) or self.current_tok.matches(GL_KEYWORD, "FINAL"):
+                assign_node = res.register(self.statement())
+                if res.error:
+                    return res
+
+                if not isinstance(
+                    assign_node,
+                    (VarAssignNode, FinalVarAssignNode, VisibilityStmtNode),
+                ):
+                    return res.failure(
+                        InvalidSyntaxError(
+                            assign_node.pos_start,
+                            assign_node.pos_end,
+                            "Expected variable declaration inside class",
+                        )
+                    )
+
+                assign_node.is_static = is_static
+                assign_node.target_visibility = visibility
+
+                static_field_nodes.append(assign_node)
+
+            else:
                 return res.failure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
                         self.current_tok.pos_end,
-                        "Expected 'DEF' (methods) inside class body",
+                        "Expected 'DEF', 'LET', 'FINAL' or 'STATIC' inside class body",
                     )
                 )
-
-            method_node = res.register(self.fun_def())
-            if res.error:
-                return res
-            if not method_node.var_name_tok:
-                return res.failure(
-                    InvalidSyntaxError(
-                        method_node.pos_start,
-                        method_node.pos_end,
-                        "Methods inside a class must have a name",
-                    )
-                )
-
-            method_nodes.append(method_node)
 
         if not self.current_tok.matches(GL_KEYWORD, "ENDCLASS"):
             return res.failure(
@@ -1202,7 +1254,9 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(ClassNode(class_name_tok, superclass_node, method_nodes))
+        return res.success(
+            ClassNode(class_name_tok, superclass_node, method_nodes, static_field_nodes)
+        )
 
     def new_instance(self):
         res = ParseResult()

@@ -70,7 +70,7 @@ class Lexer:
                 self.skip_comment()
             elif self.current_char in DIGITS:
                 tokens.append(self.make_number())
-            elif self.current_char in LETTERS + "_":
+            elif self.current_char.isidentifier():
                 tokens.append(self.make_identifier())
             elif self.current_char == '"':
                 tokens.append(self.make_string())
@@ -328,7 +328,7 @@ class Lexer:
         id_str = ""
         pos_start = self.pos.copy()
 
-        while self.current_char != None and self.current_char in LETTERS_DIGITS + "_":
+        while self.current_char != None and (id_str + self.current_char).isidentifier():
             id_str += self.current_char
             self.advance()
 
