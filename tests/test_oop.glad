@@ -1,5 +1,15 @@
 PRINT "--- OOP & Inheritance Tester ---"
 
+# --- Consistency Check ---
+CLASS Person
+ENDCLASS
+LET p1 = NEW Person()
+LET p2 = p1
+LET p3 = NEW Person()
+
+PRINT "Ref Equality (True): " + STR(p1 == p2)
+PRINT "Ref Equality (False): " + STR(p1 == p3)
+
 # --- Define Base Class ---
 CLASS Pet
   DEF init(SELF, name)

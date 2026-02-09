@@ -1,0 +1,130 @@
+PRINT "=== 1. Testing Global Function Overloading ==="
+
+DEF add(a, b)
+  RETURN a + b
+ENDDEF
+
+DEF add(a, b, c)
+  RETURN a + b + c
+ENDDEF
+
+# Test 2 args
+LET sum1 = add(10, 20)
+PRINT "add(10, 20) = " + sum1 
+# Expected: 30
+
+# Test 3 args
+LET sum2 = add(10, 20, 30)
+PRINT "add(10, 20, 30) = " + sum2 
+# Expected: 60
+
+
+PRINT "\n=== 2. Testing Class Method Overloading ==="
+
+CLASS Calculator
+  # Single argument variant
+  DEF calc(SELF, x)
+    RETURN x * 2
+  ENDDEF
+
+  # Two argument variant
+  DEF calc(SELF, x, y)
+    RETURN x * y
+  ENDDEF
+  
+  # Three argument variant
+  DEF calc(SELF, x, y, z)
+    RETURN x + y + z
+  ENDDEF
+ENDCLASS
+
+LET c = NEW Calculator()
+
+PRINT "c.calc(10) = " + c.calc(10)
+# Expected: 20
+
+PRINT "c.calc(10, 5) = " + c.calc(10, 5)
+# Expected: 50
+
+PRINT "c.calc(1, 2, 3) = " + c.calc(1, 2, 3)
+# Expected: 6
+
+
+PRINT "\n=== 3. Testing Constructor Overloading ==="
+
+CLASS Vector
+  # Default constructor
+  DEF init(SELF)
+    SELF.x = 0
+    SELF.y = 0
+  ENDDEF
+
+  # Constructor with values
+  DEF init(SELF, x, y)
+    SELF.x = x
+    SELF.y = y
+  ENDDEF
+
+  DEF str(SELF)
+    RETURN "[" + SELF.x + ", " + SELF.y + "]"
+  ENDDEF
+ENDCLASS
+
+LET v1 = NEW Vector()
+PRINT "Vector() = " + v1.str()
+# Expected: [0, 0]
+
+LET v2 = NEW Vector(5, 10)
+PRINT "Vector(5, 10) = " + v2.str()
+# Expected: [5, 10]
+
+
+PRINT "\n=== 4. Testing Error Handling (No Match) ==="
+
+TRY
+  PRINT add(1) # This should fail, no 1-arg variant exists
+CATCH error
+  PRINT "Caught expected error: " + error
+ENDTRY
+# Expected: Caught expected error: No variant of function 'add' found that accepts 1 arguments
+
+
+PRINT "\n=== 5. Testing Copy Constructor ==="
+
+CLASS Point
+  # Standard Constructor (2 Arguments)
+  DEF init(SELF, x, y)
+    SELF.x = x
+    SELF.y = y
+  ENDDEF
+
+  # Copy Constructor (1 Argument)
+  # This works because overloading is based on argument count (arity)
+  DEF init(SELF, other)
+    SELF.x = other.x
+    SELF.y = other.y
+  ENDDEF
+
+  DEF str(SELF)
+    RETURN "(" + SELF.x + ", " + SELF.y + ")"
+  ENDDEF
+ENDCLASS
+
+# Create an original point
+LET p1 = NEW Point(10, 20)
+PRINT "Original p1: " + p1.str()
+# Expected: (10, 20)
+
+# Create a copy using the 1-arg copy constructor
+LET p2 = NEW Point(p1)
+PRINT "Copied p2:   " + p2.str()
+# Expected: (10, 20)
+
+# Modify the copy to prove independence
+p2.x = 999
+
+PRINT "-- After modifying p2 --"
+PRINT "Original p1: " + p1.str()
+PRINT "Modified p2: " + p2.str()
+# Expected p1: (10, 20)
+# Expected p2: (999, 20)

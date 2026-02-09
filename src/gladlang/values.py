@@ -41,7 +41,7 @@ class Value:
     def powed_by(self, other):
         return None, self.illegal_operation(other)
 
-    def get_comparison_eq(self, other):
+    def get_comparison_eq(self, other, visited=None):
         return None, self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
@@ -188,11 +188,18 @@ class Number(Value):
 
     def powed_by(self, other):
         if isinstance(other, Number):
+            if other.value > 10000:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    "Exponent too large (limit: 10000)",
+                    self.context,
+                )
             return Number(self.value**other.value).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
-    def get_comparison_eq(self, other):
+    def get_comparison_eq(self, other, visited=None):
         if isinstance(other, Number):
             return (
                 Number(int(self.value == other.value)).set_context(self.context),
@@ -338,7 +345,7 @@ class String(Value):
         else:
             return None, self.illegal_operation(other)
 
-    def get_comparison_eq(self, other):
+    def get_comparison_eq(self, other, visited=None):
         if isinstance(other, String):
             return (
                 Number(int(self.value == other.value)).set_context(self.context),
@@ -435,6 +442,13 @@ class List(Value):
         else:
             return None, self.illegal_operation(other)
 
+    def multed_by(self, other):
+        if isinstance(other, Number):
+            new_list = List(self.elements * int(other.value))
+            new_list.set_context(self.context)
+            return new_list, None
+        return None, self.illegal_operation(other)
+
     def get_element_at(self, index):
         if not isinstance(index, Number):
             return None, RTError(
@@ -475,19 +489,33 @@ class List(Value):
                 self.context,
             )
 
-    def get_comparison_eq(self, other):
+    def get_comparison_eq(self, other, visited=None):
         if not isinstance(other, List):
             return None, Value.illegal_operation(self, other)
 
         if len(self.elements) != len(other.elements):
             return Number(0).set_context(self.context), None
 
-        for i in range(len(self.elements)):
-            result, error = self.elements[i].get_comparison_eq(other.elements[i])
-            if error:
-                return None, error
-            if not result.is_true():
-                return Number(0).set_context(self.context), None
+        if visited is None:
+            visited = set()
+
+        pair = (id(self), id(other))
+        if pair in visited:
+            return Number(1).set_context(self.context), None
+
+        visited.add(pair)
+
+        try:
+            for i in range(len(self.elements)):
+                result, error = self.elements[i].get_comparison_eq(
+                    other.elements[i], visited
+                )
+                if error:
+                    return None, error
+                if not result.is_true():
+                    return Number(0).set_context(self.context), None
+        finally:
+            visited.remove(pair)
 
         return Number(1).set_context(self.context), None
 
@@ -536,6 +564,13 @@ class Dict(Value):
         copy.set_context(self.context)
         return copy
 
+    def added_to(self, other):
+        if isinstance(other, Dict):
+            new_dict = self.copy()
+            new_dict.elements.update(other.elements)
+            return new_dict, None
+        return None, self.illegal_operation(other)
+
     def get_element_at(self, key):
         if not isinstance(key, (Number, String)):
             return None, RTError(
@@ -567,24 +602,36 @@ class Dict(Value):
         self.elements[key.value] = value
         return value, None
 
-    def get_comparison_eq(self, other):
+    def get_comparison_eq(self, other, visited=None):
         if not isinstance(other, Dict):
             return None, Value.illegal_operation(self, other)
 
         if len(self.elements) != len(other.elements):
             return Number(0).set_context(self.context), None
 
-        for key, value in self.elements.items():
-            if key not in other.elements:
-                return Number(0).set_context(self.context), None
+        if visited is None:
+            visited = set()
 
-            other_val = other.elements[key]
-            result, error = value.get_comparison_eq(other_val)
-            if error:
-                return None, error
+        pair = (id(self), id(other))
+        if pair in visited:
+            return Number(1).set_context(self.context), None
 
-            if not result.is_true():
-                return Number(0).set_context(self.context), None
+        visited.add(pair)
+
+        try:
+            for key, value in self.elements.items():
+                if key not in other.elements:
+                    return Number(0).set_context(self.context), None
+
+                other_val = other.elements[key]
+                result, error = value.get_comparison_eq(other_val, visited)
+                if error:
+                    return None, error
+
+                if not result.is_true():
+                    return Number(0).set_context(self.context), None
+        finally:
+            visited.remove(pair)
 
         return Number(1).set_context(self.context), None
 
@@ -630,6 +677,16 @@ class BaseFunction(Value):
         new_context = Context(self.name, self.context, self.pos_start)
         new_context.symbol_table = SymbolTable(self.context.symbol_table)
         return new_context
+
+    def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, BaseFunction):
+            return Number(1 if self is other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
+
+    def get_comparison_ne(self, other):
+        if isinstance(other, BaseFunction):
+            return Number(1 if self is not other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
 
     def check_args(self, arg_names, args):
         res = RTResult()
@@ -746,6 +803,62 @@ class Function(BaseFunction):
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
         return copy
+
+
+class FunctionGroup(BaseFunction):
+    def __init__(self, name):
+        super().__init__(name)
+        self.functions = {}
+        self.visibility = "PUBLIC"
+        self.is_static = False
+        self.defining_class = None
+
+    def add_function(self, func):
+        arity = len(func.arg_names)
+
+        if arity in self.functions:
+            raise Exception(
+                f"Duplicate function definition: '{self.name}' with {arity} arguments is already defined."
+            )
+
+        self.functions[arity] = func
+
+        if len(self.functions) == 1:
+            self.visibility = getattr(func, "visibility", "PUBLIC")
+            self.is_static = getattr(func, "is_static", False)
+            self.defining_class = getattr(func, "defining_class", None)
+
+    def execute(self, args, interpreter):
+        arity = len(args)
+        if arity not in self.functions:
+            return RTResult().failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    f"No variant of function '{self.name}' found that accepts {arity} arguments",
+                    self.context,
+                )
+            )
+
+        return self.functions[arity].execute(args, interpreter)
+
+    def bind_to_instance(self, instance):
+        return BoundMethod(self.name, self, instance)
+
+    def copy(self):
+        copy = FunctionGroup(self.name)
+        copy.visibility = self.visibility
+        copy.is_static = self.is_static
+        copy.defining_class = self.defining_class
+
+        for arity, func in self.functions.items():
+            copy.functions[arity] = func.copy()
+        copy.set_pos(self.pos_start, self.pos_end)
+        copy.set_context(self.context)
+        return copy
+
+    def __repr__(self):
+        return f"<function group {self.name}>"
 
 
 class Class(BaseFunction):
@@ -1042,6 +1155,16 @@ class Instance(Value):
         self.symbol_table.set(name, value, visibility=visibility)
         return value, None
 
+    def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, Instance):
+            return Number(1 if self is other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
+
+    def get_comparison_ne(self, other):
+        if isinstance(other, Instance):
+            return Number(1 if self is not other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
+
     def copy(self):
         copy = Instance(self.class_ref)
         copy.symbol_table = self.symbol_table
@@ -1063,6 +1186,10 @@ class BoundMethod(BaseFunction):
 
     def execute(self, args, interpreter):
         res = RTResult()
+
+        if isinstance(self.function_to_bind, FunctionGroup):
+            full_args = [self.instance] + args
+            return self.function_to_bind.execute(full_args, interpreter)
 
         new_context = self.function_to_bind.generate_new_context()
 

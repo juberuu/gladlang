@@ -1,6 +1,6 @@
 import sys
 from .runtime import RTResult, Context, SymbolTable
-from .values import Number, String, Function, Class, List, Dict
+from .values import Number, String, Function, Class, List, Dict, FunctionGroup
 from .nodes import *
 from .errors import RTError
 from .constants import *
@@ -167,41 +167,46 @@ class Interpreter:
         res = RTResult()
         output_list = []
 
-        if node.var_name_tok.value in context.symbol_table.finals:
-            return res.failure(
-                RTError(
-                    node.var_name_tok.pos_start,
-                    node.var_name_tok.pos_end,
-                    f"Cannot use constant '{node.var_name_tok.value}' as comprehension variable",
-                    context,
-                )
-            )
-
-        iterable_val = res.register(self.visit(node.iterable_node, context))
-        if res.error:
-            return res
-
-        if not isinstance(iterable_val, List):
-            return res.failure(
-                RTError(
-                    node.iterable_node.pos_start,
-                    node.iterable_node.pos_end,
-                    "Expected a list",
-                    context,
-                )
-            )
-
         comp_context = Context("COMPREHENSION", context, node.pos_start)
         comp_context.symbol_table = SymbolTable(context.symbol_table)
 
-        for element in iterable_val.elements:
-            comp_context.symbol_table.set(node.var_name_tok.value, element)
+        def evaluate_loops(spec_index):
+            if spec_index >= len(node.iteration_specs):
+                val = res.register(self.visit(node.output_expr_node, comp_context))
+                if not res.error:
+                    output_list.append(val)
+                return
 
-            value = res.register(self.visit(node.output_expr_node, comp_context))
+            var_toks, iter_node, cond_node = node.iteration_specs[spec_index]
+
+            iterable_val = res.register(self.visit(iter_node, comp_context))
             if res.error:
-                return res
+                return
 
-            output_list.append(value)
+            iterator, error = self.get_iterator(
+                iterable_val, iter_node.pos_start, iter_node.pos_end, context
+            )
+            if error:
+                res.failure(error)
+                return
+
+            for element in iterator:
+                if not self.unpack_and_set(var_toks, element, comp_context, res):
+                    return
+
+                if cond_node:
+                    condition_res = res.register(self.visit(cond_node, comp_context))
+                    if res.error:
+                        return
+                    if not condition_res.is_true():
+                        continue
+
+                evaluate_loops(spec_index + 1)
+
+        evaluate_loops(0)
+
+        if res.error:
+            return res
 
         return res.success(
             List(output_list).set_context(context).set_pos(node.pos_start, node.pos_end)
@@ -361,38 +366,175 @@ class Interpreter:
 
         return res.success(Number.null)
 
-    def visit_ForNode(self, node, context):
-        res = RTResult()
+    def unpack_and_set(self, var_toks, element, context, res):
+        if len(var_toks) == 1:
+            var_name = var_toks[0].value
+            if var_name in context.symbol_table.finals:
+                return res.failure(
+                    RTError(
+                        var_toks[0].pos_start,
+                        var_toks[0].pos_end,
+                        f"Cannot use constant '{var_name}' as loop variable",
+                        context,
+                    )
+                )
+            context.symbol_table.set(var_name, element)
+            return True
 
-        if node.var_name_tok.value in context.symbol_table.finals:
+        if not isinstance(element, List):
             return res.failure(
                 RTError(
-                    node.var_name_tok.pos_start,
-                    node.var_name_tok.pos_end,
-                    f"Cannot use constant '{node.var_name_tok.value}' as for loop variable",
+                    var_toks[0].pos_start,
+                    var_toks[-1].pos_end,
+                    f"Cannot unpack type '{type(element).__name__}' (expected List)",
                     context,
                 )
             )
+
+        if len(element.elements) != len(var_toks):
+            return res.failure(
+                RTError(
+                    var_toks[0].pos_start,
+                    var_toks[-1].pos_end,
+                    f"ValueError: expected {len(var_toks)} values to unpack, got {len(element.elements)}",
+                    context,
+                )
+            )
+
+        for i, tok in enumerate(var_toks):
+            var_name = tok.value
+            if var_name in context.symbol_table.finals:
+                return res.failure(
+                    RTError(
+                        tok.pos_start,
+                        tok.pos_end,
+                        f"Cannot use constant '{var_name}' as loop variable",
+                        context,
+                    )
+                )
+            context.symbol_table.set(var_name, element.elements[i])
+
+        return True
+
+    def get_iterator(self, iterable_val, pos_start, pos_end, context):
+        if isinstance(iterable_val, List):
+            return iterable_val.elements[:], None
+
+        elif isinstance(iterable_val, String):
+            chars = []
+            for char in iterable_val.value:
+                chars.append(
+                    String(char).set_context(context).set_pos(pos_start, pos_end)
+                )
+            return chars, None
+
+        elif isinstance(iterable_val, Dict):
+            keys = []
+            for k in iterable_val.elements.keys():
+                if isinstance(k, (int, float)):
+                    keys.append(
+                        Number(k).set_context(context).set_pos(pos_start, pos_end)
+                    )
+                else:
+                    keys.append(
+                        String(k).set_context(context).set_pos(pos_start, pos_end)
+                    )
+            return keys, None
+
+        return None, RTError(
+            pos_start,
+            pos_end,
+            f"Type '{type(iterable_val).__name__}' is not iterable (Expected List, String, or Dict)",
+            context,
+        )
+
+    def visit_DictCompNode(self, node, context):
+        res = RTResult()
+        output_dict = {}
+
+        comp_context = Context("DICT_COMPREHENSION", context, node.pos_start)
+        comp_context.symbol_table = SymbolTable(context.symbol_table)
+
+        def evaluate_loops(spec_index):
+            if spec_index >= len(node.iteration_specs):
+                key_val = res.register(self.visit(node.key_expr_node, comp_context))
+                if res.error:
+                    return
+
+                val_val = res.register(self.visit(node.value_expr_node, comp_context))
+                if res.error:
+                    return
+
+                if isinstance(key_val, (Number, String)):
+                    output_dict[key_val.value] = val_val
+                else:
+                    res.failure(
+                        RTError(
+                            node.key_expr_node.pos_start,
+                            node.key_expr_node.pos_end,
+                            "Dictionary key must be a Number or String",
+                            comp_context,
+                        )
+                    )
+                return
+
+            var_toks, iter_node, cond_node = node.iteration_specs[spec_index]
+
+            iterable_val = res.register(self.visit(iter_node, comp_context))
+            if res.error:
+                return
+
+            iterator, error = self.get_iterator(
+                iterable_val, iter_node.pos_start, iter_node.pos_end, context
+            )
+            if error:
+                res.failure(error)
+                return
+
+            for element in iterator:
+                if not self.unpack_and_set(var_toks, element, comp_context, res):
+                    return
+
+                if cond_node:
+                    condition_res = res.register(self.visit(cond_node, comp_context))
+                    if res.error:
+                        return
+                    if not condition_res.is_true():
+                        continue
+
+                evaluate_loops(spec_index + 1)
+
+        evaluate_loops(0)
+
+        if res.error:
+            return res
+
+        return res.success(
+            Dict(output_dict).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_ForNode(self, node, context):
+        res = RTResult()
 
         iterable_value = res.register(self.visit(node.iterable_node, context))
         if res.error:
             return res
 
-        if not isinstance(iterable_value, List):
-            return res.failure(
-                RTError(
-                    node.iterable_node.pos_start,
-                    node.iterable_node.pos_end,
-                    "Iterable must be a List",
-                    context,
-                )
-            )
+        iterator, error = self.get_iterator(
+            iterable_value,
+            node.iterable_node.pos_start,
+            node.iterable_node.pos_end,
+            context,
+        )
+        if error:
+            return res.failure(error)
 
-        for element in iterable_value.elements:
+        for element in iterator:
             loop_context = Context("FOR", context, node.pos_start)
             loop_context.symbol_table = SymbolTable(context.symbol_table)
 
-            loop_context.symbol_table.set(node.var_name_tok.value, element)
+            if not self.unpack_and_set(node.var_name_toks, element, loop_context, res):
+                return res
 
             value = res.register(self.visit(node.body_node, loop_context))
             if res.error:
@@ -454,7 +596,19 @@ class Interpreter:
         func = Function(func_name, body_node, node.arg_name_toks, context)
 
         if func_name:
-            context.symbol_table.set(func_name, func)
+            existing_val = context.symbol_table.symbols.get(func_name)
+
+            if existing_val and isinstance(existing_val, FunctionGroup):
+                existing_val.add_function(func)
+                func = existing_val
+            elif existing_val and isinstance(existing_val, Function):
+                group = FunctionGroup(func_name)
+                group.add_function(existing_val)
+                group.add_function(func)
+                context.symbol_table.set(func_name, group)
+                func = group
+            else:
+                context.symbol_table.set(func_name, func)
 
         return res.success(
             func.set_pos(node.pos_start, node.pos_end).set_context(context)
@@ -563,6 +717,18 @@ class Interpreter:
                 getattr(method_node, "is_static", False),
             ).set_pos(method_node.pos_start, method_node.pos_end)
 
+            if method_name in methods:
+                existing = methods[method_name]
+                if isinstance(existing, FunctionGroup):
+                    existing.add_function(method_value)
+                else:
+                    group = FunctionGroup(method_name)
+                    group.add_function(existing)
+                    group.add_function(method_value)
+                    methods[method_name] = group
+            else:
+                methods[method_name] = method_value
+
             if superclass:
                 curr = superclass
                 parent_method = None
@@ -586,8 +752,6 @@ class Interpreter:
                                 context,
                             )
                         )
-
-            methods[method_name] = method_value
 
         class_value.methods = methods
 
@@ -843,6 +1007,22 @@ class Interpreter:
             return res.failure(error)
         else:
             return res.success(result.set_pos(node.pos_start, node.pos_end))
+
+    def visit_TernaryOpNode(self, node, context):
+        res = RTResult()
+
+        condition_value = res.register(self.visit(node.condition_node, context))
+        if res.error:
+            return res
+
+        if condition_value.is_true():
+            result = res.register(self.visit(node.true_case_node, context))
+        else:
+            result = res.register(self.visit(node.false_case_node, context))
+
+        if res.error:
+            return res
+        return res.success(result)
 
     def visit_ChainedCompNode(self, node, context):
         res = RTResult()

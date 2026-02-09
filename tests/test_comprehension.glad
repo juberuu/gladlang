@@ -1,4 +1,4 @@
-LET numbers = [1, 2, 3, 4]
+LET numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 PRINT "Original: " + STR(numbers)
 
@@ -10,3 +10,48 @@ PRINT "Squares: " + STR(squares)
 LET names = ["alex", "bob"]
 LET greetings = ["Hello " + name FOR name IN names]
 PRINT greetings
+
+# Filter even numbers
+LET evens = [x FOR x IN numbers IF x % 2 == 0]
+PRINT "Evens: " + STR(evens)
+# Expected: [2, 4, 6, 8, 10]
+
+# Filter and modify
+LET big_squares = [x * x FOR x IN numbers IF x > 5]
+PRINT "Squares of nums > 5: " + STR(big_squares)
+# Expected: [36, 49, 64, 81, 100]
+
+# 3. Filtering Strings
+LET words = ["apple", "banana", "kiwi", "pear", "grapefruit"]
+LET long_words = [w FOR w IN words IF LEN(w) > 4]
+PRINT "Long Words: " + STR(long_words)
+# Expected: ['apple', 'banana', 'grapefruit']
+
+# 4. Filter with Logic (Odd AND greater than 3)
+LET complex_filter = [n FOR n IN numbers IF (n % 2 != 0) AND (n > 3)]
+PRINT "Odd > 3:  " + STR(complex_filter)
+# Expected: [5, 7, 9]
+
+# 5. Flatten a 2D Matrix
+LET matrix = [[1, 2], [3, 4]]
+PRINT "Matrix: " + STR(matrix)
+
+# Logic: FOR row IN matrix -> FOR num IN row -> yield num
+LET flat = [num FOR row IN matrix FOR num IN row]
+PRINT "Flattened: " + STR(flat)
+# Expected: [1, 2, 3, 4]
+
+# 6. Combinations (Cartesian Product)
+LET colors = ["Red", "Blue"]
+LET sizes = ["S", "M"]
+
+# Logic: FOR c IN colors -> FOR s IN sizes -> yield c + "-" + s
+LET products = [c + "-" + s FOR c IN colors FOR s IN sizes]
+PRINT "Combinations: " + STR(products)
+# Expected: ['Red-S', 'Red-M', 'Blue-S', 'Blue-M']
+
+# 7. Nested with Filtering
+# Get combinations, but skip Blue-S
+LET filtered_products = [c + "-" + s FOR c IN colors FOR s IN sizes IF (c != "Blue") OR (s != "S")]
+PRINT "Filtered: " + STR(filtered_products)
+# Expected: ['Red-S', 'Red-M', 'Blue-M']

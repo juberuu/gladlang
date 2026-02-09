@@ -23,7 +23,7 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Variables](#variables)
         - [Numbers](#numbers)
         - [Strings](#strings)
-        - [Lists](#lists)
+        - [Lists, Slicing & Comprehensions](#lists-slicing--comprehensions)
         - [Dictionaries](#dictionaries)
         - [Booleans](#booleans)
         - [Null](#null)
@@ -32,6 +32,7 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Compound Assignments](#compound-assignments)
         - [Bitwise Operators](#bitwise-operators)
         - [Comparisons & Logic](#comparisons--logic)
+        - [Conditional (Ternary) Operator](#conditional-ternary-operator)
         - [Increment / Decrement](#increment--decrement)
     - [4. Control Flow](#4-control-flow)
         - [IF Statements](#if-statements)
@@ -43,10 +44,12 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Anonymous Functions](#anonymous-functions)
         - [Closures](#closures)
         - [Recursion](#recursion)
+        - [Function Overloading](#function-overloading)
     - [6. Object-Oriented Programming (OOP)](#6-object-oriented-programming-oop)
         - [Classes and Instantiation](#classes-and-instantiation)
         - [The `SELF` Keyword](#the-self-keyword)
         - [Inheritance](#inheritance)
+        - [Method & Constructor Overloading](#method--constructor-overloading)
         - [Polymorphism](#polymorphism)
         - [Access Modifiers](#access-modifiers)
         - [Static Members](#static-members)
@@ -78,17 +81,22 @@ GladLang supports a rich, modern feature set:
   * **Data Types:** Numbers (int/float), Strings, Lists, Dictionaries, Booleans, and Null.
   * **Variables:** Dynamic variable assignment with `LET`.
   * **Advanced Assignments:**
-      * **Destructuring:** Unpack lists directly (`LET [x, y] = [1, 2]`).
+      * **Destructuring:** Unpack lists in assignments (`LET [x, y] = [1, 2]`) and loops (`FOR [x, y] IN points`).
       * **Slicing:** Access sub-lists or substrings easily (`list[0:3]`).
   * **String Manipulation:**
       * **Interpolation:** JavaScript-style template strings (`` `Hello ${name}` ``).
       * **Multi-line Strings:** Triple-quoted strings (`"""..."""`) for large text blocks.
-  * **List Comprehensions:** Pythonic one-line list creation (`[x * 2 FOR x IN list]`).
+  * **Comprehensions:**
+      * **List Comprehensions:** Supports nesting (`[x+y FOR x IN A FOR y IN B]`).
+      * **Dictionary Comprehensions:** Create dicts programmatically (`{k: v FOR k IN list}`).
   * **Dictionaries:** Key-value data structures (`{'key': 'value'}`).
-  * **Control Flow:** Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`, `WHILE` loops, and `FOR` loops with `BREAK` / `CONTINUE`
-  * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support.
-  * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, and Access Modifiers (`PUBLIC`, `PRIVATE`, `PROTECTED`).
+  * **Control Flow:**
+      * Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`.
+      * **Universal Iteration:** `FOR` loops over Lists, Strings (chars), and Dictionaries (keys).
+  * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support, and **Overloading** (by argument count).
+  * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, Access Modifiers, and **Method/Constructor Overloading**.
   * **Static Members:** Java-style `STATIC` fields, methods, and constants (`STATIC FINAL`).
+  * **Operators:** Ternary Operator (`condition ? true : false`) for concise conditional logic.
   * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, and secure encapsulation.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
   * **Constants:** Declare immutable values using `FINAL`, fully protected from shadowing..
@@ -275,6 +283,10 @@ PRINT nums[3:]       # [3, 4, 5]
 # List Comprehension
 LET squares = [n ** 2 FOR n IN nums]
 PRINT squares        # [0, 1, 4, 9, 16, 25]
+
+# Nested List Comprehension
+LET pairs = [[x, y] FOR x IN [1, 2] FOR y IN [3, 4]]
+# Result: [[1, 3], [1, 4], [2, 3], [2, 4]]
 ```
 
 #### Dictionaries
@@ -291,6 +303,11 @@ LET person = {
 PRINT person["name"]       # Access: "Glad"
 LET person["age"] = 26     # Modify
 LET person["city"] = "NYC" # Add new key
+
+# Dictionary Comprehension
+LET keys = ["a", "b", "c"]
+LET d = {k: 0 FOR k IN keys} 
+PRINT d # {'a': 0, 'b': 0, 'c': 0}
 ```
 
 #### Booleans
@@ -399,6 +416,21 @@ IF a and b THEN
 ENDIF
 ```
 
+#### Conditional (Ternary) Operator
+
+A concise way to write `IF...ELSE` statements in a single line. It supports nesting and arbitrary expressions.
+
+```glad
+LET age = 20
+LET type = age >= 18 ? "Adult" : "Minor"
+PRINT type # "Adult"
+
+# Nested Ternary
+LET score = 85
+LET grade = score > 90 ? "A" : score > 80 ? "B" : "C"
+PRINT grade # "B"
+```
+
 #### Increment / Decrement
 
 Supports C-style pre- and post-increment/decrement operators on variables and list elements.
@@ -477,6 +509,23 @@ LET my_list = ["apple", "banana", "cherry"]
 FOR item IN my_list
   PRINT "Item: " + item
 ENDFOR
+
+# Iterate over Strings (Characters)
+FOR char IN "Hi"
+  PRINT char 
+ENDFOR
+
+# Iterate over Dictionaries (Keys)
+LET data = {"x": 10, "y": 20}
+FOR key IN data
+  PRINT key + ": " + data[key]
+ENDFOR
+
+# Loop Destructuring (Unpacking)
+LET points = [[1, 2], [3, 4]]
+FOR [x, y] IN points
+  PRINT "x: " + x + ", y: " + y
+ENDFOR
 ```
 
 **`BREAK` and `CONTINUE`** are supported in both `WHILE` and `FOR` loops.
@@ -542,6 +591,23 @@ ENDDEF
 PRINT fib(7) # 13
 ```
 
+#### Function Overloading
+
+You can define multiple functions with the same name, as long as they accept a different number of arguments (arity).
+
+```glad
+DEF add(a, b)
+  RETURN a + b
+ENDDEF
+
+DEF add(a, b, c)
+  RETURN a + b + c
+ENDDEF
+
+PRINT add(10, 20)     # Calls 2-arg version: 30
+PRINT add(10, 20, 30) # Calls 3-arg version: 60
+```
+
 -----
 
 ### 6\. Object-Oriented Programming (OOP)
@@ -600,6 +666,36 @@ ENDCLASS
 
 LET my_dog = NEW Dog("Buddy")
 my_dog.speak() # "Buddy says: Woof!"
+```
+
+#### Method & Constructor Overloading
+
+Classes support overloading for both regular methods and the `init` constructor. This allows for flexible object creation (e.g., Copy Constructors).
+
+```glad
+CLASS Vector
+  # Default Constructor
+  DEF init(SELF)
+    SELF.x = 0
+    SELF.y = 0
+  ENDDEF
+
+  # Overloaded Constructor
+  DEF init(SELF, x, y)
+    SELF.x = x
+    SELF.y = y
+  ENDDEF
+  
+  # Copy Constructor
+  DEF init(SELF, other)
+    SELF.x = other.x
+    SELF.y = other.y
+  ENDDEF
+ENDCLASS
+
+LET v1 = NEW Vector()       # [0, 0]
+LET v2 = NEW Vector(10, 20) # [10, 20]
+LET v3 = NEW Vector(v2)     # [10, 20] (Copy of v2)
 ```
 
 #### Polymorphism

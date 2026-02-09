@@ -120,7 +120,7 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.6"
+    GLADLANG_VERSION = "0.1.7"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 

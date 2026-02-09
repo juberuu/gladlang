@@ -41,3 +41,24 @@ LET nested = {
 }
 PRINT nested["meta"]["status"]
 # Expected: active
+
+# 6. Dict Merging
+LET defaults = {"theme": "dark", "vol": 50}
+LET user_settings = {"vol": 100}
+LET config = defaults + user_settings
+PRINT "Merged Config: " + STR(config)
+# Expected: {'theme': 'dark', 'vol': 100}
+
+# 7. Iterate Dictionary (Keys)
+PRINT "\n-- Dictionary Iteration --"
+LET data = {"name": "Glad", "ver": 1}
+FOR key IN data
+    PRINT "Key: " + key + ", Value: " + STR(data[key])
+ENDFOR
+# Expected: Key: name..., Key: ver...
+
+# 8. Dict Comprehension over Dict
+PRINT "\n-- Dict -> List --"
+LET values = [data[k] FOR k IN data]
+PRINT "Values: " + STR(values)
+# Expected: ['Glad', 1]

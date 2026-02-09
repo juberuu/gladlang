@@ -14,3 +14,15 @@ PRINT path
 
 LET combined = "Line 1\n\tLine 2 (indented)\nLine 3"
 PRINT combined
+
+PRINT "\n-- String Iteration --"
+LET text = "Hi"
+FOR char IN text
+    PRINT "Char: " + char
+ENDFOR
+# Expected: H, i
+
+PRINT "\n-- String Comprehension --"
+LET chars = [c FOR c IN "abc"]
+PRINT "Chars: " + STR(chars)
+# Expected: ['a', 'b', 'c']

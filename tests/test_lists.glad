@@ -22,6 +22,14 @@ PRINT "Combined list: " + STR(combined_list)
 
 PRINT "--- Out of Bounds Error Test ---"
 PRINT "Attempting to access my_list[99]..."
-LET bad_access = my_list[99] # This line should crash
 
-PRINT "This line should NOT be printed."
+TRY
+    LET bad_access = my_list[99] # This line should crash
+CATCH error
+    PRINT error
+ENDTRY
+
+PRINT "--- List Repetition ---"
+LET zeros = [0] * 5
+PRINT "Zeros: " + STR(zeros)
+# Expected: [0, 0, 0, 0, 0]

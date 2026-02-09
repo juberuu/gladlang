@@ -51,6 +51,21 @@ class VarAssignNode:
         self.pos_end = self.value_node.pos_end
 
 
+class TernaryOpNode:
+    def __init__(self, condition_node, true_case_node, false_case_node):
+        self.condition_node = condition_node
+        self.true_case_node = true_case_node
+        self.false_case_node = false_case_node
+
+        self.pos_start = condition_node.pos_start
+        self.pos_end = false_case_node.pos_end
+
+    def __repr__(self):
+        return (
+            f"({self.condition_node} ? {self.true_case_node} : {self.false_case_node})"
+        )
+
+
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
         self.left_node = left_node
@@ -245,12 +260,12 @@ class ListSetNode:
 
 
 class ForNode:
-    def __init__(self, var_name_tok, iterable_node, body_node):
-        self.var_name_tok = var_name_tok
+    def __init__(self, var_name_toks, iterable_node, body_node):
+        self.var_name_toks = var_name_toks
         self.iterable_node = iterable_node
         self.body_node = body_node
 
-        self.pos_start = self.var_name_tok.pos_start
+        self.pos_start = self.var_name_toks[0].pos_start
         self.pos_end = self.body_node.pos_end
 
 
@@ -281,12 +296,22 @@ class MultiVarAssignNode:
 
 
 class ListCompNode:
-    def __init__(self, output_expr_node, var_name_tok, iterable_node):
+    def __init__(self, output_expr_node, iteration_specs, pos_start, pos_end):
         self.output_expr_node = output_expr_node
-        self.var_name_tok = var_name_tok
-        self.iterable_node = iterable_node
-        self.pos_start = output_expr_node.pos_start
-        self.pos_end = iterable_node.pos_end
+        self.iteration_specs = iteration_specs
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
+class DictCompNode:
+    def __init__(
+        self, key_expr_node, value_expr_node, iteration_specs, pos_start, pos_end
+    ):
+        self.key_expr_node = key_expr_node
+        self.value_expr_node = value_expr_node
+        self.iteration_specs = iteration_specs
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 
 class SliceAccessNode:

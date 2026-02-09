@@ -9,3 +9,53 @@ PRINT "--- Calculating ---"
 LET [a, b] = [x * 2, y / 2]
 PRINT "a: " + a  # 20
 PRINT "b: " + b  # 10
+
+PRINT "=== Destructuring Loop Test ==="
+
+LET points = [[1, 2], [10, 20], [100, 200]]
+
+# Test 1: Destructuring in FOR Loop
+PRINT "-- FOR Loop --"
+FOR [x, y] IN points
+    PRINT "Point: x=" + x + ", y=" + y
+ENDFOR
+
+# Test 2: Destructuring in List Comprehension
+PRINT "-- Comprehension --"
+LET sums = [x + y FOR [x, y] IN points]
+PRINT "Sums: " + STR(sums)
+# Expected: [3, 30, 300]
+
+# Test 3: Complex Destructuring with Filter
+# Flatten and filter coordinates where y > 10
+LET coords = [y FOR [x, y] IN points IF x > 5]
+PRINT "Y coords where X > 5: " + STR(coords)
+# Expected: [20, 200]
+
+PRINT "=== Dictionary Comprehension Test ==="
+
+LET users = ["Alice", "Bob", "Charlie"]
+
+## Test 4: List to Dict (Key = Name, Value = Length)
+LET name_lengths = {name: LEN(name) FOR name IN users}
+PRINT "Name Lengths: " + STR(name_lengths)
+# Expected: {'Alice': 5, 'Bob': 3, 'Charlie': 7}
+
+## Test 5: Swap Keys and Values (Invert Dict)
+# Note: Iterating a dict is not yet supported natively, so we use a list of pairs
+LET items = [["A", 1], ["B", 2], ["C", 3]]
+LET inverted = {val: key FOR [key, val] IN items}
+PRINT "Inverted: " + STR(inverted)
+# Expected: {1: 'A', 2: 'B', 3: 'C'}
+
+## Test 6: Filtering in Dict Comp
+LET numbers = [1, 2, 3, 4, 5]
+LET squares_map = {n: n*n FOR n IN numbers IF n > 2}
+PRINT "Squares > 2: " + STR(squares_map)
+# Expected: {3: 9, 4: 16, 5: 25}
+
+## Test 7:  Nested Loop & Destructuring (Inverting a list of pairs)
+LET pairs = [["A", 10], ["B", 20], ["C", 30]]
+LET inverted = {val: key FOR [key, val] IN pairs}
+PRINT "Inverted: " + STR(inverted)
+# Expected: {10: 'A', 20: 'B', 30: 'C'}

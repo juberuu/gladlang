@@ -425,6 +425,57 @@ class Parser:
             return res
         return res.success(expr)
 
+    def parse_iter_vars(self):
+        var_toks = []
+        res = ParseResult()
+
+        if self.current_tok.type == GL_LSQUARE:
+            res.register_advancement()
+            self.advance()
+
+            if self.current_tok.type == GL_IDENTIFIER:
+                var_toks.append(self.current_tok)
+                res.register_advancement()
+                self.advance()
+
+                while self.current_tok.type == GL_COMMA:
+                    res.register_advancement()
+                    self.advance()
+
+                    if self.current_tok.type != GL_IDENTIFIER:
+                        return None, res.failure(
+                            InvalidSyntaxError(
+                                self.current_tok.pos_start,
+                                self.current_tok.pos_end,
+                                "Expected identifier",
+                            )
+                        )
+
+                    var_toks.append(self.current_tok)
+                    res.register_advancement()
+                    self.advance()
+
+            if self.current_tok.type != GL_RSQUARE:
+                return None, res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected ']'",
+                    )
+                )
+            res.register_advancement()
+            self.advance()
+
+            return var_toks, res
+
+        elif self.current_tok.type == GL_IDENTIFIER:
+            var_toks.append(self.current_tok)
+            res.register_advancement()
+            self.advance()
+            return var_toks, res
+
+        return None, None
+
     def for_expr(self):
         res = ParseResult()
 
@@ -440,18 +491,19 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != GL_IDENTIFIER:
+        var_name_toks, var_res = self.parse_iter_vars()
+        if var_res and var_res.error:
+            return res.failure(var_res.error)
+
+        if not var_name_toks:
             return res.failure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
                     self.current_tok.pos_end,
-                    "Expected identifier (variable name)",
+                    "Expected identifier or '[...]' for loop variable",
                 )
             )
-
-        var_name_tok = self.current_tok
-        res.register_advancement()
-        self.advance()
+        res.advance_count += var_res.advance_count
 
         if not self.current_tok.matches(GL_KEYWORD, "IN"):
             return res.failure(
@@ -487,7 +539,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(ForNode(var_name_tok, iterable_node, body_node))
+        return res.success(ForNode(var_name_toks, iterable_node, body_node))
 
     def while_expr(self):
         res = ParseResult()
@@ -531,20 +583,58 @@ class Parser:
 
         return res.success(WhileNode(condition, body))
 
+    def logic_expr(self):
+        return self.bin_op(
+            self.comp_expr,
+            (
+                (GL_KEYWORD, "AND"),
+                (GL_KEYWORD, "OR"),
+                (GL_KEYWORD, "and"),
+                (GL_KEYWORD, "or"),
+            ),
+        )
+
+    def ternary_expr(self):
+        res = ParseResult()
+
+        condition_node = res.register(self.logic_expr())
+        if res.error:
+            return res
+
+        if self.current_tok.type == GL_QMARK:
+            res.register_advancement()
+            self.advance()
+
+            true_case_node = res.register(self.expr())
+            if res.error:
+                return res
+
+            if self.current_tok.type != GL_COLON:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected ':' in ternary operator",
+                    )
+                )
+
+            res.register_advancement()
+            self.advance()
+
+            false_case_node = res.register(self.ternary_expr())
+            if res.error:
+                return res
+
+            return res.success(
+                TernaryOpNode(condition_node, true_case_node, false_case_node)
+            )
+
+        return res.success(condition_node)
+
     def expr(self):
         res = ParseResult()
 
-        node = res.register(
-            self.bin_op(
-                self.comp_expr,
-                (
-                    (GL_KEYWORD, "AND"),
-                    (GL_KEYWORD, "OR"),
-                    (GL_KEYWORD, "and"),
-                    (GL_KEYWORD, "or"),
-                ),
-            )
-        )
+        node = res.register(self.ternary_expr())
 
         if res.error:
             return res
@@ -930,37 +1020,51 @@ class Parser:
             return res
 
         if self.current_tok.matches(GL_KEYWORD, "FOR"):
-            res.register_advancement()
-            self.advance()
+            iteration_specs = []
 
-            if self.current_tok.type != GL_IDENTIFIER:
-                return res.failure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected identifier",
+            while self.current_tok.matches(GL_KEYWORD, "FOR"):
+                res.register_advancement()
+                self.advance()
+
+                var_name_toks, var_res = self.parse_iter_vars()
+                if var_res and var_res.error:
+                    return res.failure(var_res.error)
+
+                if not var_name_toks:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected identifier or '[...]'",
+                        )
                     )
-                )
-
-            var_name = self.current_tok
-            res.register_advancement()
-            self.advance()
-
-            if not self.current_tok.matches(GL_KEYWORD, "IN"):
-                return res.failure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected 'IN'",
+                res.advance_count += var_res.advance_count
+                if not self.current_tok.matches(GL_KEYWORD, "IN"):
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected 'IN'",
+                        )
                     )
-                )
 
-            res.register_advancement()
-            self.advance()
+                res.register_advancement()
+                self.advance()
 
-            iterable = res.register(self.expr())
-            if res.error:
-                return res
+                iterable = res.register(self.expr())
+                if res.error:
+                    return res
+
+                condition_node = None
+                if self.current_tok.matches(GL_KEYWORD, "IF"):
+                    res.register_advancement()
+                    self.advance()
+
+                    condition_node = res.register(self.expr())
+                    if res.error:
+                        return res
+
+                iteration_specs.append((var_name_toks, iterable, condition_node))
 
             if self.current_tok.type != GL_RSQUARE:
                 return res.failure(
@@ -974,7 +1078,14 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            return res.success(ListCompNode(first_expr, var_name, iterable))
+            return res.success(
+                ListCompNode(
+                    first_expr,
+                    iteration_specs,
+                    pos_start,
+                    self.current_tok.pos_start.copy(),
+                )
+            )
 
         element_nodes.append(first_expr)
 
@@ -1353,12 +1464,116 @@ class Parser:
         res = ParseResult()
         pos_start = self.current_tok.pos_start.copy()
 
+        if self.current_tok.type != GL_LBRACE:
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '{'"
+                )
+            )
+
         res.register_advancement()
         self.advance()
 
-        kv_pairs = []
+        if self.current_tok.type == GL_RBRACE:
+            res.register_advancement()
+            self.advance()
+            return res.success(
+                DictNode([], pos_start, self.current_tok.pos_start.copy())
+            )
 
-        if self.current_tok.type != GL_RBRACE:
+        key = res.register(self.expr())
+        if res.error:
+            return res
+
+        if self.current_tok.type != GL_COLON:
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                )
+            )
+        res.register_advancement()
+        self.advance()
+
+        value = res.register(self.expr())
+        if res.error:
+            return res
+
+        if self.current_tok.matches(GL_KEYWORD, "FOR"):
+            iteration_specs = []
+
+            while self.current_tok.matches(GL_KEYWORD, "FOR"):
+                res.register_advancement()
+                self.advance()
+
+                var_name_toks, var_res = self.parse_iter_vars()
+                if var_res and var_res.error:
+                    return res.failure(var_res.error)
+                if not var_name_toks:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected identifier or '[...]'",
+                        )
+                    )
+                res.advance_count += var_res.advance_count
+
+                if not self.current_tok.matches(GL_KEYWORD, "IN"):
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected 'IN'",
+                        )
+                    )
+                res.register_advancement()
+                self.advance()
+
+                iterable = res.register(self.expr())
+                if res.error:
+                    return res
+
+                condition_node = None
+                if self.current_tok.matches(GL_KEYWORD, "IF"):
+                    res.register_advancement()
+                    self.advance()
+                    condition_node = res.register(self.expr())
+                    if res.error:
+                        return res
+
+                iteration_specs.append((var_name_toks, iterable, condition_node))
+
+            if self.current_tok.type != GL_RBRACE:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected '}'",
+                    )
+                )
+            res.register_advancement()
+            self.advance()
+
+            return res.success(
+                DictCompNode(
+                    key,
+                    value,
+                    iteration_specs,
+                    pos_start,
+                    self.current_tok.pos_start.copy(),
+                )
+            )
+
+        kv_pairs = []
+        kv_pairs.append((key, value))
+
+        while self.current_tok.type == GL_COMMA:
+            res.register_advancement()
+            self.advance()
+
+            if self.current_tok.type == GL_RBRACE:
+                break
+
             key = res.register(self.expr())
             if res.error:
                 return res
@@ -1371,44 +1586,13 @@ class Parser:
                         "Expected ':'",
                     )
                 )
-
             res.register_advancement()
             self.advance()
 
             value = res.register(self.expr())
             if res.error:
                 return res
-
             kv_pairs.append((key, value))
-
-            while self.current_tok.type == GL_COMMA:
-                res.register_advancement()
-                self.advance()
-
-                if self.current_tok.type == GL_RBRACE:
-                    break
-
-                key = res.register(self.expr())
-                if res.error:
-                    return res
-
-                if self.current_tok.type != GL_COLON:
-                    return res.failure(
-                        InvalidSyntaxError(
-                            self.current_tok.pos_start,
-                            self.current_tok.pos_end,
-                            "Expected ':'",
-                        )
-                    )
-
-                res.register_advancement()
-                self.advance()
-
-                value = res.register(self.expr())
-                if res.error:
-                    return res
-
-                kv_pairs.append((key, value))
 
         if self.current_tok.type != GL_RBRACE:
             return res.failure(

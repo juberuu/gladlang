@@ -1,0 +1,65 @@
+PRINT "=== COMPREHENSIVE TERNARY OPERATOR TEST ==="
+
+# 1. Basic Boolean Logic
+PRINT "\n-- 1. Basic Boolean Logic --"
+LET t = TRUE
+LET f = FALSE
+
+PRINT "TRUE ? 10 : 20   => " + (t ? 10 : 20)
+# Expected: 10
+
+PRINT "FALSE ? 10 : 20  => " + (f ? 10 : 20)
+# Expected: 20
+
+
+# 2. Comparison Conditions
+PRINT "\n-- 2. Comparison Conditions --"
+LET a = 50
+LET b = 100
+
+PRINT "50 < 100 ? 'Less' : 'More' => " + (a < b ? "Less" : "More")
+# Expected: Less
+
+PRINT "50 > 100 ? 'Less' : 'More' => " + (a > b ? "Less" : "More")
+# Expected: More
+
+
+# 3. Arithmetic Inside Branches
+PRINT "\n-- 3. Arithmetic inside Branches --"
+LET result_calc = (10 == 10) ? (5 + 5) : (100 * 2)
+PRINT "10==10 ? 5+5 : 100*2 => " + result_calc
+# Expected: 10
+
+
+# 4. Nested Ternary Operators
+PRINT "\n-- 4. Nested Ternaries --"
+LET score = 85
+LET grade = score > 90 ? "A" : score > 80 ? "B" : "C" 
+PRINT "Score 85 Grade => " + grade
+# Expected: B
+
+LET score2 = 40
+LET grade2 = score2 > 90 ? "A" : score2 > 80 ? "B" : "C"
+PRINT "Score 40 Grade => " + grade2
+# Expected: C
+
+
+# 5. Type Flexibility
+PRINT "\n-- 5. Return Type Flexibility --"
+LET check = TRUE
+LET val = check ? "String" : 12345
+PRINT "TRUE ? 'String' : 12345 => " + val
+# Expected: String
+
+
+# 6. Precedence Check
+PRINT "\n-- 6. Precedence & Complex Logic --"
+LET complex = (TRUE AND FALSE) ? "Wrong" : "Right"
+PRINT "(TRUE AND FALSE) ? 'Wrong' : 'Right' => " + complex
+# Expected: Right
+
+LET math_val = 10 + ((5 > 2) ? 5 : 0)
+PRINT "10 + ((5 > 2) ? 5 : 0) => " + math_val
+# Expected: 15
+
+PRINT "\n=== TEST COMPLETE ==="
