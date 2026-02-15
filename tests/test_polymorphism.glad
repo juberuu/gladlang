@@ -1,41 +1,41 @@
-PRINT "--- Polymorphism Tester ---"
+PRINTLN "--- Polymorphism Tester ---"
 
 CLASS Pet
-  DEF init(SELF, name)
-    SELF.name = name
+  DEF Pet(name)
+    THIS.name = name
   ENDDEF
   
   # This method is NOT overridden by Dog or Cat
-  DEF introduce(SELF)
-    PRINT "My name is " + SELF.name + ". I am a pet and I say:"
-    # This call to SELF.speak() should use the
+  DEF introduce()
+    PRINTLN "My name is " + THIS.name + ". I am a pet and I say:"
+    # This call to THIS.speak() should use the
     # child's version if it exists.
-    SELF.speak()
+    THIS.speak()
   ENDDEF
   
-  DEF speak(SELF)
-    PRINT "(Generic pet sound)"
+  DEF speak()
+    PRINTLN "(Generic pet sound)"
   ENDDEF
 ENDCLASS
 
 CLASS Dog INHERITS Pet
   # Override speak
-  DEF speak(SELF)
-    PRINT "Woof!"
+  DEF speak()
+    PRINTLN "Woof!"
   ENDDEF
 ENDCLASS
 
 CLASS Cat INHERITS Pet
   # Override speak
-  DEF speak(SELF)
-    PRINT "Meow!"
+  DEF speak()
+    PRINTLN "Meow!"
   ENDDEF
 ENDCLASS
 
-PRINT "--- Creating Dog ---"
+PRINTLN "--- Creating Dog ---"
 LET my_dog = NEW Dog("Buddy")
 my_dog.introduce() # This calls Pet.introduce, which should call Dog.speak
 
-PRINT "--- Creating Cat ---"
+PRINTLN "--- Creating Cat ---"
 LET my_cat = NEW Cat("Whiskers")
 my_cat.introduce() # This calls Pet.introduce, which should call Cat.speak

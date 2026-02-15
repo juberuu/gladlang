@@ -1,45 +1,71 @@
 from .errors import RTError
+import threading
+from threading import Lock
+
+
+class ThreadSafeContext:
+    _storage = threading.local()
+
+    @classmethod
+    def get_current(cls):
+        return getattr(cls._storage, "context", None)
+
+    @classmethod
+    def set_current(cls, context):
+        cls._storage.context = context
 
 
 class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
-        self.finals = []
-        self.visibilities = {}
         self.parent = parent
+        self.finals = set()
+        self.visibilities = {}
+        self._lock = Lock()
+
+    def set(self, name, value, visibility="PUBLIC", as_final=False):
+        with self._lock:
+            self.symbols[name] = value
+            self.visibilities[name] = visibility
+            if as_final:
+                self.finals.add(name)
 
     def get(self, name):
-        value = self.symbols.get(name, None)
-        if value == None and self.parent:
-            return self.parent.get(name)
-        return value
-
-    def set(self, name, value, as_final=False, visibility="PUBLIC"):
-        self.symbols[name] = value
-        self.visibilities[name] = visibility
-        if as_final:
-            self.finals.append(name)
-
-    def get_visibility(self, name):
-        return self.visibilities.get(name, "PUBLIC")
-
-    def remove(self, name):
-        del self.symbols[name]
-        if name in self.finals:
-            self.finals.remove(name)
+        with self._lock:
+            value = self.symbols.get(name)
+            if value is None and self.parent:
+                return self.parent.get(name)
+            return value
 
     def update(self, name, value):
-        if name in self.symbols:
+        with self._lock:
             if name in self.finals:
                 return f"Cannot reassign constant '{name}'"
+            if name in self.symbols:
+                self.symbols[name] = value
+                return None
+            if self.parent:
+                return self.parent.update(name, value)
+            return f"'{name}' is not defined"
 
-            self.symbols[name] = value
-            return None
+    def remove(self, name):
+        with self._lock:
+            if name in self.symbols:
+                del self.symbols[name]
+            if name in self.finals:
+                self.finals.remove(name)
 
-        if self.parent:
-            return self.parent.update(name, value)
+    def get_visibility(self, name):
+        with self._lock:
+            return self.visibilities.get(name, "PUBLIC")
 
-        return f"'{name}' is not defined"
+    def copy(self):
+        with self._lock:
+            new_table = SymbolTable(self.parent)
+            new_table.symbols = self.symbols.copy()
+            new_table.visibilities = self.visibilities.copy()
+            new_table.finals = self.finals.copy()
+            return new_table
 
 
 class Context:

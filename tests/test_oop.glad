@@ -1,4 +1,4 @@
-PRINT "--- OOP & Inheritance Tester ---"
+PRINTLN "--- OOP & Inheritance Tester ---"
 
 # --- Consistency Check ---
 CLASS Person
@@ -7,18 +7,18 @@ LET p1 = NEW Person()
 LET p2 = p1
 LET p3 = NEW Person()
 
-PRINT "Ref Equality (True): " + STR(p1 == p2)
-PRINT "Ref Equality (False): " + STR(p1 == p3)
+PRINTLN "Ref Equality (True): " + STR(p1 == p2)
+PRINTLN "Ref Equality (False): " + STR(p1 == p3)
 
 # --- Define Base Class ---
 CLASS Pet
-  DEF init(SELF, name)
-    SELF.name = name
-    PRINT "A new pet is born!"
+  DEF Pet(name)
+    THIS.name = name
+    PRINTLN "A new pet is born!"
   ENDDEF
   
-  DEF speak(SELF)
-    PRINT SELF.name + " makes a generic pet sound."
+  DEF speak()
+    PRINTLN THIS.name + " makes a generic pet sound."
   ENDDEF
 ENDCLASS
 
@@ -27,22 +27,22 @@ CLASS Dog INHERITS Pet
   # This class automatically uses the 'init' from Pet
   
   # Override the 'speak' method
-  DEF speak(SELF)
-    PRINT SELF.name + " says: Woof!"
+  DEF speak()
+    PRINTLN THIS.name + " says: Woof!"
   ENDDEF
   
   # Add a new method
-  DEF wag_tail(SELF)
-    PRINT SELF.name + " wags its tail."
+  DEF wag_tail()
+    PRINTLN THIS.name + " wags its tail."
   ENDDEF
 ENDCLASS
 
-PRINT "--- Creating a Pet ---"
+PRINTLN "--- Creating a Pet ---"
 LET generic_pet = NEW Pet("Sammy")
 generic_pet.speak()
 # generic_pet.wag_tail() # This would (correctly) cause an error if uncommented
 
-PRINT "--- Creating a Dog ---"
+PRINTLN "--- Creating a Dog ---"
 LET my_dog = NEW Dog("Buddy")
 my_dog.speak()     # Should use the overridden method
 my_dog.wag_tail()  # Should use the new method

@@ -1,95 +1,95 @@
-PRINT "--- TEST 1: PUBLIC ACCESS ---"
+PRINTLN "--- TEST 1: PUBLIC ACCESS ---"
 CLASS PublicTest
-  DEF init(SELF, val)
-    SELF.val = val
+  DEF PublicTest(val)
+    THIS.val = val
   ENDDEF
 
-  PUBLIC DEF get_val(SELF)
-    RETURN SELF.val
+  PUBLIC DEF get_val()
+    RETURN THIS.val
   ENDDEF
 ENDCLASS
 
 LET p = NEW PublicTest(10)
-PRINT "Public Variable: " + STR(p.val)       # Expected: 10
-PRINT "Public Method: " + STR(p.get_val())   # Expected: 10
+PRINTLN "Public Variable: " + STR(p.val)       # Expected: 10
+PRINTLN "Public Method: " + STR(p.get_val())   # Expected: 10
 
 
-PRINT "\n--- TEST 2: PRIVATE ACCESS (METHODS) ---"
+PRINTLN "\n--- TEST 2: PRIVATE ACCESS (METHODS) ---"
 CLASS PrivateMethodTest
-  DEF init(SELF)
+  DEF PrivateMethodTest()
   ENDDEF
 
-  PRIVATE DEF secret(SELF)
+  PRIVATE DEF secret()
     RETURN "I am secret"
   ENDDEF
 
-  PUBLIC DEF access_secret(SELF)
-    RETURN SELF.secret() # Allowed: Internal call
+  PUBLIC DEF access_secret()
+    RETURN THIS.secret() # Allowed: Internal call
   ENDDEF
 ENDCLASS
 
 LET pm = NEW PrivateMethodTest()
-PRINT "Internal Access: " + pm.access_secret() # Expected: I am secret
+PRINTLN "Internal Access: " + pm.access_secret() # Expected: I am secret
 
-PRINT "Attempting External Access (Should Fail)..."
+PRINTLN "Attempting External Access (Should Fail)..."
 TRY
-  PRINT pm.secret() 
+  PRINTLN pm.secret() 
 CATCH error
-  PRINT "CAUGHT ERROR: " + STR(error) # Expected: Cannot access private member 'secret'
+  PRINTLN "CAUGHT ERROR: " + STR(error) # Expected: Cannot access private member 'secret'
 ENDTRY
 
 
-PRINT "\n--- TEST 3: PRIVATE ACCESS (ATTRIBUTES) ---"
+PRINTLN "\n--- TEST 3: PRIVATE ACCESS (ATTRIBUTES) ---"
 CLASS PrivateAttrTest
-  DEF init(SELF)
-    PRIVATE SELF.secret_val = 999
-    PUBLIC SELF.public_val = 1
+  DEF PrivateAttrTest()
+    PRIVATE THIS.secret_val = 999
+    PUBLIC THIS.public_val = 1
   ENDDEF
 
-  PUBLIC DEF get_secret(SELF)
-    RETURN SELF.secret_val # Allowed: Internal access
+  PUBLIC DEF get_secret()
+    RETURN THIS.secret_val # Allowed: Internal access
   ENDDEF
 ENDCLASS
 
 LET pa = NEW PrivateAttrTest()
-PRINT "Public Attr: " + STR(pa.public_val)     # Expected: 1
-PRINT "Internal Attr Access: " + STR(pa.get_secret()) # Expected: 999
+PRINTLN "Public Attr: " + STR(pa.public_val)     # Expected: 1
+PRINTLN "Internal Attr Access: " + STR(pa.get_secret()) # Expected: 999
 
-PRINT "Attempting External Attr Access (Should Fail)..."
+PRINTLN "Attempting External Attr Access (Should Fail)..."
 TRY
-  PRINT pa.secret_val
+  PRINTLN pa.secret_val
 CATCH error
-  PRINT "CAUGHT ERROR: " + STR(error) # Expected: Cannot access private member 'secret_val'
+  PRINTLN "CAUGHT ERROR: " + STR(error) # Expected: Cannot access private member 'secret_val'
 ENDTRY
 
 
-PRINT "\n--- TEST 4: PROTECTED ACCESS (INHERITANCE) ---"
+PRINTLN "\n--- TEST 4: PROTECTED ACCESS (INHERITANCE) ---"
 CLASS Parent
-  DEF init(SELF)
+  DEF Parent()
   ENDDEF
 
-  PROTECTED DEF family_secret(SELF)
+  PROTECTED DEF family_secret()
     RETURN "Family Only"
   ENDDEF
 ENDCLASS
 
 CLASS Child INHERITS Parent
-  DEF init(SELF)
+  DEF Child()
   ENDDEF
 
-  PUBLIC DEF reveal(SELF)
-    RETURN SELF.family_secret() # Allowed: Subclass access
+  PUBLIC DEF reveal()
+    RETURN THIS.family_secret() # Allowed: Subclass access
   ENDDEF
 ENDCLASS
 
 LET c = NEW Child()
-PRINT "Subclass Access: " + c.reveal() # Expected: Family Only
+PRINTLN "Subclass Access: " + c.reveal() # Expected: Family Only
 
-PRINT "Attempting External Protected Access (Should Fail)..."
+PRINTLN "Attempting External Protected Access (Should Fail)..."
 TRY
-  PRINT c.family_secret()
+  PRINTLN c.family_secret()
 CATCH error
-  PRINT "CAUGHT ERROR: " + STR(error) # Expected: Cannot access protected member 'family_secret'
+  PRINTLN "CAUGHT ERROR: " + STR(error) # Expected: Cannot access protected member 'family_secret'
 ENDTRY
 
-PRINT "\n--- TEST COMPLETE ---"
+PRINTLN "\n--- TEST COMPLETE ---"

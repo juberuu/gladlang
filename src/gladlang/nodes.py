@@ -114,10 +114,13 @@ class ChainedCompNode:
 
 
 class PrintNode:
-    def __init__(self, node_to_print):
-        self.node_to_print = node_to_print
-        self.pos_start = node_to_print.pos_start
-        self.pos_end = node_to_print.pos_end
+    def __init__(self, print_nodes, should_newline=True):
+        self.print_nodes = (
+            print_nodes if isinstance(print_nodes, list) else [print_nodes]
+        )
+        self.should_newline = should_newline
+        self.pos_start = self.print_nodes[0].pos_start
+        self.pos_end = self.print_nodes[-1].pos_end
 
 
 class FunDefNode:
@@ -174,10 +177,10 @@ class ReturnNode:
 
 class ClassNode:
     def __init__(
-        self, class_name_tok, superclass_node, method_nodes, static_field_nodes
+        self, class_name_tok, superclass_nodes, method_nodes, static_field_nodes
     ):
         self.class_name_tok = class_name_tok
-        self.superclass_node = superclass_node
+        self.superclass_nodes = superclass_nodes
         self.method_nodes = method_nodes
         self.static_field_nodes = static_field_nodes
 

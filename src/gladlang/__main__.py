@@ -3,6 +3,11 @@ import re
 import io
 from pathlib import Path
 
+try:
+    import resource
+except ImportError:
+    resource = None
+
 if hasattr(sys, "set_int_max_str_digits"):
     sys.set_int_max_str_digits(50000)
 
@@ -10,7 +15,7 @@ if hasattr(sys, "setrecursionlimit"):
     sys.setrecursionlimit(2000)
 
 from .runtime import SymbolTable, Context
-from .values import Number, BuiltInFunction, List
+from .values import Number, BuiltInFunction, List, Type
 from .lexer import Lexer
 from .parser import Parser
 from .interpreter import Interpreter
@@ -19,16 +24,22 @@ from .interpreter import Interpreter
 def get_fresh_global_scope():
     scope = SymbolTable()
 
-    scope.set("NULL", Number.null)
-    scope.set("FALSE", Number.false)
-    scope.set("TRUE", Number.true)
+    scope.set("NULL", Number(0))
+    scope.set("FALSE", Number(0))
+    scope.set("TRUE", Number(1))
+
+    scope.set("Number", Type("Number"))
+    scope.set("String", Type("String"))
+    scope.set("List", Type("List"))
+    scope.set("Dict", Type("Dict"))
+    scope.set("Function", Type("Function"))
+    scope.set("Object", Type("Object"))
 
     scope.set("INPUT", BuiltInFunction("INPUT"))
     scope.set("STR", BuiltInFunction("STR"))
     scope.set("INT", BuiltInFunction("INT"))
     scope.set("FLOAT", BuiltInFunction("FLOAT"))
     scope.set("BOOL", BuiltInFunction("BOOL"))
-    scope.set("PRINT", BuiltInFunction("PRINT"))
 
     scope.set("LEN", BuiltInFunction("LEN"))
     scope.set("LENGTH", BuiltInFunction("LEN"))
@@ -36,7 +47,17 @@ def get_fresh_global_scope():
     return scope
 
 
-def run(fn, text, context=None):
+def set_memory_limit(max_mb):
+    if resource:
+        try:
+            soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+            limit_bytes = max_mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, hard))
+        except Exception as e:
+            sys.stderr.write(f"Warning: Could not set memory limit: {e}\n")
+
+
+def run(fn, text, context=None, instruction_limit=None):
     lexer = Lexer(fn, text)
     tokens, error = lexer.make_tokens()
     if error:
@@ -47,7 +68,7 @@ def run(fn, text, context=None):
     if ast.error:
         return None, ast.error
 
-    interpreter = Interpreter()
+    interpreter = Interpreter(instruction_limit=instruction_limit)
 
     if context is None:
         context = Context("<program>")
@@ -120,7 +141,12 @@ def is_complete(text):
 
 
 def main():
-    GLADLANG_VERSION = "0.1.7"
+    MAX_MEMORY_MB = 512
+    MAX_INSTRUCTIONS = 100000
+
+    set_memory_limit(MAX_MEMORY_MB)
+
+    GLADLANG_VERSION = "0.1.8"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename] [args...]
 
@@ -166,7 +192,7 @@ Commands:
                         full_text = ""
                         continue
 
-                    result, error = run("<stdin>", full_text, repl_context)
+                    result, error = run("<stdin>", full_text, repl_context, instruction_limit=MAX_INSTRUCTIONS)
 
                     if error:
                         sys.stdout.write(error.as_string() + "\n")
@@ -192,6 +218,9 @@ Commands:
                 sys.stdout.write("\nKeyboardInterrupt\n")
                 full_text = ""
                 continue
+            except MemoryError:
+                sys.stdout.write("System Error: Memory Limit Exceeded\n")
+                full_text = ""
             except EOFError:
                 sys.stdout.write("\nExiting.\n")
                 break
@@ -219,11 +248,13 @@ Commands:
 
                 text = Path(filename).read_text(encoding="utf-8")
 
-                result, error = run(filename, text)
+                result, error = run(filename, text, instruction_limit=MAX_INSTRUCTIONS)
 
                 if error:
                     sys.stderr.write(error.as_string() + "\n")
 
+            except MemoryError:
+                sys.stderr.write("System Error: Memory Limit Exceeded\n")
             except FileNotFoundError:
                 sys.stderr.write(f"File not found: '{filename}'\n")
             except Exception as e:

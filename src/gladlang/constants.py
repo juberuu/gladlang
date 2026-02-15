@@ -55,6 +55,7 @@ KEYWORDS = [
     "LET",
     "FINAL",
     "PRINT",
+    "PRINTLN",
     "IF",
     "THEN",
     "ELSE",
@@ -62,6 +63,7 @@ KEYWORDS = [
     "AND",
     "OR",
     "NOT",
+    "IS",
     "DEF",
     "ENDDEF",
     "RETURN",
@@ -69,7 +71,7 @@ KEYWORDS = [
     "ENDCLASS",
     "INHERITS",
     "NEW",
-    "SELF",
+    "THIS",
     "STATIC",
     "WHILE",
     "ENDWHILE",
@@ -90,9 +92,8 @@ KEYWORDS = [
     "PUBLIC",
     "PRIVATE",
     "PROTECTED",
-    "is",
-    "and",
-    "or",
+    "INSTANCEOF",
+    "SUPER",
 ]
 
 DIGITS = "0123456789"

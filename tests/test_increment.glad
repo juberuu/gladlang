@@ -1,35 +1,190 @@
-PRINT "--- Increment/Decrement Tester ---"
+PRINTLN "--- Increment/Decrement Tester ---"
 
 LET i = 5
-PRINT "Initial i = " + i
+PRINTLN "Initial i = " + i
 
-PRINT "--- Post-Increment ---"
-PRINT "LET j = i++"
+PRINTLN "--- Post-Increment ---"
+PRINTLN "LET j = i++"
 LET j = i++
-PRINT "j = " + j + " (should be 5)"
-PRINT "i = " + i + " (should be 6)"
+PRINTLN "j = " + j + " (should be 5)"
+PRINTLN "i = " + i + " (should be 6)"
 
-PRINT "--- Pre-Increment ---"
-PRINT "LET k = ++i"
+PRINTLN "--- Pre-Increment ---"
+PRINTLN "LET k = ++i"
 LET k = ++i
-PRINT "k = " + k + " (should be 7)"
-PRINT "i = " + i + " (should be 7)"
+PRINTLN "k = " + k + " (should be 7)"
+PRINTLN "i = " + i + " (should be 7)"
 
-PRINT "--- Post-Decrement ---"
-PRINT "LET m = i--"
+PRINTLN "--- Post-Decrement ---"
+PRINTLN "LET m = i--"
 LET m = i--
-PRINT "m = " + m + " (should be 7)"
-PRINT "i = " + i + " (should be 6)"
+PRINTLN "m = " + m + " (should be 7)"
+PRINTLN "i = " + i + " (should be 6)"
 
-PRINT "--- Pre-Decrement ---"
-PRINT "LET n = --i"
+PRINTLN "--- Pre-Decrement ---"
+PRINTLN "LET n = --i"
 LET n = --i
-PRINT "n = " + n + " (should be 5)"
-PRINT "i = " + i + " (should be 5)"
+PRINTLN "n = " + n + " (should be 5)"
+PRINTLN "i = " + i + " (should be 5)"
 
-PRINT "--- Test on Lists ---"
+PRINTLN "--- Test on Lists ---"
 LET my_list = [10, 20, 30]
-PRINT "my_list[1]++ = " + (my_list[1]++)
-PRINT "my_list[1] = " + my_list[1]
-PRINT "++my_list[1] = " + (++my_list[1])
-PRINT "my_list[1] = " + my_list[1]
+PRINTLN "my_list[1]++ = " + (my_list[1]++)
+PRINTLN "my_list[1] = " + my_list[1]
+PRINTLN "++my_list[1] = " + (++my_list[1])
+PRINTLN "my_list[1] = " + my_list[1]
+
+PRINTLN "--- COMPREHENSIVE INCREMENT/DECREMENT TEST ---"
+
+# ---------------------------------------------------------
+# SECTION 1: Basic Variables (Global Scope)
+# ---------------------------------------------------------
+PRINTLN "\n[Section 1] Basic Variables"
+LET a = 10
+
+PRINTLN "Initial a: " + a
+PRINTLN "Post-Increment (a++): " + (a++) + " (Expected: 10)"
+PRINTLN "Value after: " + a + " (Expected: 11)"
+
+PRINTLN "Pre-Increment (++a): " + (++a) + " (Expected: 12)"
+PRINTLN "Value after: " + a + " (Expected: 12)"
+
+PRINTLN "Post-Decrement (a--): " + (a--) + " (Expected: 12)"
+PRINTLN "Value after: " + a + " (Expected: 11)"
+
+PRINTLN "Pre-Decrement (--a): " + (--a) + " (Expected: 10)"
+PRINTLN "Value after: " + a + " (Expected: 10)"
+
+# ---------------------------------------------------------
+# SECTION 2: List Elements
+# ---------------------------------------------------------
+PRINTLN "\n[Section 2] List Elements"
+LET list = [100, 200]
+
+PRINTLN "Initial list[0]: " + list[0]
+PRINTLN "Post-Inc list[0]++: " + (list[0]++) + " (Expected: 100)"
+PRINTLN "Value after: " + list[0] + " (Expected: 101)"
+
+PRINTLN "Pre-Inc ++list[0]: " + (++list[0]) + " (Expected: 102)"
+PRINTLN "Value after: " + list[0] + " (Expected: 102)"
+
+# ---------------------------------------------------------
+# SECTION 3: Object Properties (Public & Private)
+# ---------------------------------------------------------
+PRINTLN "\n[Section 3] Object Properties (The Fix)"
+
+CLASS Counter
+    DEF Counter()
+        PUBLIC THIS.pub_val = 10
+        PRIVATE THIS.priv_val = 10
+    ENDDEF
+
+    PUBLIC DEF test_public()
+        PRINTLN "  [Public Test]"
+        PRINTLN "  Initial: " + THIS.pub_val
+        PRINTLN "  THIS.pub_val++: " + (THIS.pub_val++) + " (Expected: 10)"
+        PRINTLN "  After: " + THIS.pub_val + " (Expected: 11)"
+        PRINTLN "  ++THIS.pub_val: " + (++THIS.pub_val) + " (Expected: 12)"
+    ENDDEF
+
+    PUBLIC DEF test_private()
+        PRINTLN "  [Private Test - REQUIRED FIX]"
+        PRINTLN "  Initial: " + THIS.priv_val
+        
+        # If the fix works, this will print 10 and update to 11
+        # If failed, this throws "Runtime Error: 'priv_val' not defined"
+        PRINTLN "  THIS.priv_val++: " + (THIS.priv_val++) + " (Expected: 10)" 
+        PRINTLN "  After: " + THIS.priv_val + " (Expected: 11)"
+        
+        PRINTLN "  ++THIS.priv_val: " + (++THIS.priv_val) + " (Expected: 12)"
+        PRINTLN "  After: " + THIS.priv_val + " (Expected: 12)"
+        
+        PRINTLN "  THIS.priv_val--: " + (THIS.priv_val--) + " (Expected: 12)"
+        PRINTLN "  --THIS.priv_val: " + (--THIS.priv_val) + " (Expected: 10)"
+    ENDDEF
+ENDCLASS
+
+LET c = NEW Counter()
+c.test_public()
+PRINTLN ""
+c.test_private()
+
+PRINTLN "\n--- TEST: CONSTANT PROTECTION ---"
+FINAL PI = 3.14
+
+TRY
+  PI++
+  PRINTLN "ERROR: Should have failed to increment PI"
+CATCH error
+  PRINTLN "Success: Caught expected error on PI++ -> " + error
+ENDTRY
+
+PRINTLN "--- FINAL INCREMENT/DECREMENT ROBUSTNESS TEST ---"
+
+# ---------------------------------------------------------
+# 1. VERIFY STANDARD FUNCTIONALITY
+# ---------------------------------------------------------
+PRINTLN "\n[1] Standard Functionality"
+LET a = 10
+PRINTLN "Initial a: " + a
+PRINTLN "a++ (Post): " + (a++) + " -> a is now " + a
+PRINTLN "++a (Pre):  " + (++a) + " -> a is now " + a
+
+# ---------------------------------------------------------
+# 2. VERIFY PRIVATE MEMBER ACCESS (The Context Fix)
+# ---------------------------------------------------------
+PRINTLN "\n[2] Private Member Access"
+CLASS Secret
+    DEF Secret()
+        PRIVATE THIS.val = 5
+    ENDDEF
+    
+    PUBLIC DEF test()
+        PRINTLN "Private val: " + THIS.val
+        PRINTLN "++THIS.val:  " + (++THIS.val) + " (Should be 6)"
+    ENDDEF
+ENDCLASS
+
+LET s = NEW Secret()
+s.test()
+
+# ---------------------------------------------------------
+# 3. VERIFY CONSTANT PROTECTION (The Safety Fixes)
+# ---------------------------------------------------------
+PRINTLN "\n[3] Constant Protection Tests"
+#FINAL PI = 3.14159
+PRINTLN "Constant PI = " + PI
+
+PRINTLN "\n--- Test A: Post-Increment (PI++) ---"
+TRY
+    PI++
+    PRINTLN "FAIL: Interpreter allowed PI++"
+CATCH error
+    PRINTLN "SUCCESS: Caught expected error -> " + error
+ENDTRY
+
+PRINTLN "\n--- Test B: Pre-Increment (++PI) ---"
+TRY
+    ++PI
+    PRINTLN "FAIL: Interpreter allowed ++PI"
+CATCH error
+    PRINTLN "SUCCESS: Caught expected error -> " + error
+ENDTRY
+
+PRINTLN "\n--- Test C: Post-Decrement (PI--) ---"
+TRY
+    PI--
+    PRINTLN "FAIL: Interpreter allowed PI--"
+CATCH error
+    PRINTLN "SUCCESS: Caught expected error -> " + error
+ENDTRY
+
+PRINTLN "\n--- Test D: Pre-Decrement (--PI) ---"
+TRY
+    --PI
+    PRINTLN "FAIL: Interpreter allowed --PI"
+CATCH error
+    PRINTLN "SUCCESS: Caught expected error -> " + error
+ENDTRY
+
+PRINTLN "\n--- ALL TESTS PASSED ---"

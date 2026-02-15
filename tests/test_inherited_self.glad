@@ -1,17 +1,17 @@
-PRINT "--- Inherited SELF Tester ---"
+PRINTLN "--- Inherited THIS Tester ---"
 
 CLASS Pet
-  DEF init(SELF, name)
-    SELF.name = name
+  DEF Pet(name)
+    THIS.name = name
   ENDDEF
   
-  # This method uses SELF
-  DEF get_name(SELF)
-    RETURN SELF.name
+  # This method uses THIS
+  DEF get_name()
+    RETURN THIS.name
   ENDDEF
   
-  DEF speak(SELF)
-    PRINT SELF.name + " says ???"
+  DEF speak()
+    PRINTLN THIS.name + " says ???"
   ENDDEF
 ENDCLASS
 
@@ -19,19 +19,19 @@ CLASS Dog INHERITS Pet
   # No init, so it uses Pet's init
   
   # Override speak
-  DEF speak(SELF)
-    PRINT SELF.name + " says Woof!"
+  DEF speak()
+    PRINTLN THIS.name + " says Woof!"
   ENDDEF
   
   # This class does NOT override get_name
 ENDCLASS
 
-PRINT "Creating dog..."
+PRINTLN "Creating dog..."
 LET d = NEW Dog("Fido")
 
-PRINT "Calling d.speak()..."
+PRINTLN "Calling d.speak()..."
 d.speak() # This uses the Dog's overridden method
 
-PRINT "Calling d.get_name()..."
+PRINTLN "Calling d.get_name()..."
 LET dog_name = d.get_name() # This uses the Pet's inherited method
-PRINT "Result from get_name (should be Fido): " + dog_name
+PRINTLN "Result from get_name (should be Fido): " + dog_name

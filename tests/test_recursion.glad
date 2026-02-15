@@ -1,4 +1,4 @@
-PRINT "--- Recursion Tester (Fibonacci) ---"
+PRINTLN "--- Recursion Tester (Fibonacci) ---"
 
 DEF fib(n)
   IF n <= 1 THEN
@@ -9,6 +9,6 @@ DEF fib(n)
 ENDDEF
 
 LET num = 7 # Change this number to test (keep it small, < 20)
-PRINT "Calculating fib(" + num + ")..."
+PRINTLN "Calculating fib(" + num + ")..."
 LET result = fib(num)
-PRINT "Result: " + result
+PRINTLN "Result: " + result

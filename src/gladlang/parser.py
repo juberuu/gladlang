@@ -121,14 +121,39 @@ class Parser:
                 )
             return res.success(VisibilityStmtNode(visibility, expr))
 
-        if self.current_tok.matches(GL_KEYWORD, "PRINT"):
+        if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
+            "PRINT",
+            "PRINTLN",
+        ):
+            is_println = self.current_tok.value == "PRINTLN"
             res.register_advancement()
             self.advance()
 
-            expr = res.register(self.expr())
+            exprs = []
+            first_expr = res.register(self.expr())
             if res.error:
                 return res
-            return res.success(PrintNode(expr))
+            exprs.append(first_expr)
+
+            while True:
+                if self.current_tok.type == GL_COMMA:
+                    res.register_advancement()
+                    self.advance()
+                    exprs.append(res.register(self.expr()))
+                    if res.error:
+                        return res
+                elif self.current_tok.pos_start.ln == exprs[
+                    -1
+                ].pos_end.ln and self.current_tok.type not in (GL_EOF, GL_KEYWORD):
+
+                    next_expr = res.register(self.expr())
+                    if res.error:
+                        return res
+                    exprs.append(next_expr)
+                else:
+                    break
+
+            return res.success(PrintNode(exprs, should_newline=is_println))
 
         if self.current_tok.matches(GL_KEYWORD, "IF"):
             res.register_advancement()
@@ -586,12 +611,7 @@ class Parser:
     def logic_expr(self):
         return self.bin_op(
             self.comp_expr,
-            (
-                (GL_KEYWORD, "AND"),
-                (GL_KEYWORD, "OR"),
-                (GL_KEYWORD, "and"),
-                (GL_KEYWORD, "or"),
-            ),
+            ((GL_KEYWORD, "AND"), (GL_KEYWORD, "OR")),
         )
 
     def ternary_expr(self):
@@ -733,7 +753,7 @@ class Parser:
 
         while self.current_tok.type in (GL_EE, GL_NE, GL_LT, GL_GT, GL_LTE, GL_GTE) or (
             self.current_tok.type == GL_KEYWORD
-            and self.current_tok.value in ("is", "IS")
+            and self.current_tok.value in ("IS", "INSTANCEOF")
         ):
             op_tok = self.current_tok
             res.register_advancement()
@@ -949,7 +969,12 @@ class Parser:
             self.advance()
             return res.success(VarAccessNode(tok))
 
-        elif tok.matches(GL_KEYWORD, "SELF"):
+        elif tok.matches(GL_KEYWORD, "THIS"):
+            res.register_advancement()
+            self.advance()
+            return res.success(VarAccessNode(tok))
+
+        elif tok.matches(GL_KEYWORD, "SUPER"):
             res.register_advancement()
             self.advance()
             return res.success(VarAccessNode(tok))
@@ -1158,7 +1183,7 @@ class Parser:
         if self.current_tok.type != GL_RPAREN:
             if self.current_tok.type == GL_IDENTIFIER:
                 arg_name_toks.append(self.current_tok)
-            elif self.current_tok.matches(GL_KEYWORD, "SELF"):
+            elif self.current_tok.matches(GL_KEYWORD, "THIS"):
                 arg_name_toks.append(self.current_tok)
             else:
                 return res.failure(
@@ -1178,7 +1203,7 @@ class Parser:
 
                 if self.current_tok.type == GL_IDENTIFIER:
                     arg_name_toks.append(self.current_tok)
-                elif self.current_tok.matches(GL_KEYWORD, "SELF"):
+                elif self.current_tok.matches(GL_KEYWORD, "THIS"):
                     arg_name_toks.append(self.current_tok)
                 else:
                     return res.failure(
@@ -1251,10 +1276,11 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        superclass_node = None
+        superclass_nodes = []
         if self.current_tok.matches(GL_KEYWORD, "INHERITS"):
             res.register_advancement()
             self.advance()
+
             if self.current_tok.type != GL_IDENTIFIER:
                 return res.failure(
                     InvalidSyntaxError(
@@ -1263,9 +1289,27 @@ class Parser:
                         "Expected superclass name",
                     )
                 )
-            superclass_node = VarAccessNode(self.current_tok)
+
+            superclass_nodes.append(VarAccessNode(self.current_tok))
             res.register_advancement()
             self.advance()
+
+            while self.current_tok.type == GL_COMMA:
+                res.register_advancement()
+                self.advance()
+
+                if self.current_tok.type != GL_IDENTIFIER:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected superclass name",
+                        )
+                    )
+
+                superclass_nodes.append(VarAccessNode(self.current_tok))
+                res.register_advancement()
+                self.advance()
 
         method_nodes = []
         static_field_nodes = []
@@ -1309,12 +1353,29 @@ class Parser:
                 method_node.visibility = visibility
                 method_node.is_static = is_static
 
-                if method_node.var_name_tok.value == "init" and is_static:
+                is_constructor = method_node.var_name_tok.value == class_name_tok.value
+
+                if not is_static:
+                    if (
+                        len(method_node.arg_name_toks) == 0
+                        or method_node.arg_name_toks[0].value != "THIS"
+                    ):
+                        method_node.arg_name_toks.insert(
+                            0,
+                            Token(
+                                GL_KEYWORD,
+                                "THIS",
+                                pos_start=method_node.pos_start,
+                                pos_end=method_node.pos_start,
+                            ),
+                        )
+
+                if is_constructor and is_static:
                     return res.failure(
                         InvalidSyntaxError(
                             method_node.pos_start,
                             method_node.pos_end,
-                            "Constructor 'init' cannot be STATIC",
+                            f"Constructor '{class_name_tok.value}' cannot be STATIC",
                         )
                     )
 
@@ -1366,7 +1427,9 @@ class Parser:
         self.advance()
 
         return res.success(
-            ClassNode(class_name_tok, superclass_node, method_nodes, static_field_nodes)
+            ClassNode(
+                class_name_tok, superclass_nodes, method_nodes, static_field_nodes
+            )
         )
 
     def new_instance(self):

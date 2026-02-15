@@ -1,0 +1,86 @@
+PRINTLN "--- COMPREHENSIVE NUMBER BASE TEST ---"
+
+# ---------------------------------------------------------
+# 1. HEXADECIMAL TESTS (Prefix: 0x or 0X)
+# ---------------------------------------------------------
+PRINTLN "\n[1] Hexadecimal Tests"
+
+# Standard lower-case
+LET hex_1 = 0xff
+PRINTLN "0xff (Expected: 255)   -> " + hex_1
+
+# Mixed case digits
+LET hex_2 = 0x1A
+PRINTLN "0x1A (Expected: 26)    -> " + hex_2
+
+# Upper-case prefix
+LET hex_3 = 0X10
+PRINTLN "0X10 (Expected: 16)    -> " + hex_3
+
+# Larger number
+LET hex_4 = 0xDEADBEEF
+PRINTLN "0xDEADBEEF (Expected: 3735928559) -> " + hex_4
+
+# Zero
+LET hex_zero = 0x0
+PRINTLN "0x0 (Expected: 0)      -> " + hex_zero
+
+
+# ---------------------------------------------------------
+# 2. OCTAL TESTS (Prefix: 0o or 0O)
+# ---------------------------------------------------------
+PRINTLN "\n[2] Octal Tests"
+
+# Standard
+LET oct_1 = 0o77
+PRINTLN "0o77 (Expected: 63)    -> " + oct_1
+
+# Upper-case prefix
+LET oct_2 = 0O10
+PRINTLN "0O10 (Expected: 8)     -> " + oct_2
+
+# Zero
+LET oct_zero = 0o0
+PRINTLN "0o0 (Expected: 0)      -> " + oct_zero
+
+# Larger octal
+LET oct_3 = 0o1234567
+PRINTLN "0o1234567 (Expected: 342391) -> " + oct_3
+
+
+# ---------------------------------------------------------
+# 3. BINARY TESTS (Prefix: 0b or 0B)
+# ---------------------------------------------------------
+PRINTLN "\n[3] Binary Tests"
+
+# Standard
+LET bin_1 = 0b101
+PRINTLN "0b101 (Expected: 5)    -> " + bin_1
+
+# Upper-case prefix
+LET bin_2 = 0B1111
+PRINTLN "0B1111 (Expected: 15)  -> " + bin_2
+
+# Zero
+LET bin_zero = 0b0
+PRINTLN "0b0 (Expected: 0)      -> " + bin_zero
+
+# Eight bits
+LET bin_3 = 0b11111111
+PRINTLN "0b11111111 (Expected: 255) -> " + bin_3
+
+
+# ---------------------------------------------------------
+# 4. MIXED EXPRESSION TESTS
+# ---------------------------------------------------------
+PRINTLN "\n[4] Mixed Expressions"
+
+LET result = 0x10 + 0b10 - 0o10
+# 16 + 2 - 8 = 10
+PRINTLN "0x10 + 0b10 - 0o10 (Expected: 10) -> " + result
+
+LET bitwise = 0b1100 | 0b0011
+# 12 | 3 = 15
+PRINTLN "0b1100 | 0b0011 (Expected: 15)    -> " + bitwise
+
+PRINTLN "\n--- ALL TESTS COMPLETE ---"

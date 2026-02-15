@@ -1,28 +1,28 @@
-PRINT "--- Escape Character Tester ---"
+PRINTLN "--- Escape Character Tester ---"
 
 LET newline = "Hello\nWorld"
-PRINT newline
+PRINTLN newline
 
 LET tabbed = "Column 1\tColumn 2"
-PRINT tabbed
+PRINTLN tabbed
 
 LET quoted = "She said, \"This language is cool!\""
-PRINT quoted
+PRINTLN quoted
 
 LET path = "C:\\Users\\Glad\\My Lang"
-PRINT path
+PRINTLN path
 
 LET combined = "Line 1\n\tLine 2 (indented)\nLine 3"
-PRINT combined
+PRINTLN combined
 
-PRINT "\n-- String Iteration --"
+PRINTLN "\n-- String Iteration --"
 LET text = "Hi"
 FOR char IN text
-    PRINT "Char: " + char
+    PRINTLN "Char: " + char
 ENDFOR
 # Expected: H, i
 
-PRINT "\n-- String Comprehension --"
+PRINTLN "\n-- String Comprehension --"
 LET chars = [c FOR c IN "abc"]
-PRINT "Chars: " + STR(chars)
+PRINTLN "Chars: " + STR(chars)
 # Expected: ['a', 'b', 'c']

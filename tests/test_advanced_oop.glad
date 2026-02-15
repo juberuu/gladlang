@@ -1,4 +1,4 @@
-PRINT "--- Advanced OOP & Closure Test ---"
+PRINTLN "--- Advanced OOP & Closure Test ---"
 
 # This function creates a 'greeter' function
 DEF create_greeter(greeting)
@@ -8,33 +8,33 @@ DEF create_greeter(greeting)
   RETURN greeter_func
 ENDDEF
 
-PRINT "Creating greeter functions..."
+PRINTLN "Creating greeter functions..."
 LET say_hello = create_greeter("Hello")
 LET say_hi = create_greeter("Hi")
 
 # Create a class that holds a function
 CLASS Person
-  DEF init(SELF, name, greeter_func)
-    SELF.name = name
-    SELF.greeter = greeter_func # Store the function as an attribute
+  DEF Person(name, greeter_func)
+    THIS.name = name
+    THIS.greeter = greeter_func # Store the function as an attribute
   ENDDEF
   
-  DEF greet(SELF)
+  DEF greet()
     # Call the stored function, passing in our name
-    LET message = SELF.greeter(SELF.name)
-    PRINT message
+    LET message = THIS.greeter(THIS.name)
+    PRINTLN message
   ENDDEF
 ENDCLASS
 
-PRINT "--- Creating people ---"
+PRINTLN "--- Creating people ---"
 LET alex = NEW Person("Alex", say_hello)
 LET bob = NEW Person("Bob", say_hi)
 
-PRINT "--- Testing method calls ---"
+PRINTLN "--- Testing method calls ---"
 alex.greet() # Should print "Hello, Alex!"
 bob.greet()  # Should print "Hi, Bob!"
 
 # --- Re-assigning an attribute ---
-PRINT "--- Re-assigning attribute ---"
+PRINTLN "--- Re-assigning attribute ---"
 alex.greeter = say_hi # Change Alex's greeter function
 alex.greet() # Should now print "Hi, Alex!"

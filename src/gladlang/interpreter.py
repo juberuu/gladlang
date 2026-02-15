@@ -1,16 +1,39 @@
 import sys
 from .runtime import RTResult, Context, SymbolTable
-from .values import Number, String, Function, Class, List, Dict, FunctionGroup
+from .values import (
+    Number,
+    String,
+    Function,
+    Class,
+    List,
+    Dict,
+    FunctionGroup,
+    Super,
+    Instance,
+)
 from .nodes import *
 from .errors import RTError
 from .constants import *
 
 
 class Interpreter:
-    def __init__(self):
+    def __init__(self, instruction_limit=None):
         self.dispatch_cache = {}
+        self.instruction_limit = instruction_limit
 
     def visit(self, node, context):
+        if self.instruction_limit is not None:
+            self.instruction_limit -= 1
+            if self.instruction_limit <= 0:
+                return RTResult().failure(
+                    RTError(
+                        node.pos_start,
+                        node.pos_end,
+                        "Runtime Error: Instruction budget exceeded",
+                        context,
+                    )
+                )
+
         node_type = type(node)
 
         method = self.dispatch_cache.get(node_type)
@@ -283,9 +306,40 @@ class Interpreter:
     def visit_VarAccessNode(self, node, context):
         res = RTResult()
         var_name = node.var_name_tok.value
+
+        if var_name == "SUPER":
+            instance = context.symbol_table.get("THIS")
+            if not instance or not isinstance(instance, Instance):
+                return res.failure(
+                    RTError(
+                        node.pos_start,
+                        node.pos_end,
+                        "'SUPER' can only be used inside an instance method",
+                        context,
+                    )
+                )
+
+            current_class = context.active_class
+            if not current_class:
+                return res.failure(
+                    RTError(
+                        node.pos_start,
+                        node.pos_end,
+                        "'SUPER' cannot be used outside of a class context",
+                        context,
+                    )
+                )
+
+            super_val = (
+                Super(instance, current_class)
+                .set_context(context)
+                .set_pos(node.pos_start, node.pos_end)
+            )
+            return res.success(super_val)
+
         value = context.symbol_table.get(var_name)
 
-        if not value:
+        if value is None:
             return res.failure(
                 RTError(
                     node.pos_start,
@@ -294,8 +348,6 @@ class Interpreter:
                     context,
                 )
             )
-
-        value = value.set_pos(node.pos_start, node.pos_end)
 
         return res.success(value)
 
@@ -328,11 +380,22 @@ class Interpreter:
 
     def visit_PrintNode(self, node, context):
         res = RTResult()
-        value = res.register(self.visit(node.node_to_print, context))
-        if res.error:
-            return res
 
-        sys.stdout.write(str(value) + "\n")
+        output_strings = []
+        for print_node in node.print_nodes:
+            value = res.register(self.visit(print_node, context))
+            if res.error:
+                return res
+            output_strings.append(str(value))
+
+        text = " ".join(output_strings)
+        if node.should_newline:
+            text += "\n"
+
+        sys.stdout.write(text)
+
+        if not node.should_newline:
+            sys.stdout.flush()
 
         return res.success(Number.null)
 
@@ -369,15 +432,20 @@ class Interpreter:
     def unpack_and_set(self, var_toks, element, context, res):
         if len(var_toks) == 1:
             var_name = var_toks[0].value
-            if var_name in context.symbol_table.finals:
-                return res.failure(
-                    RTError(
-                        var_toks[0].pos_start,
-                        var_toks[0].pos_end,
-                        f"Cannot use constant '{var_name}' as loop variable",
-                        context,
+
+            curr_table = context.symbol_table
+            while curr_table:
+                if var_name in curr_table.finals:
+                    return res.failure(
+                        RTError(
+                            var_toks[0].pos_start,
+                            var_toks[0].pos_end,
+                            f"Cannot use constant '{var_name}' as loop variable",
+                            context,
+                        )
                     )
-                )
+                curr_table = curr_table.parent
+
             context.symbol_table.set(var_name, element)
             return True
 
@@ -403,15 +471,20 @@ class Interpreter:
 
         for i, tok in enumerate(var_toks):
             var_name = tok.value
-            if var_name in context.symbol_table.finals:
-                return res.failure(
-                    RTError(
-                        tok.pos_start,
-                        tok.pos_end,
-                        f"Cannot use constant '{var_name}' as loop variable",
-                        context,
+
+            curr_table = context.symbol_table
+            while curr_table:
+                if var_name in curr_table.finals:
+                    return res.failure(
+                        RTError(
+                            tok.pos_start,
+                            tok.pos_end,
+                            f"Cannot use constant '{var_name}' as loop variable",
+                            context,
+                        )
                     )
-                )
+                curr_table = curr_table.parent
+
             context.symbol_table.set(var_name, element.elements[i])
 
         return True
@@ -649,49 +722,44 @@ class Interpreter:
 
         class_name = node.class_name_tok.value
 
-        superclass = None
-        if node.superclass_node:
-            superclass = res.register(self.visit(node.superclass_node, context))
-            if res.error:
-                return res
+        superclasses = []
+        if node.superclass_nodes:
+            for super_node in node.superclass_nodes:
+                superclass = res.register(self.visit(super_node, context))
+                if res.error:
+                    return res
 
-            if not isinstance(superclass, Class):
-                return res.failure(
-                    RTError(
-                        node.superclass_node.pos_start,
-                        node.superclass_node.pos_end,
-                        "A class can only inherit from another class",
-                        context,
-                    )
-                )
-
-            if superclass.name == class_name:
-                return res.failure(
-                    RTError(
-                        node.superclass_node.pos_start,
-                        node.superclass_node.pos_end,
-                        f"Class '{class_name}' cannot inherit from itself",
-                        context,
-                    )
-                )
-
-            curr = superclass
-            while curr:
-                if curr.name == class_name:
+                if not isinstance(superclass, Class):
                     return res.failure(
                         RTError(
-                            node.superclass_node.pos_start,
-                            node.superclass_node.pos_end,
-                            f"Circular inheritance detected: '{class_name}' cannot inherit from itself (indirectly)",
+                            super_node.pos_start,
+                            super_node.pos_end,
+                            "A class can only inherit from another class",
                             context,
                         )
                     )
-                curr = curr.superclass
+
+                if superclass.name == class_name:
+                    return res.failure(
+                        RTError(
+                            super_node.pos_start,
+                            super_node.pos_end,
+                            f"Class '{class_name}' cannot inherit from itself",
+                            context,
+                        )
+                    )
+
+                superclasses.append(superclass)
 
         static_table = SymbolTable(parent=context.symbol_table)
 
-        class_value = Class(class_name, superclass, {}, static_table)
+        class_value = Class(class_name, superclasses, {}, static_table)
         class_value.set_context(context).set_pos(node.pos_start, node.pos_end)
+
+        mro, error = self.compute_mro(class_value)
+        if error:
+            return res.failure(RTError(node.pos_start, node.pos_end, error, context))
+        class_value.mro = mro
 
         class_ctx = Context(f"<class {class_name}>", context, node.pos_start)
         class_ctx.symbol_table = static_table
@@ -729,34 +797,71 @@ class Interpreter:
             else:
                 methods[method_name] = method_value
 
-            if superclass:
-                curr = superclass
-                parent_method = None
-                while curr:
-                    if method_name in curr.methods:
-                        parent_method = curr.methods[method_name]
-                        break
-                    curr = curr.superclass
+            parent_method = None
+            for ancestor in class_value.mro:
+                if ancestor == class_value:
+                    continue
+                if method_name in ancestor.methods:
+                    parent_method = ancestor.methods[method_name]
+                    break
 
-                if parent_method:
-                    vis_levels = {"PUBLIC": 3, "PROTECTED": 2, "PRIVATE": 1}
-                    parent_vis_score = vis_levels.get(parent_method.visibility, 3)
-                    child_vis_score = vis_levels.get(method_value.visibility, 3)
+            if parent_method:
+                vis_levels = {"PUBLIC": 3, "PROTECTED": 2, "PRIVATE": 1}
+                parent_vis_score = vis_levels.get(parent_method.visibility, 3)
+                child_vis_score = vis_levels.get(method_value.visibility, 3)
 
-                    if child_vis_score < parent_vis_score:
-                        return res.failure(
-                            RTError(
-                                method_node.pos_start,
-                                method_node.pos_end,
-                                f"Method '{method_name}' cannot be more restrictive than parent method (LSP Violation)",
-                                context,
-                            )
+                if child_vis_score < parent_vis_score:
+                    return res.failure(
+                        RTError(
+                            method_node.pos_start,
+                            method_node.pos_end,
+                            f"Method '{method_name}' cannot be more restrictive than parent method (LSP Violation)",
+                            context,
                         )
+                    )
 
         class_value.methods = methods
 
         context.symbol_table.set(class_name, class_value)
         return res.success(class_value)
+
+    def compute_mro(self, class_val):
+        merge_list = [[class_val]]
+
+        for parent in class_val.superclasses:
+            merge_list.append(parent.mro[:])
+
+        merge_list.append(class_val.superclasses[:])
+
+        mro = []
+
+        while True:
+            merge_list = [x for x in merge_list if x]
+            if not merge_list:
+                break
+
+            head = None
+            for lst in merge_list:
+                candidate = lst[0]
+                is_valid = True
+                for other_lst in merge_list:
+                    if candidate in other_lst[1:]:
+                        is_valid = False
+                        break
+                if is_valid:
+                    head = candidate
+                    break
+
+            if not head:
+                return None, "Inconsistent inheritance hierarchy (Cycle or bad MRO)"
+
+            mro.append(head)
+
+            for lst in merge_list:
+                if lst and lst[0] == head:
+                    lst.pop(0)
+
+        return mro, None
 
     def visit_VisibilityStmtNode(self, node, context):
         res = RTResult()
@@ -901,7 +1006,7 @@ class Interpreter:
         if error:
             return res.failure(error)
 
-        return res.success(element.copy().set_pos(node.pos_start, node.pos_end))
+        return res.success(element.set_pos(node.pos_start, node.pos_end))
 
     def visit_ListSetNode(self, node, context):
         res = RTResult()
@@ -930,9 +1035,7 @@ class Interpreter:
         if res.error:
             return res
 
-        if node.op_tok.matches(GL_KEYWORD, "AND") or node.op_tok.matches(
-            GL_KEYWORD, "and"
-        ):
+        if node.op_tok.matches(GL_KEYWORD, "AND"):
             if not left.is_true():
                 return res.success(Number.false)
 
@@ -944,9 +1047,7 @@ class Interpreter:
                 return res.failure(error)
             return res.success(result.set_pos(node.pos_start, node.pos_end))
 
-        elif node.op_tok.matches(GL_KEYWORD, "OR") or node.op_tok.matches(
-            GL_KEYWORD, "or"
-        ):
+        elif node.op_tok.matches(GL_KEYWORD, "OR"):
             if left.is_true():
                 return res.success(Number.true)
 
@@ -988,10 +1089,10 @@ class Interpreter:
             result, error = left.get_comparison_lte(right)
         elif node.op_tok.type == GL_GTE:
             result, error = left.get_comparison_gte(right)
-        elif node.op_tok.matches(GL_KEYWORD, "IS") or node.op_tok.matches(
-            GL_KEYWORD, "is"
-        ):
+        elif node.op_tok.matches(GL_KEYWORD, "IS"):
             result, error = left.get_comparison_is(right)
+        elif node.op_tok.matches(GL_KEYWORD, "INSTANCEOF"):
+            result, error = left.get_comparison_instanceof(right)
         elif node.op_tok.type == GL_BIT_AND:
             result, error = left.bitted_and_by(right)
         elif node.op_tok.type == GL_BIT_OR:
@@ -1051,7 +1152,7 @@ class Interpreter:
                 result, error = left_val.get_comparison_lte(right_val)
             elif op_tok.type == GL_GTE:
                 result, error = left_val.get_comparison_gte(right_val)
-            elif op_tok.matches(GL_KEYWORD, "IS") or op_tok.matches(GL_KEYWORD, "is"):
+            elif op_tok.matches(GL_KEYWORD, "IS"):
                 result, error = left_val.get_comparison_is(right_val)
 
             if error:
@@ -1072,6 +1173,17 @@ class Interpreter:
 
             if isinstance(target_node, VarAccessNode):
                 var_name = target_node.var_name_tok.value
+
+                if var_name in context.symbol_table.finals:
+                    return res.failure(
+                        RTError(
+                            target_node.pos_start,
+                            target_node.pos_end,
+                            f"Cannot increment/decrement constant '{var_name}'",
+                            context,
+                        )
+                    )
+
                 value = context.symbol_table.get(var_name)
                 if not value:
                     return res.failure(
@@ -1087,7 +1199,7 @@ class Interpreter:
                 obj = res.register(self.visit(target_node.object_node, context))
                 if res.error:
                     return res
-                value, error = obj.get_attr(target_node.attr_name_tok)
+                value, error = obj.get_attr(target_node.attr_name_tok, context)
                 if error:
                     return res.failure(error)
 
@@ -1140,7 +1252,7 @@ class Interpreter:
                     )
 
             elif isinstance(target_node, GetAttrNode):
-                _, error = obj.set_attr(target_node.attr_name_tok, new_value)
+                _, error = obj.set_attr(target_node.attr_name_tok, new_value, context)
                 if error:
                     return res.failure(error)
 
@@ -1185,6 +1297,17 @@ class Interpreter:
 
         if isinstance(target_node, VarAccessNode):
             var_name = target_node.var_name_tok.value
+
+            if var_name in context.symbol_table.finals:
+                return res.failure(
+                    RTError(
+                        target_node.pos_start,
+                        target_node.pos_end,
+                        f"Cannot increment/decrement constant '{var_name}'",
+                        context,
+                    )
+                )
+
             old_value = context.symbol_table.get(var_name)
             if not old_value:
                 return res.failure(
@@ -1200,7 +1323,7 @@ class Interpreter:
             obj = res.register(self.visit(target_node.object_node, context))
             if res.error:
                 return res
-            old_value, error = obj.get_attr(target_node.attr_name_tok)
+            old_value, error = obj.get_attr(target_node.attr_name_tok, context)
             if error:
                 return res.failure(error)
 
@@ -1251,7 +1374,7 @@ class Interpreter:
                 )
 
         elif isinstance(target_node, GetAttrNode):
-            _, error = obj.set_attr(target_node.attr_name_tok, new_value)
+            _, error = obj.set_attr(target_node.attr_name_tok, new_value, context)
             if error:
                 return res.failure(error)
 

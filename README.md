@@ -31,7 +31,7 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Math Operations](#math-operations)
         - [Compound Assignments](#compound-assignments)
         - [Bitwise Operators](#bitwise-operators)
-        - [Comparisons & Logic](#comparisons--logic)
+        - [Comparisons, Logic & Type Checking](#comparisons-logic--type-checking)
         - [Conditional (Ternary) Operator](#conditional-ternary-operator)
         - [Increment / Decrement](#increment--decrement)
     - [4. Control Flow](#4-control-flow)
@@ -47,8 +47,9 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Function Overloading](#function-overloading)
     - [6. Object-Oriented Programming (OOP)](#6-object-oriented-programming-oop)
         - [Classes and Instantiation](#classes-and-instantiation)
-        - [The `SELF` Keyword](#the-self-keyword)
-        - [Inheritance](#inheritance)
+        - [The `THIS` Keyword](#the-this-keyword)
+        - [Inheritance & The SUPER Keyword](#inheritance--the-super-keyword)
+        - [Multiple Inheritance & MRO](#multiple-inheritance--mro)
         - [Method & Constructor Overloading](#method--constructor-overloading)
         - [Polymorphism](#polymorphism)
         - [Access Modifiers](#access-modifiers)
@@ -78,7 +79,7 @@ GladLang is an interpreter for a custom scripting language. It was built as a co
 
 GladLang supports a rich, modern feature set:
 
-  * **Data Types:** Numbers (int/float), Strings, Lists, Dictionaries, Booleans, and Null.
+  * **Data Types:** Numbers (int/float, plus **Hex/Octal/Binary** literals), Strings, Lists, Dictionaries, Booleans, and Null.
   * **Variables:** Dynamic variable assignment with `LET`.
   * **Advanced Assignments:**
       * **Destructuring:** Unpack lists in assignments (`LET [x, y] = [1, 2]`) and loops (`FOR [x, y] IN points`).
@@ -94,17 +95,19 @@ GladLang supports a rich, modern feature set:
       * Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`.
       * **Universal Iteration:** `FOR` loops over Lists, Strings (chars), and Dictionaries (keys).
   * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support, and **Overloading** (by argument count).
-  * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, Access Modifiers, and **Method/Constructor Overloading**.
+  * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, Access Modifiers, and **Method/Constructor Overloading**. Object instantiation is **$O(1)$** due to constructor caching.
+  * **Advanced Inheritance:** Support for **Multiple** and **Hybrid** inheritance with strict C3-style **Method Resolution Order (MRO)**. 
+  * **Parent Delegation:** Full support for `SUPER` in both constructors and overridden methods, plus explicit parent targeting.
   * **Static Members:** Java-style `STATIC` fields, methods, and constants (`STATIC FINAL`).
   * **Operators:** Ternary Operator (`condition ? true : false`) for concise conditional logic.
-  * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, and secure encapsulation.
+  * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, strict unbound method type-checking, and secure encapsulation.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
-  * **Constants:** Declare immutable values using `FINAL`, fully protected from shadowing..
-  * **Built-ins:** `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`, `LEN`.
+  * **Constants:** Declare immutable values using `FINAL`. These are fully protected from shadowing, reassignment, and modification via loops or increment operators.
+  * **Built-ins:** `PRINTLN`, `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`, `LEN`.
   * **Error Handling:** Robust, user-friendly runtime error reporting with full tracebacks.
   * **Advanced Math:** Compound assignments (`+=`, `*=`), Power (`**`), Modulo (`%`), and automatic float division.
-  * **Rich Comparisons:** Chained comparisons (`1 < x < 10`) and Identity checks (`is`).
-  * **Flexible Logic:** Support for `and` / `or` (case-insensitive).
+  * **Rich Comparisons:** Chained comparisons (`1 < x < 10`), Identity checks (`IS`), and runtime type-checking (`INSTANCEOF`).
+  * **Boolean Logic:** Strict support for `AND` / `OR` / `NOT`.
 -----
 
 ## Getting Started
@@ -164,6 +167,7 @@ You can run the interpreter directly from the source code without installing it 
 
 ```bash
 python run.py "tests/test.glad"
+
 ```
 
 ---
@@ -199,6 +203,7 @@ Comments start with `#` and last for the entire line.
 ```glad
 # This is a comment.
 LET a = 10 # This is an inline comment
+
 ```
 
 ### 2\. Variables and Data Types
@@ -220,25 +225,33 @@ LET my_list = [a, b, 123]
 LET point = [10, 20]
 LET [x, y] = point
 
-PRINT x # 10
-PRINT y # 20
+PRINTLN x # 10
+PRINTLN y # 20
+
 ```
 
 #### Numbers
 
-Numbers can be integers or floats. All standard arithmetic operations are supported.
+Numbers can be integers or floats. You can also use **Hexadecimal**, **Octal**, and **Binary** literals.
 
 ```glad
 LET math_result = (1 + 2) * 3 # 9
 LET float_result = 10 / 4     # 2.5
+
+# Number Bases
+LET hex_val = 0xFF      # 255
+LET oct_val = 0o77      # 63
+LET bin_val = 0b101     # 5
+
 ```
 
 #### Strings
 
 Strings can be defined in three ways:
-1.  **Double Quotes:** Standard strings.
-2.  **Triple Quotes:** Multi-line strings that preserve formatting.
-3.  **Backticks:** Template strings supporting interpolation.
+
+1. **Double Quotes:** Standard strings.
+2. **Triple Quotes:** Multi-line strings that preserve formatting.
+3. **Backticks:** Template strings supporting interpolation.
 
 ```glad
 # Standard
@@ -253,16 +266,17 @@ LET menu = """
 
 # Indexing
 LET char = "GladLang"[0]  # "G"
-PRINT "Hello"[1]          # "e"
+PRINTLN "Hello"[1]        # "e"
 
 # Escapes (work in "..." and `...`)
-PRINT "Line 1\nLine 2"
-PRINT `Column 1\tColumn 2`
+PRINTLN "Line 1\nLine 2"
+PRINTLN `Column 1\tColumn 2`
 
 # Interpolation (Template Strings)
 LET name = "Glad"
-PRINT `Welcome back, ${name}!`
-PRINT `5 + 10 = ${5 + 10}`
+PRINTLN `Welcome back, ${name}!`
+PRINTLN `5 + 10 = ${5 + 10}`
+
 ```
 
 #### Lists, Slicing & Comprehensions
@@ -273,20 +287,21 @@ Lists are ordered collections. You can access elements, slice them, or create ne
 LET nums = [0, 1, 2, 3, 4, 5]
 
 # Indexing & Assignment
-PRINT nums[1]        # 1
+PRINTLN nums[1]      # 1
 LET nums[1] = 100
 
 # Slicing [start:end]
-PRINT nums[0:3]      # [0, 1, 2]
-PRINT nums[3:]       # [3, 4, 5]
+PRINTLN nums[0:3]    # [0, 1, 2]
+PRINTLN nums[3:]     # [3, 4, 5]
 
 # List Comprehension
 LET squares = [n ** 2 FOR n IN nums]
-PRINT squares        # [0, 1, 4, 9, 16, 25]
+PRINTLN squares      # [0, 1, 4, 9, 16, 25]
 
 # Nested List Comprehension
 LET pairs = [[x, y] FOR x IN [1, 2] FOR y IN [3, 4]]
 # Result: [[1, 3], [1, 4], [2, 3], [2, 4]]
+
 ```
 
 #### Dictionaries
@@ -300,14 +315,15 @@ LET person = {
   "is_admin": TRUE
 }
 
-PRINT person["name"]       # Access: "Glad"
+PRINTLN person["name"]     # Access: "Glad"
 LET person["age"] = 26     # Modify
 LET person["city"] = "NYC" # Add new key
 
 # Dictionary Comprehension
 LET keys = ["a", "b", "c"]
 LET d = {k: 0 FOR k IN keys} 
-PRINT d # {'a': 0, 'b': 0, 'c': 0}
+PRINTLN d # {'a': 0, 'b': 0, 'c': 0}
+
 ```
 
 #### Booleans
@@ -317,9 +333,10 @@ Booleans are `TRUE` and `FALSE`. They are the result of comparisons and logical 
 ```glad
 LET t = TRUE
 LET f = FALSE
-PRINT t AND f # 0 (False)
-PRINT t OR f  # 1 (True)
-PRINT NOT t   # 0 (False)
+PRINTLN t AND f # 0 (False)
+PRINTLN t OR f  # 1 (True)
+PRINTLN NOT t   # 0 (False)
+
 ```
 
 **Truthiness:** `0`, `0.0`, `""`, `NULL`, and `FALSE` are "falsy." All other values (including non-empty strings, non-zero numbers, lists, functions, and classes) are "truthy."
@@ -342,14 +359,15 @@ LET diff = 20 - 8   # 12
 LET prod = 5 * 4    # 20
 LET quot = 100 / 2  # 50.0 (Always Float)
 
-PRINT 2 ** 3      # Power: 8
-PRINT 10 // 3     # Floor Division: 3
-PRINT 10 % 3      # Modulo: 1
+PRINTLN 2 ** 3      # Power: 8
+PRINTLN 10 // 3     # Floor Division: 3
+PRINTLN 10 % 3      # Modulo: 1
 
 # Standard precedence rules apply
-PRINT 2 + 3 * 4   # 14
-PRINT 1 + 2 * 3   # 7
-PRINT (1 + 2) * 3 # 9
+PRINTLN 2 + 3 * 4   # 14
+PRINTLN 1 + 2 * 3   # 7
+PRINTLN (1 + 2) * 3 # 9
+
 ```
 
 #### Compound Assignments
@@ -375,44 +393,51 @@ Perform binary manipulation on integers.
 LET a = 5  # Binary 101
 LET b = 3  # Binary 011
 
-PRINT a & b   # 1 (AND)
-PRINT a | b   # 7 (OR)
-PRINT a ^ b   # 6 (XOR)
-PRINT ~a      # -6 (NOT)
-PRINT 1 << 2  # 4 (Left Shift)
-PRINT 8 >> 2  # 2 (Right Shift)
+PRINTLN a & b   # 1 (AND)
+PRINTLN a | b   # 7 (OR)
+PRINTLN a ^ b   # 6 (XOR)
+PRINTLN ~a      # -6 (NOT)
+PRINTLN 1 << 2  # 4 (Left Shift)
+PRINTLN 8 >> 2  # 2 (Right Shift)
 
 # Compound Assignment
 LET x = 1
 x <<= 2       # x is now 4
+
 ```
 
 #### Comparisons & Logic
 
-You can compare values, chain comparisons for ranges, and check object identity.
+You can compare values, chain comparisons for ranges, check object identity, and perform runtime type-checking.
 
 ```glad
 # Equality & Inequality
-PRINT 1 == 1      # True
-PRINT 1 != 2      # True
+PRINTLN 1 == 1      # True
+PRINTLN 1 != 2      # True
 
 # Chained Comparisons (Ranges)
 LET age = 25
 IF 18 <= age < 30 THEN
-  PRINT "Young Adult"
+  PRINTLN "Young Adult"
 ENDIF
 
-PRINT (10 < 20) AND (10 != 5) # 1 (True)
+PRINTLN (10 < 20) AND (10 != 5) # 1 (True)
 
-# Identity ('is' checks if variables refer to the same object)
+# Identity ('IS' checks if variables refer to the same object)
 LET a = [1, 2]
 LET b = a
-PRINT b is a      # True
-PRINT b == [1, 2] # True (Values match)
+PRINTLN b IS a      # True
 
-# Boolean Operators (case-insensitive)
-IF a and b THEN
-  PRINT "Both exist"
+# Type Checking ('INSTANCEOF' checks the entire inheritance chain)
+CLASS Animal ENDCLASS
+CLASS Dog INHERITS Animal ENDCLASS
+LET d = NEW Dog()
+PRINTLN d INSTANCEOF Dog    # 1 (True)
+PRINTLN d INSTANCEOF Animal # 1 (True)
+
+# Boolean Operators
+IF a AND b THEN
+  PRINTLN "Both exist"
 ENDIF
 ```
 
@@ -423,12 +448,13 @@ A concise way to write `IF...ELSE` statements in a single line. It supports nest
 ```glad
 LET age = 20
 LET type = age >= 18 ? "Adult" : "Minor"
-PRINT type # "Adult"
+PRINTLN type # "Adult"
 
 # Nested Ternary
 LET score = 85
 LET grade = score > 90 ? "A" : score > 80 ? "B" : "C"
-PRINT grade # "B"
+PRINTLN grade # "B"
+
 ```
 
 #### Increment / Decrement
@@ -437,14 +463,15 @@ Supports C-style pre- and post-increment/decrement operators on variables and li
 
 ```glad
 LET i = 5
-PRINT i++ # 5
-PRINT i   # 6
-PRINT ++i # 7
-PRINT i   # 7
+PRINTLN i++ # 5
+PRINTLN i   # 6
+PRINTLN ++i # 7
+PRINTLN i   # 7
 
 LET my_list = [10, 20]
-PRINT my_list[1]++ # 20
-PRINT my_list[1]   # 21
+PRINTLN my_list[1]++ # 20
+PRINTLN my_list[1]   # 21
+
 ```
 
 -----
@@ -457,12 +484,13 @@ Uses `IF...THEN...ENDIF` syntax.
 
 ```glad
 IF x > 10 THEN
-    PRINT "Large"
+    PRINTLN "Large"
 ELSE IF x > 5 THEN
-    PRINT "Medium"
+    PRINTLN "Medium"
 ELSE
-    PRINT "Small"
+    PRINTLN "Small"
 ENDIF
+
 ```
 
 #### Switch Statements
@@ -474,11 +502,11 @@ LET status = 200
 
 SWITCH status
     CASE 200:
-        PRINT "OK"
+        PRINTLN "OK"
     CASE 404, 500:
-        PRINT "Error"
+        PRINTLN "Error"
     DEFAULT:
-        PRINT "Unknown Status"
+        PRINTLN "Unknown Status"
 ENDSWITCH
 
 ```
@@ -490,7 +518,7 @@ Loops while a condition is `TRUE`.
 ```glad
 LET i = 3
 WHILE i > 0
-  PRINT "i = " + i
+  PRINTLN "i = " + i
   LET i = i - 1
 ENDWHILE
 
@@ -498,6 +526,7 @@ ENDWHILE
 # i = 3
 # i = 2
 # i = 1
+
 ```
 
 #### FOR Loops
@@ -507,32 +536,33 @@ Iterates over the elements of a list.
 ```glad
 LET my_list = ["apple", "banana", "cherry"]
 FOR item IN my_list
-  PRINT "Item: " + item
+  PRINTLN "Item: " + item
 ENDFOR
 
 # Iterate over Strings (Characters)
 FOR char IN "Hi"
-  PRINT char 
+  PRINTLN char 
 ENDFOR
 
 # Iterate over Dictionaries (Keys)
 LET data = {"x": 10, "y": 20}
 FOR key IN data
-  PRINT key + ": " + data[key]
+  PRINTLN key + ": " + data[key]
 ENDFOR
 
 # Loop Destructuring (Unpacking)
 LET points = [[1, 2], [3, 4]]
 FOR [x, y] IN points
-  PRINT "x: " + x + ", y: " + y
+  PRINTLN "x: " + x + ", y: " + y
 ENDFOR
+
 ```
 
 **`BREAK` and `CONTINUE`** are supported in both `WHILE` and `FOR` loops.
 
------
+---
 
-### 5\. Functions
+### 5. Functions
 
 #### Named Functions
 
@@ -544,7 +574,8 @@ DEF add(a, b)
 ENDDEF
 
 LET sum = add(10, 5)
-PRINT sum # 15
+PRINTLN sum # 15
+
 ```
 
 #### Anonymous Functions
@@ -556,7 +587,8 @@ LET double = DEF(x)
   RETURN x * 2
 ENDDEF
 
-PRINT double(5) # 10
+PRINTLN double(5) # 10
+
 ```
 
 #### Closures
@@ -573,7 +605,8 @@ DEF create_greeter(greeting)
 ENDDEF
 
 LET say_hello = create_greeter("Hello")
-PRINT say_hello("Alex") # "Hello, Alex!"
+PRINTLN say_hello("Alex") # "Hello, Alex!"
+
 ```
 
 #### Recursion
@@ -588,7 +621,8 @@ DEF fib(n)
   RETURN fib(n - 1) + fib(n - 2)
 ENDDEF
 
-PRINT fib(7) # 13
+PRINTLN fib(7) # 13
+
 ```
 
 #### Function Overloading
@@ -604,8 +638,9 @@ DEF add(a, b, c)
   RETURN a + b + c
 ENDDEF
 
-PRINT add(10, 20)     # Calls 2-arg version: 30
-PRINT add(10, 20, 30) # Calls 3-arg version: 60
+PRINTLN add(10, 20)     # Calls 2-arg version: 30
+PRINTLN add(10, 20, 30) # Calls 3-arg version: 60
+
 ```
 
 -----
@@ -614,109 +649,175 @@ PRINT add(10, 20, 30) # Calls 3-arg version: 60
 
 #### Classes and Instantiation
 
-Use `CLASS...ENDCLASS` to define classes and `NEW` to create instances. The constructor is `init`.
+Use `CLASS...ENDCLASS` to define classes and `NEW` to create instances. The constructor is a method named exactly after the class.
 
 ```glad
 CLASS Counter
-  DEF init(SELF)
-    SELF.count = 0 # 'SELF' is the instance
+  DEF Counter()
+    THIS.count = 0 # 'THIS' is the instance
   ENDDEF
   
-  DEF increment(SELF)
-    SELF.count = SELF.count + 1
+  DEF increment()
+    THIS.count = THIS.count + 1
   ENDDEF
   
-  DEF get_count(SELF)
-    RETURN SELF.count
+  DEF get_count()
+    RETURN THIS.count
   ENDDEF
 ENDCLASS
-```
 
-#### The `SELF` Keyword
-
-`SELF` is the mandatory first argument for all methods and is used to access instance attributes and methods.
-
-```glad
 LET c = NEW Counter()
 c.increment()
-PRINT c.get_count() # 1
+PRINTLN c.get_count() # 1
+
 ```
 
-#### Inheritance
+#### The `THIS` Keyword
 
-Use the `INHERITS` keyword. Methods can be overridden, but GladLang enforces strict visibility rules (LSP) and prevents circular inheritance loops.
+`THIS` is used to access instance attributes and methods. It is automatically available inside all non-static methods; you do not need to pass it as an argument.
+
+#### Inheritance & The SUPER Keyword
+
+Use the `INHERITS` keyword to inherit from parent classes. You can use the `SUPER` keyword to seamlessly call parent constructors and overridden methods. GladLang enforces strict visibility rules (LSP) and prevents circular inheritance loops.
 
 ```glad
 CLASS Pet
-  DEF init(SELF, name)
-    SELF.name = name
+  DEF Pet(name)
+    THIS.name = name
   ENDDEF
   
-  DEF speak(SELF)
-    PRINT SELF.name + " makes a generic pet sound."
+  DEF speak()
+    RETURN "makes a generic pet sound."
   ENDDEF
 ENDCLASS
 
 CLASS Dog INHERITS Pet
-  # Override the 'speak' method
-  DEF speak(SELF)
-    PRINT SELF.name + " says: Woof!"
+  DEF Dog(name)
+    # Automatically delegates to the parent constructor
+    SUPER(name)
+  ENDDEF
+
+  # Override the 'speak' method and extend parent functionality
+  DEF speak()
+    PRINTLN THIS.name + " says: Woof, and " + SUPER.speak()
   ENDDEF
 ENDCLASS
 
 LET my_dog = NEW Dog("Buddy")
-my_dog.speak() # "Buddy says: Woof!"
+my_dog.speak() # "Buddy says: Woof, and makes a generic pet sound."
+
+```
+
+#### Multiple Inheritance & MRO
+
+GladLang supports multiple and hybrid inheritance (solving the Diamond Problem). When inheriting from multiple classes, GladLang establishes a **Method Resolution Order (MRO)** that prioritizes parents from left to right.
+
+If you want to bypass the default `SUPER()` MRO (for example, to initialize multiple parent classes explicitly), you can call parent constructors or methods directly using the Class name.
+
+```glad
+CLASS Animal
+    DEF Animal()
+        PRINTLN("Animal Constructor")
+    ENDDEF
+
+    DEF speak()
+        RETURN "Generic Sound"
+    ENDDEF
+ENDCLASS
+
+CLASS Human
+    DEF Human()
+        PRINTLN("Human Constructor")
+    ENDDEF
+
+    DEF speak()
+        RETURN "Hello"
+    ENDDEF
+ENDCLASS
+
+CLASS Dog INHERITS Animal, Human
+    DEF Dog()
+        PRINTLN("--- Initializing Dog ---")
+        
+        # STYLE 1: Explicit Calls (Great for Multiple Inheritance)
+        Animal.Animal()
+        Human.Human()
+        
+        # STYLE 2: SUPER Call (Great for Single Inheritance / MRO)
+        # This will call 'Animal' again because it's first in MRO
+        PRINTLN("--- Calling SUPER() ---")
+        SUPER() 
+    ENDDEF
+
+    DEF speak()
+        # Mix both styles in methods too
+        RETURN "Woof! " + SUPER.speak() + " " + Human.speak()
+    ENDDEF
+ENDCLASS
+
+LET d = NEW Dog()
+# Expected:
+# --- Initializing Dog ---
+# Animal Constructor
+# Human Constructor
+# --- Calling SUPER() ---
+# Animal Constructor
+
+PRINTLN("\n[Speaking]")
+PRINTLN(d.speak())
+# Expected: Woof! Generic Sound Hello
 ```
 
 #### Method & Constructor Overloading
 
-Classes support overloading for both regular methods and the `init` constructor. This allows for flexible object creation (e.g., Copy Constructors).
+Classes support overloading for both regular methods and constructors. This allows for flexible object creation (e.g., Copy Constructors).
 
 ```glad
 CLASS Vector
   # Default Constructor
-  DEF init(SELF)
-    SELF.x = 0
-    SELF.y = 0
+  DEF Vector()
+    THIS.x = 0
+    THIS.y = 0
   ENDDEF
 
   # Overloaded Constructor
-  DEF init(SELF, x, y)
-    SELF.x = x
-    SELF.y = y
+  DEF Vector(x, y)
+    THIS.x = x
+    THIS.y = y
   ENDDEF
   
   # Copy Constructor
-  DEF init(SELF, other)
-    SELF.x = other.x
-    SELF.y = other.y
+  DEF Vector(other)
+    THIS.x = other.x
+    THIS.y = other.y
   ENDDEF
 ENDCLASS
 
 LET v1 = NEW Vector()       # [0, 0]
 LET v2 = NEW Vector(10, 20) # [10, 20]
 LET v3 = NEW Vector(v2)     # [10, 20] (Copy of v2)
+
 ```
 
 #### Polymorphism
 
-When a base class method calls another method on `SELF`, it will correctly use the **child's overridden version**.
+When a base class method calls another method on `THIS`, it will correctly use the **child's overridden version**.
 
 ```glad
 CLASS Pet
-  DEF introduce(SELF)
-    PRINT "I am a pet and I say:"
-    SELF.speak() # This will call the child's 'speak'
+  DEF introduce()
+    PRINTLN "I am a pet and I say:"
+    THIS.speak() # This will call the child's 'speak'
   ENDDEF
   
-  DEF speak(SELF)
-    PRINT "(Generic pet sound)"
+  DEF speak()
+    PRINTLN "(Generic pet sound)"
   ENDDEF
 ENDCLASS
 
 CLASS Cat INHERITS Pet
-  DEF speak(SELF)
-    PRINT "Meow!"
+  DEF speak()
+    PRINTLN "Meow!"
   ENDDEF
 ENDCLASS
 
@@ -725,6 +826,7 @@ my_cat.introduce()
 # Prints:
 # I am a pet and I say:
 # Meow!
+
 ```
 
 #### Access Modifiers
@@ -732,20 +834,21 @@ my_cat.introduce()
 You can control the visibility of methods and attributes using `PUBLIC`, `PRIVATE`, and `PROTECTED`.
 
 * **Encapsulation:** Private attributes are name-mangled to prevent collisions.
-* **Singleton Support:** Constructors (`init`) can be private to force factory usage.
+* **Singleton Support:** Constructors can be private to force factory usage.
 
 ```glad
 CLASS SecureData
-  DEF init(SELF, data)
-    PRIVATE SELF.data = data
+  DEF SecureData(data)
+    PRIVATE THIS.data = data
   ENDDEF
 
-  PUBLIC DEF get_data(SELF)
-    RETURN SELF.data
+  PUBLIC DEF get_data()
+    RETURN THIS.data
   ENDDEF
 ENDCLASS
 
 # External access to 'data' will raise a Runtime Error.
+
 ```
 
 #### Static Members
@@ -771,15 +874,17 @@ CLASS Config
 ENDCLASS
 
 # Access directly via the Class name
-PRINT Config.MAX_USERS      # 100
-PRINT Config.increment()    # 1
+PRINTLN Config.MAX_USERS      # 100
+PRINTLN Config.increment()    # 1
+
 ```
 
 -----
 
 ### 7\. Built-in Functions
 
-  * `PRINT(value)`: Prints a value to the console.
+  * `PRINTLN(value)`: Prints a value to the console **with** a new line (Standard output).
+  * `PRINT(value)`: Prints a value **without** a new line (Useful for prompts).
   * `INPUT()`: Reads a line of text from the user as a String.
   * `STR(value)`: Casts a value to a String.
   * `INT(value)`: Casts a String or Float to an Integer.
@@ -797,19 +902,20 @@ You can handle runtime errors gracefully or throw your own exceptions.
 TRY
     # Attempt dangerous code
     LET result = 10 / 0
-    PRINT result
+    PRINTLN result
 CATCH error
     # Handle the error
-    PRINT "Caught an error: " + error
+    PRINTLN "Caught an error: " + error
 FINALLY
     # Always runs
-    PRINT "Cleanup complete."
+    PRINTLN "Cleanup complete."
 ENDTRY
 
 # Manually throwing errors
 IF age < 0 THEN
     THROW "Age cannot be negative!"
 ENDIF
+
 ```
 
 GladLang features detailed error handling and prints full tracebacks for runtime errors, making debugging easy.
@@ -820,6 +926,7 @@ GladLang features detailed error handling and prints full tracebacks for runtime
 Traceback (most recent call last):
   File test_name_error.glad, line 6, in <program>
 Runtime Error: 'b' is not defined
+
 ```
 
 **Example: Type Error** (`test_type_error.glad` with input "5")
@@ -828,6 +935,7 @@ Runtime Error: 'b' is not defined
 Traceback (most recent call last):
   File test_type_error.glad, line 6, in <program>
 Runtime Error: Illegal operation
+
 ```
 
 **Example: Argument Error** (`test_arg_error.glad`)
@@ -837,6 +945,7 @@ Traceback (most recent call last):
   File test_arg_error.glad, line 7, in <program>
   File test_arg_error.glad, line 4, in add
 Runtime Error: Incorrect argument count for 'add'. Expected 2, got 3
+
 ```
 
 -----
@@ -849,6 +958,7 @@ The `tests/` directory contains a comprehensive suite of `.glad` files to test e
 gladlang "test_closures.glad"
 gladlang "test_lists.glad"
 gladlang "test_polymorphism.glad"
+
 ```
 
 ## License

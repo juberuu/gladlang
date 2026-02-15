@@ -1,37 +1,37 @@
 # test_dict.glad
 
 # 1. Create a Dictionary
-PRINT "--- Creating Dictionary ---"
+PRINTLN "--- Creating Dictionary ---"
 LET my_dict = {
   "name": "GladLang",
   "version": 1.0,
   "is_awesome": 1  # 1 is TRUE
 }
 
-PRINT my_dict
+PRINTLN my_dict
 # Expected: {'name': 'GladLang', 'version': 1.0, 'is_awesome': 1}
 
 # 2. Access Values
-PRINT ""
-PRINT "--- Accessing Values ---"
-PRINT "Name: " + my_dict["name"]
-PRINT "Version: " + STR(my_dict["version"])
+PRINTLN ""
+PRINTLN "--- Accessing Values ---"
+PRINTLN "Name: " + my_dict["name"]
+PRINTLN "Version: " + STR(my_dict["version"])
 
 # 3. Modify Values
-PRINT ""
-PRINT "--- Modifying Values ---"
+PRINTLN ""
+PRINTLN "--- Modifying Values ---"
 LET my_dict["version"] = 1.1
-PRINT "New Version: " + STR(my_dict["version"])
+PRINTLN "New Version: " + STR(my_dict["version"])
 
 # 4. Add New Key-Value Pairs
-PRINT ""
-PRINT "--- Adding New Keys ---"
+PRINTLN ""
+PRINTLN "--- Adding New Keys ---"
 LET my_dict["author"] = "You"
-PRINT my_dict
+PRINTLN my_dict
 
 # 5. Nested Dictionaries (if supported by recursion)
-PRINT ""
-PRINT "--- Nested Dictionary ---"
+PRINTLN ""
+PRINTLN "--- Nested Dictionary ---"
 LET nested = {
   "meta": {
     "id": 101,
@@ -39,26 +39,26 @@ LET nested = {
   },
   "data": [1, 2, 3]
 }
-PRINT nested["meta"]["status"]
+PRINTLN nested["meta"]["status"]
 # Expected: active
 
 # 6. Dict Merging
 LET defaults = {"theme": "dark", "vol": 50}
 LET user_settings = {"vol": 100}
 LET config = defaults + user_settings
-PRINT "Merged Config: " + STR(config)
+PRINTLN "Merged Config: " + STR(config)
 # Expected: {'theme': 'dark', 'vol': 100}
 
 # 7. Iterate Dictionary (Keys)
-PRINT "\n-- Dictionary Iteration --"
+PRINTLN "\n-- Dictionary Iteration --"
 LET data = {"name": "Glad", "ver": 1}
 FOR key IN data
-    PRINT "Key: " + key + ", Value: " + STR(data[key])
+    PRINTLN "Key: " + key + ", Value: " + STR(data[key])
 ENDFOR
 # Expected: Key: name..., Key: ver...
 
 # 8. Dict Comprehension over Dict
-PRINT "\n-- Dict -> List --"
+PRINTLN "\n-- Dict -> List --"
 LET values = [data[k] FOR k IN data]
-PRINT "Values: " + STR(values)
+PRINTLN "Values: " + STR(values)
 # Expected: ['Glad', 1]

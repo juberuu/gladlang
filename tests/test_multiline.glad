@@ -3,12 +3,12 @@ Line 1: Hello
 Line 2: World
 """
 
-PRINT big_text
+PRINTLN big_text
 
 LET code_snippet = """
 DEF hello():
-  PRINT "Hi"
+  PRINTLN "Hi"
 """
 
-PRINT "Code Snippet:"
-PRINT code_snippet
+PRINTLN "Code Snippet:"
+PRINTLN code_snippet

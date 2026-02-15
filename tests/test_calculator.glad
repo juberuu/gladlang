@@ -1,15 +1,15 @@
-PRINT "--- Calculator ---"
+PRINTLN "--- Calculator ---"
 PRINT "Enter first number:"
 LET a = INT(INPUT())
 
 PRINT "Enter second number:"
 LET b = INT(INPUT())
 
-PRINT "-----------------------------"
-PRINT "a = " + a
-PRINT "b = " + b
+PRINTLN "-----------------------------"
+PRINTLN "a = " + a
+PRINTLN "b = " + b
 
-PRINT "a + b = " + (a + b)
-PRINT "a - b = " + (a - b)
-PRINT "a * b = " + (a * b)
-PRINT "a / b = " + (a / b)
+PRINTLN "a + b = " + (a + b)
+PRINTLN "a - b = " + (a - b)
+PRINTLN "a * b = " + (a * b)
+PRINTLN "a / b = " + (a / b)

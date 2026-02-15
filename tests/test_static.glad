@@ -1,4 +1,4 @@
-PRINT "=== STARTING COMPREHENSIVE STATIC FEATURE TEST ==="
+PRINTLN "=== STARTING COMPREHENSIVE STATIC FEATURE TEST ==="
 
 # ---------------------------------------------------------
 # 1. DEFINE CLASSES
@@ -49,7 +49,7 @@ CLASS UserService INHERITS BaseService
     ENDDEF
     
     # Instance method accessing Static
-    PUBLIC DEF instance_info(SELF)
+    PUBLIC DEF instance_info()
         RETURN "Instance seeing static: " + UserService.user_count
     ENDDEF
 ENDCLASS
@@ -58,66 +58,66 @@ ENDCLASS
 # 2. TEST EXECUTION
 # ---------------------------------------------------------
 
-PRINT "\n[TEST 1] Static Constants (FINAL)"
-PRINT "App Name: " + Config.APP_NAME
-PRINT "Max Users: " + Config.MAX_USERS
+PRINTLN "\n[TEST 1] Static Constants (FINAL)"
+PRINTLN "App Name: " + Config.APP_NAME
+PRINTLN "Max Users: " + Config.MAX_USERS
 
-PRINT "\n[TEST 2] Static Variables & Modification"
+PRINTLN "\n[TEST 2] Static Variables & Modification"
 UserService.init_static()
-PRINT "Initial Count: " + UserService.user_count
-PRINT "Adding user... New Count: " + UserService.add_user()
-PRINT "Adding user... New Count: " + UserService.add_user()
+PRINTLN "Initial Count: " + UserService.user_count
+PRINTLN "Adding user... New Count: " + UserService.add_user()
+PRINTLN "Adding user... New Count: " + UserService.add_user()
 
-PRINT "\n[TEST 3] Inheritance & Protected Access"
-PRINT "Direct Parent Access: " + BaseService.get_base_name()
-PRINT "Child Accessing Parent Static: " + UserService.get_parent_name()
+PRINTLN "\n[TEST 3] Inheritance & Protected Access"
+PRINTLN "Direct Parent Access: " + BaseService.get_base_name()
+PRINTLN "Child Accessing Parent Static: " + UserService.get_parent_name()
 
-PRINT "\n[TEST 4] Instance Accessing Static Members (Java Style)"
+PRINTLN "\n[TEST 4] Instance Accessing Static Members (Java Style)"
 LET u = NEW UserService()
 # Calling static method via instance
-PRINT "Via Instance (Method): " + u.add_user() 
+PRINTLN "Via Instance (Method): " + u.add_user() 
 # Accessing static field via instance (if supported by your logic, otherwise via getter)
-PRINT "Via Instance (Internal Logic): " + u.instance_info()
+PRINTLN "Via Instance (Internal Logic): " + u.instance_info()
 
 # ---------------------------------------------------------
 # 3. NEGATIVE TESTS (ERROR HANDLING)
 # ---------------------------------------------------------
-PRINT "\n[TEST 5] Security & Error Handling"
+PRINTLN "\n[TEST 5] Security & Error Handling"
 
 # A. Try to modify a FINAL static field
-PRINT "-> Attempting to modify STATIC FINAL..."
+PRINTLN "-> Attempting to modify STATIC FINAL..."
 TRY
     Config.MAX_USERS = 200
-    PRINT "FAIL: Should not have allowed modification!"
+    PRINTLN "FAIL: Should not have allowed modification!"
 CATCH error
-    PRINT "PASS: Caught expected error: " + error
+    PRINTLN "PASS: Caught expected error: " + error
 ENDTRY
 
 # B. Try to access PRIVATE static field from outside
-PRINT "-> Attempting to access STATIC PRIVATE from outside..."
+PRINTLN "-> Attempting to access STATIC PRIVATE from outside..."
 TRY
-    PRINT Config.secret_key
-    PRINT "FAIL: Should not see private field!"
+    PRINTLN Config.secret_key
+    PRINTLN "FAIL: Should not see private field!"
 CATCH error
-    PRINT "PASS: Caught expected error: " + error
+    PRINTLN "PASS: Caught expected error: " + error
 ENDTRY
 
 # C. Verify Private is accessible internally
-PRINT "-> Accessing PRIVATE via Public Static Method..."
+PRINTLN "-> Accessing PRIVATE via Public Static Method..."
 TRY
-    PRINT "Secret revealed: " + Config.get_secret()
-    PRINT "PASS: Internal access allowed."
+    PRINTLN "Secret revealed: " + Config.get_secret()
+    PRINTLN "PASS: Internal access allowed."
 CATCH error
-    PRINT "FAIL: Internal access blocked: " + error
+    PRINTLN "FAIL: Internal access blocked: " + error
 ENDTRY
 
 # D. Try to call Instance Method statically
-PRINT "-> Attempting to call Instance Method on Class..."
+PRINTLN "-> Attempting to call Instance Method on Class..."
 TRY
     UserService.instance_info()
-    PRINT "FAIL: Should not allow instance call on Class!"
+    PRINTLN "FAIL: Should not allow instance call on Class!"
 CATCH error
-    PRINT "PASS: Caught expected error: " + error
+    PRINTLN "PASS: Caught expected error: " + error
 ENDTRY
 
-PRINT "\n=== ALL TESTS COMPLETED ==="
+PRINTLN "\n=== ALL TESTS COMPLETED ==="

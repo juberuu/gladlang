@@ -69,12 +69,14 @@ class Lexer:
             elif self.current_char == "#":
                 self.skip_comment()
             elif self.current_char in DIGITS:
-                tokens.append(self.make_number())
+                tok_or_tuple = self.make_number()
+                if isinstance(tok_or_tuple, tuple):
+                    return [], tok_or_tuple[1]
+                tokens.append(tok_or_tuple)
             elif self.current_char.isidentifier():
                 tokens.append(self.make_identifier())
             elif self.current_char == '"':
                 tokens.append(self.make_string())
-
             elif self.current_char == "+":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -90,7 +92,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_PLUS, pos_start=pos_start))
-
             elif self.current_char == "-":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -106,7 +107,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_MINUS, pos_start=pos_start))
-
             elif self.current_char == "*":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -120,7 +120,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_MUL, pos_start=pos_start))
-
             elif self.current_char == "/":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -142,7 +141,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_DIV, pos_start=pos_start))
-
             elif self.current_char == "%":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -153,7 +151,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_MOD, pos_start=pos_start))
-
             elif self.current_char == "&":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -164,7 +161,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_BIT_AND, pos_start=pos_start))
-
             elif self.current_char == "|":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -175,11 +171,9 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_BIT_OR, pos_start=pos_start))
-
             elif self.current_char == "~":
                 tokens.append(Token(GL_BIT_NOT, pos_start=self.pos))
                 self.advance()
-
             elif self.current_char == "^":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -190,7 +184,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_BIT_XOR, pos_start=pos_start))
-
             elif self.current_char == "<":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -210,7 +203,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_LT, pos_start=pos_start))
-
             elif self.current_char == ">":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -230,7 +222,6 @@ class Lexer:
                     self.advance()
                 else:
                     tokens.append(Token(GL_GT, pos_start=pos_start))
-
             elif self.current_char == "(":
                 tokens.append(Token(GL_LPAREN, pos_start=self.pos))
                 self.advance()
@@ -287,6 +278,55 @@ class Lexer:
         num_str = ""
         dot_count = 0
         pos_start = self.pos.copy()
+
+        if self.current_char == "0":
+            peek_char = self.peek()
+
+            if peek_char in ("x", "X"):
+                self.advance()
+                self.advance()
+
+                if self.current_char is None or not (
+                    self.current_char in DIGITS or self.current_char.lower() in "abcdef"
+                ):
+                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                        pos_start, self.pos, "Invalid hex literal"
+                    )
+
+                while self.current_char is not None and (
+                    self.current_char in DIGITS or self.current_char.lower() in "abcdef"
+                ):
+                    num_str += self.current_char
+                    self.advance()
+                return Token(GL_INT, int(num_str, 16), pos_start, self.pos)
+
+            elif peek_char in ("o", "O"):
+                self.advance()
+                self.advance()
+
+                if self.current_char is None or self.current_char not in "01234567":
+                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                        pos_start, self.pos, "Invalid octal literal"
+                    )
+
+                while self.current_char is not None and self.current_char in "01234567":
+                    num_str += self.current_char
+                    self.advance()
+                return Token(GL_INT, int(num_str, 8), pos_start, self.pos)
+
+            elif peek_char in ("b", "B"):
+                self.advance()
+                self.advance()
+
+                if self.current_char is None or self.current_char not in "01":
+                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                        pos_start, self.pos, "Invalid binary literal"
+                    )
+
+                while self.current_char is not None and self.current_char in "01":
+                    num_str += self.current_char
+                    self.advance()
+                return Token(GL_INT, int(num_str, 2), pos_start, self.pos)
 
         while self.current_char != None and self.current_char in DIGITS + ".":
             if self.current_char == ".":

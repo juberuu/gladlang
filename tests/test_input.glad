@@ -1,4 +1,4 @@
-PRINT "--- Input Tester ---"
+PRINTLN "--- Input Tester ---"
 PRINT "What is your name?"
 LET name = INPUT()
-PRINT "Hello, " + name + "! Welcome to GladLang."
+PRINTLN "Hello, " + name + "! Welcome to GladLang."

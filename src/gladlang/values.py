@@ -72,6 +72,32 @@ class Value:
     def get_comparison_is(self, other):
         return Number(1 if self is other else 0).set_context(self.context), None
 
+    def get_comparison_instanceof(self, other):
+        if isinstance(other, Type):
+            if other.name == "Number" and isinstance(self, Number):
+                return Number.true, None
+            if other.name == "String" and isinstance(self, String):
+                return Number.true, None
+            if other.name == "List" and isinstance(self, List):
+                return Number.true, None
+            if other.name == "Dict" and isinstance(self, Dict):
+                return Number.true, None
+            if other.name == "Function" and isinstance(self, BaseFunction):
+                return Number.true, None
+            if other.name == "Object":
+                return Number.true, None
+            return Number.false, None
+
+        if isinstance(other, Class):
+            return Number.false, None
+
+        return None, RTError(
+            self.pos_start,
+            self.pos_end,
+            "Right operand of INSTANCEOF must be a Class or Type",
+            self.context,
+        )
+
     def anded_by(self, other):
         is_true = self.is_true() and other.is_true()
         return Number(1 if is_true else 0).set_context(self.context), None
@@ -862,40 +888,49 @@ class FunctionGroup(BaseFunction):
 
 
 class Class(BaseFunction):
-    def __init__(self, name, superclass, methods, static_symbol_table=None):
+    def __init__(self, name, superclasses, methods, static_symbol_table=None, mro=None):
         super().__init__(name)
-        self.superclass = superclass
+        self.superclasses = superclasses
         self.methods = methods
         self.static_symbol_table = (
             static_symbol_table if static_symbol_table else SymbolTable()
         )
+        self.mro = mro if mro else [self]
 
     def instantiate(self, args, context=None, interpreter=None):
         res = RTResult()
         instance = Instance(self)
 
-        fake_init_tok = Token(GL_IDENTIFIER, "init", self.pos_start, self.pos_end)
-        init_method, error = self.get_attr(fake_init_tok, context, allow_instance=True)
+        constructor_name = None
 
-        if error:
-            if "has no member 'init'" in error.details:
-                if len(args) > 0:
-                    return res.failure(
-                        RTError(
-                            self.pos_start,
-                            self.pos_end,
-                            f"'{self.name}' does not have an 'init' constructor that accepts arguments",
-                            self.context,
-                        )
+        for cls in self.mro:
+            if cls.name in cls.methods:
+                constructor_name = cls.name
+                break
+
+        if constructor_name:
+            fake_tok = Token(
+                GL_IDENTIFIER, constructor_name, self.pos_start, self.pos_end
+            )
+            init_method, error = self.get_attr(fake_tok, context, allow_instance=True)
+
+            if error:
+                return res.failure(error)
+
+            bound_init = init_method.copy().bind_to_instance(instance)
+            res.register(bound_init.execute(args, interpreter))
+            if res.error:
+                return res
+        else:
+            if len(args) > 0:
+                return res.failure(
+                    RTError(
+                        self.pos_start,
+                        self.pos_end,
+                        f"'{self.name}' does not have a constructor that accepts arguments",
+                        self.context,
                     )
-                return res.success(instance)
-
-            return res.failure(error)
-
-        bound_init = init_method.copy().bind_to_instance(instance)
-        res.register(bound_init.execute(args, interpreter))
-        if res.error:
-            return res
+                )
 
         return res.success(instance)
 
@@ -941,83 +976,86 @@ class Class(BaseFunction):
     def get_attr(self, name_tok, context=None, allow_instance=False):
         method_name = name_tok.value
 
-        val = self.static_symbol_table.get(method_name)
-        if val:
-            visibility = self.static_symbol_table.get_visibility(method_name)
-            defining_class = self
+        for cls in self.mro:
+            val = cls.static_symbol_table.get(method_name)
+            if val:
+                visibility = cls.static_symbol_table.get_visibility(method_name)
+                defining_class = cls
 
-            if visibility == "PRIVATE":
-                if not context or context.active_class != defining_class:
-                    return None, RTError(
-                        name_tok.pos_start,
-                        name_tok.pos_end,
-                        f"Cannot access private static field '{method_name}'",
-                        context,
-                    )
+                if visibility == "PRIVATE":
+                    if not context or context.active_class != defining_class:
+                        return None, RTError(
+                            name_tok.pos_start,
+                            name_tok.pos_end,
+                            f"Cannot access private static field '{method_name}'",
+                            context,
+                        )
 
-            if visibility == "PROTECTED":
-                allowed = False
-                if context and context.active_class:
-                    curr = context.active_class
-                    while curr:
-                        if curr == defining_class:
+                if visibility == "PROTECTED":
+                    allowed = False
+                    if context and context.active_class:
+                        if (
+                            defining_class in context.active_class.mro
+                            or context.active_class in defining_class.mro
+                        ):
                             allowed = True
-                            break
-                        curr = curr.superclass
-                if not allowed:
-                    return None, RTError(
-                        name_tok.pos_start,
-                        name_tok.pos_end,
-                        f"Cannot access protected static field '{method_name}'",
-                        context,
-                    )
 
-            return val, None
+                    if not allowed:
+                        return None, RTError(
+                            name_tok.pos_start,
+                            name_tok.pos_end,
+                            f"Cannot access protected static field '{method_name}'",
+                            context,
+                        )
 
-        method = self.methods.get(method_name)
+                return val, None
 
-        if method:
-            visibility = method.visibility
-            defining_class = method.defining_class
+            method = cls.methods.get(method_name)
+            if method:
+                visibility = method.visibility
+                defining_class = method.defining_class
 
-            if visibility == "PRIVATE":
-                if not context or context.active_class != defining_class:
-                    return None, RTError(
-                        name_tok.pos_start,
-                        name_tok.pos_end,
-                        f"Cannot access private method '{method_name}' via Class",
-                        context,
-                    )
+                if visibility == "PRIVATE":
+                    if not context or context.active_class != defining_class:
+                        return None, RTError(
+                            name_tok.pos_start,
+                            name_tok.pos_end,
+                            f"Cannot access private method '{method_name}' via Class",
+                            context,
+                        )
 
-            if visibility == "PROTECTED":
-                allowed = False
-                if context and context.active_class:
-                    curr = context.active_class
-                    while curr:
-                        if curr == defining_class:
+                if visibility == "PROTECTED":
+                    allowed = False
+                    if context and context.active_class:
+                        if defining_class in context.active_class.mro:
                             allowed = True
-                            break
-                        curr = curr.superclass
-                if not allowed:
-                    return None, RTError(
-                        name_tok.pos_start,
-                        name_tok.pos_end,
-                        f"Cannot access protected method '{method_name}' via Class",
-                        context,
+
+                    if not allowed:
+                        return None, RTError(
+                            name_tok.pos_start,
+                            name_tok.pos_end,
+                            f"Cannot access protected method '{method_name}' via Class",
+                            context,
+                        )
+
+                if method.is_static:
+                    return (
+                        method.copy()
+                        .set_context(self.context)
+                        .set_pos(name_tok.pos_start, name_tok.pos_end),
+                        None,
                     )
 
-            if method.is_static:
-                return (
-                    method.copy()
-                    .set_context(self.context)
-                    .set_pos(name_tok.pos_start, name_tok.pos_end),
-                    None,
-                )
+                if context:
+                    instance = context.symbol_table.get("THIS")
+                    if (
+                        instance
+                        and isinstance(instance, Instance)
+                        and self in instance.class_ref.mro
+                    ):
+                        return method.copy().bind_to_instance(instance), None
 
-            return method, None
-
-        if self.superclass:
-            return self.superclass.get_attr(name_tok, context, allow_instance)
+                return method, None
 
         return None, RTError(
             name_tok.pos_start,
@@ -1027,7 +1065,13 @@ class Class(BaseFunction):
         )
 
     def copy(self):
-        copy = Class(self.name, self.superclass, self.methods, self.static_symbol_table)
+        copy = Class(
+            self.name,
+            self.superclasses,
+            self.methods,
+            self.static_symbol_table,
+            self.mro,
+        )
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
@@ -1058,12 +1102,11 @@ class Instance(Value):
         if visibility == "PROTECTED":
             allowed = False
             if context and context.active_class:
-                curr = context.active_class
-                while curr:
-                    if curr == defining_class:
-                        allowed = True
-                        break
-                    curr = curr.superclass
+                if (
+                    defining_class in context.active_class.mro
+                    or context.active_class in defining_class.mro
+                ):
+                    allowed = True
             if not allowed:
                 return RTError(
                     name_tok.pos_start,
@@ -1090,22 +1133,24 @@ class Instance(Value):
                 return None, error
             return value, None
 
-        method, error = self.class_ref.get_attr(name_tok, context, allow_instance=True)
+        member, error = self.class_ref.get_attr(name_tok, context, allow_instance=True)
         if error:
             return None, error
 
-        if isinstance(method, Function) and method.is_static:
-            return method, None
+        if isinstance(member, BaseFunction):
+            if isinstance(member, Function) and member.is_static:
+                return member, None
 
-        error = self.check_access(
-            name_tok, method.visibility, method.defining_class, context
-        )
+            error = self.check_access(
+                name_tok, member.visibility, member.defining_class, context
+            )
+            if error:
+                return None, error
 
-        if error:
-            return None, error
+            bound_method = member.copy().bind_to_instance(self)
+            return bound_method, None
 
-        bound_method = method.copy().bind_to_instance(self)
-        return bound_method, None
+        return member, None
 
     def set_attr(self, name_tok, value, context=None, visibility=None):
         name = name_tok.value
@@ -1165,15 +1210,129 @@ class Instance(Value):
             return Number(1 if self is not other else 0).set_context(self.context), None
         return None, self.illegal_operation(other)
 
+    def get_comparison_instanceof(self, other):
+        if isinstance(other, Class):
+            is_instance = other in self.class_ref.mro
+            return Number(1 if is_instance else 0).set_context(self.context), None
+
+        if isinstance(other, Type):
+            if other.name == "Object":
+                return Number.true, None
+            return Number.false, None
+
+        return None, RTError(
+            self.pos_start,
+            self.pos_end,
+            "Right operand of INSTANCEOF must be a Class or Type",
+            self.context,
+        )
+
     def copy(self):
         copy = Instance(self.class_ref)
-        copy.symbol_table = self.symbol_table
+        copy.symbol_table = self.symbol_table.copy()
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
 
     def __repr__(self):
         return f"<{self.class_ref.name} instance>"
+
+
+class Super(Value):
+    def __init__(self, instance, start_class):
+        super().__init__()
+        self.instance = instance
+        self.start_class = start_class
+
+    def get_attr(self, name_tok, context=None):
+        method_name = name_tok.value
+        mro = self.instance.class_ref.mro
+
+        try:
+            start_index = mro.index(self.start_class) + 1
+        except ValueError:
+            return None, RTError(
+                name_tok.pos_start,
+                name_tok.pos_end,
+                "Current class not found in MRO",
+                context,
+            )
+
+        for i in range(start_index, len(mro)):
+            cls = mro[i]
+            method = cls.methods.get(method_name)
+            if method:
+                return method.copy().bind_to_instance(self.instance), None
+
+        return None, RTError(
+            name_tok.pos_start,
+            name_tok.pos_end,
+            f"Method '{method_name}' not found in superclasses",
+            context,
+        )
+
+    def execute(self, args, interpreter):
+        res = RTResult()
+        mro = self.instance.class_ref.mro
+
+        try:
+            start_index = mro.index(self.start_class) + 1
+        except ValueError:
+            return res.failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "Current class not found in MRO",
+                    self.context,
+                )
+            )
+
+        method = None
+        for i in range(start_index, len(mro)):
+            cls = mro[i]
+            if cls.name in cls.methods:
+                method = cls.methods[cls.name]
+                break
+
+        if method:
+            return (
+                method.copy().bind_to_instance(self.instance).execute(args, interpreter)
+            )
+
+        if len(args) > 0:
+            return res.failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "No constructor found in superclasses",
+                    self.context,
+                )
+            )
+
+        return res.success(Number.null)
+
+    def copy(self):
+        return (
+            Super(self.instance, self.start_class)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+
+class Type(Value):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+    def copy(self):
+        return (
+            Type(self.name)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+    def __repr__(self):
+        return f"<type {self.name}>"
 
 
 class BoundMethod(BaseFunction):
@@ -1183,6 +1342,13 @@ class BoundMethod(BaseFunction):
         self.instance = instance
         self.context = function_to_bind.context
         self.set_pos(function_to_bind.pos_start, function_to_bind.pos_end)
+
+        self.visibility = getattr(function_to_bind, "visibility", "PUBLIC")
+        self.defining_class = getattr(function_to_bind, "defining_class", None)
+        self.is_static = getattr(function_to_bind, "is_static", False)
+
+    def bind_to_instance(self, instance):
+        return BoundMethod(self.name, self.function_to_bind, instance)
 
     def execute(self, args, interpreter):
         res = RTResult()
@@ -1197,24 +1363,20 @@ class BoundMethod(BaseFunction):
 
         original_arg_names = self.function_to_bind.arg_names
 
-        if len(original_arg_names) > 0 and original_arg_names[0] == "SELF":
-            new_context.symbol_table.set("SELF", self.instance)
+        new_context.symbol_table.set("THIS", self.instance)
 
-        if len(original_arg_names) == 0 or original_arg_names[0] != "SELF":
-            return res.failure(
-                RTError(
-                    self.function_to_bind.pos_start,
-                    self.function_to_bind.pos_end,
-                    f"Method '{self.name}' must have 'SELF' as its first argument",
-                    self.context,
-                )
-            )
+        actual_args = args
+        if len(args) > 0 and args[0] is self.instance:
+            actual_args = args[1:]
 
-        expected_arg_names = original_arg_names[1:]
+        if len(original_arg_names) > 0 and original_arg_names[0] == "THIS":
+            expected_arg_names = original_arg_names[1:]
+        else:
+            expected_arg_names = original_arg_names
 
         res.register(
             self.function_to_bind.check_and_populate_args(
-                expected_arg_names, args, new_context
+                expected_arg_names, actual_args, new_context
             )
         )
 

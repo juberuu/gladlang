@@ -1,105 +1,105 @@
-PRINT "--- DEEP NESTING & LOGIC TEST ---"
+PRINTLN "--- DEEP NESTING & LOGIC TEST ---"
 
 LET x = 10
 LET y = 20
 LET z = 30
 LET flag = TRUE
 
-PRINT "Values: x=" + x + ", y=" + y + ", z=" + z
+PRINTLN "Values: x=" + x + ", y=" + y + ", z=" + z
 
 # -------------------------------------------------
 # TEST 1: Triple Nesting (Nested-Nested)
 # -------------------------------------------------
-PRINT ""
-PRINT "[TEST 1] Triple Nesting Check:"
+PRINTLN ""
+PRINTLN "[TEST 1] Triple Nesting Check:"
 
 IF x == 10 THEN
-    PRINT "  L1: x is 10 (Correct)"
+    PRINTLN "  L1: x is 10 (Correct)"
     
     # Level 2
     IF y == 20 THEN
-        PRINT "    L2: y is 20 (Correct)"
+        PRINTLN "    L2: y is 20 (Correct)"
         
         # Level 3 (Nested-Nested)
         IF z == 30 THEN
-            PRINT "      L3: z is 30 (TARGET REACHED!)"
+            PRINTLN "      L3: z is 30 (TARGET REACHED!)"
         ELSE
-            PRINT "      L3: z is wrong"
+            PRINTLN "      L3: z is wrong"
         ENDIF
 
     ELSE
-        PRINT "    L2: y is wrong"
+        PRINTLN "    L2: y is wrong"
     ENDIF
 ELSE
-    PRINT "  L1: x is wrong"
+    PRINTLN "  L1: x is wrong"
 ENDIF
 
 # -------------------------------------------------
 # TEST 2: Complex ELSE IF with Nesting
 # -------------------------------------------------
-PRINT ""
-PRINT "[TEST 2] ELSE IF Chains with Nesting:"
+PRINTLN ""
+PRINTLN "[TEST 2] ELSE IF Chains with Nesting:"
 
 LET score = 75
 
 IF score >= 90 THEN
-    PRINT "  Grade A"
+    PRINTLN "  Grade A"
 ELSE IF score >= 80 THEN
-    PRINT "  Grade B"
+    PRINTLN "  Grade B"
 ELSE IF score >= 70 THEN
-    PRINT "  Grade C (Correct)"
+    PRINTLN "  Grade C (Correct)"
     
     # Nesting inside an ELSE IF block
     IF score < 78 THEN
-        PRINT "    (Close to B, but not quite)"
+        PRINTLN "    (Close to B, but not quite)"
         
         # Another nest
         IF flag THEN
-           PRINT "      (Flag is also TRUE)"
+           PRINTLN "      (Flag is also TRUE)"
         ENDIF
     ENDIF
 ELSE
-    PRINT "  Grade F"
+    PRINTLN "  Grade F"
 ENDIF
 
 # -------------------------------------------------
 # TEST 3: Logic inside ELSE blocks
 # -------------------------------------------------
-PRINT ""
-PRINT "[TEST 3] Nesting inside ELSE:"
+PRINTLN ""
+PRINTLN "[TEST 3] Nesting inside ELSE:"
 
 LET a = 5
 
 IF a > 10 THEN
-    PRINT "  a > 10"
+    PRINTLN "  a > 10"
 ELSE
-    PRINT "  a is small (Correct)"
+    PRINTLN "  a is small (Correct)"
     
     # Nesting inside ELSE
     IF a == 5 THEN
-        PRINT "    a is exactly 5 (Correct)"
+        PRINTLN "    a is exactly 5 (Correct)"
     ELSE
-        PRINT "    a is not 5"
+        PRINTLN "    a is not 5"
     ENDIF
 ENDIF
 
 # -------------------------------------------------
 # TEST 4: Boolean Soup
 # -------------------------------------------------
-PRINT ""
-PRINT "[TEST 4] Boolean Logic + Nesting:"
+PRINTLN ""
+PRINTLN "[TEST 4] Boolean Logic + Nesting:"
 
 IF (x == 10 AND y == 20) OR z == 999 THEN
-    PRINT "  Complex condition TRUE (Correct)"
+    PRINTLN "  Complex condition TRUE (Correct)"
     
     IF NOT flag THEN
-        PRINT "    Flag is False"
+        PRINTLN "    Flag is False"
     ELSE
-        PRINT "    Flag is True (Correct)"
+        PRINTLN "    Flag is True (Correct)"
     ENDIF
 ELSE
-    PRINT "  Complex condition FALSE"
+    PRINTLN "  Complex condition FALSE"
 ENDIF
 
-PRINT ""
-PRINT "--- END OF TEST ---"
+PRINTLN ""
+PRINTLN "--- END OF TEST ---"

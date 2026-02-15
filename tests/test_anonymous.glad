@@ -1,15 +1,15 @@
-PRINT "--- Anonymous Function Tester ---"
+PRINTLN "--- Anonymous Function Tester ---"
 
 # Define an anonymous function and assign it to a variable
 LET double = DEF(x)
   RETURN x * 2
 ENDDEF
 
-PRINT "Calling anonymous 'double' function..."
-PRINT "double(5) = " + double(5)
-PRINT "double(21) = " + double(21)
+PRINTLN "Calling anonymous 'double' function..."
+PRINTLN "double(5) = " + double(5)
+PRINTLN "double(21) = " + double(21)
 
 # You can even use them immediately (though this is rare)
-PRINT "--- IIFE (Immediately Invoked Function Expression) Test ---"
+PRINTLN "--- IIFE (Immediately Invoked Function Expression) Test ---"
 LET iife_result = (DEF(a, b) RETURN a * b ENDDEF)(6, 7)
-PRINT "IIFE (6, 7) Result: " + iife_result
+PRINTLN "IIFE (6, 7) Result: " + iife_result

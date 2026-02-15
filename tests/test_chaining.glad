@@ -1,28 +1,28 @@
-PRINT "--- Chained Call Tester ---"
+PRINTLN "--- Chained Call Tester ---"
 
 CLASS Engine
-  DEF start(SELF)
-    PRINT "Engine starts. Vroom!"
+  DEF start()
+    PRINTLN "Engine starts. Vroom!"
     RETURN "Engine-OK"
   ENDDEF
 ENDCLASS
 
 CLASS Car
-  DEF init(SELF)
+  DEF Car()
     # A car "has a" engine
-    SELF.engine = NEW Engine()
+    THIS.engine = NEW Engine()
   ENDDEF
   
-  DEF start_car(SELF)
-    PRINT "Turning key..."
-    # This is a chained call: SELF.engine.start()
-    LET status = SELF.engine.start()
-    PRINT "Car start status: " + status
+  DEF start_car()
+    PRINTLN "Turning key..."
+    # This is a chained call: THIS.engine.start()
+    LET status = THIS.engine.start()
+    PRINTLN "Car start status: " + status
   ENDDEF
 ENDCLASS
 
-PRINT "Creating car..."
+PRINTLN "Creating car..."
 LET my_car = NEW Car()
 
-PRINT "--- Starting Car ---"
+PRINTLN "--- Starting Car ---"
 my_car.start_car() # This will test the chained call

@@ -1,35 +1,35 @@
-PRINT "--- List Tester ---"
+PRINTLN "--- List Tester ---"
 
 LET my_list = [1, "hello", 2 * 3, TRUE]
 
-PRINT "Initial list: " + STR(my_list)
+PRINTLN "Initial list: " + STR(my_list)
 
-PRINT "--- List Access ---"
-PRINT "Element at index 0: " + STR(my_list[0])
-PRINT "Element at index 1: " + STR(my_list[1])
-PRINT "Element at index 2: " + STR(my_list[2])
+PRINTLN "--- List Access ---"
+PRINTLN "Element at index 0: " + STR(my_list[0])
+PRINTLN "Element at index 1: " + STR(my_list[1])
+PRINTLN "Element at index 2: " + STR(my_list[2])
 
-PRINT "--- List Set ---"
-PRINT "Setting my_list[1] = \"world\""
+PRINTLN "--- List Set ---"
+PRINTLN "Setting my_list[1] = \"world\""
 LET my_list[1] = "world"
-PRINT "New list: " + STR(my_list)
-PRINT "New element at index 1: " + STR(my_list[1])
+PRINTLN "New list: " + STR(my_list)
+PRINTLN "New element at index 1: " + STR(my_list[1])
 
-PRINT "--- List Concatenation ---"
+PRINTLN "--- List Concatenation ---"
 LET other_list = [FALSE, 100]
 LET combined_list = my_list + other_list
-PRINT "Combined list: " + STR(combined_list)
+PRINTLN "Combined list: " + STR(combined_list)
 
-PRINT "--- Out of Bounds Error Test ---"
-PRINT "Attempting to access my_list[99]..."
+PRINTLN "--- Out of Bounds Error Test ---"
+PRINTLN "Attempting to access my_list[99]..."
 
 TRY
     LET bad_access = my_list[99] # This line should crash
 CATCH error
-    PRINT error
+    PRINTLN error
 ENDTRY
 
-PRINT "--- List Repetition ---"
+PRINTLN "--- List Repetition ---"
 LET zeros = [0] * 5
-PRINT "Zeros: " + STR(zeros)
+PRINTLN "Zeros: " + STR(zeros)
 # Expected: [0, 0, 0, 0, 0]

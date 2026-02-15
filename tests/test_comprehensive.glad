@@ -1,69 +1,69 @@
-PRINT "--- 1. Advanced Math ---"
-PRINT 2 ** 3        # Expected: 8
-PRINT 10 // 3       # Expected: 3
-PRINT 10 % 3        # Expected: 1
-PRINT 2 + 3 * 4     # Expected: 14 (Precedence check)
+PRINTLN "--- 1. Advanced Math ---"
+PRINTLN 2 ** 3        # Expected: 8
+PRINTLN 10 // 3       # Expected: 3
+PRINTLN 10 % 3        # Expected: 1
+PRINTLN 2 + 3 * 4     # Expected: 14 (Precedence check)
 
-PRINT ""
-PRINT "--- 2. Comparisons ---"
-PRINT 1 == 1        # Expected: 1 (True)
-PRINT 1 != 2        # Expected: 1 (True)
-PRINT 10 > 5        # Expected: 1 (True)
-PRINT 5 <= 5        # Expected: 1 (True)
+PRINTLN ""
+PRINTLN "--- 2. Comparisons ---"
+PRINTLN 1 == 1        # Expected: 1 (True)
+PRINTLN 1 != 2        # Expected: 1 (True)
+PRINTLN 10 > 5        # Expected: 1 (True)
+PRINTLN 5 <= 5        # Expected: 1 (True)
 
-PRINT ""
-PRINT "--- 3. Chained Comparisons ---"
+PRINTLN ""
+PRINTLN "--- 3. Chained Comparisons ---"
 LET age = 25
 IF 18 <= age < 30 THEN
-  PRINT "Age is between 18 and 30"
+  PRINTLN "Age is between 18 and 30"
 ENDIF
 # Expected: "Age is between 18 and 30"
 
-PRINT 1 < 2 < 3     # Expected: 1 (True)
-PRINT 1 < 5 < 2     # Expected: 0 (False)
+PRINTLN 1 < 2 < 3     # Expected: 1 (True)
+PRINTLN 1 < 5 < 2     # Expected: 0 (False)
 
-PRINT ""
-PRINT "--- 4. Identity (IS operator) ---"
+PRINTLN ""
+PRINTLN "--- 4. Identity (IS operator) ---"
 LET list_a = [1, 2, 3]
 LET list_b = list_a
 LET list_c = [1, 2, 3]
 
-PRINT list_b is list_a  # Expected: 1 (True - same object)
-PRINT list_c is list_a  # Expected: 0 (False - different objects)
-PRINT list_c == list_a  # Expected: 1 (True - same values)
+PRINTLN list_b IS list_a  # Expected: 1 (True - same object)
+PRINTLN list_c IS list_a  # Expected: 0 (False - different objects)
+PRINTLN list_c == list_a  # Expected: 1 (True - same values)
 
-PRINT ""
-PRINT "--- 5. Logic (AND, OR) ---"
-# Case-insensitive check
-IF 1 and 1 THEN
-  PRINT "lowercase 'and' works"
+PRINTLN ""
+PRINTLN "--- 5. Logic (AND, OR) ---"
+# Standard Logic Check
+IF 1 AND 1 THEN
+  PRINTLN "Uppercase 'AND' works"
 ENDIF
 
-IF 0 or 1 THEN
-  PRINT "lowercase 'or' works"
+IF 0 OR 1 THEN
+  PRINTLN "Uppercase 'OR' works"
 ENDIF
 
-PRINT ""
-PRINT "--- 6. List Logic & Equality ---"
+PRINTLN ""
+PRINTLN "--- 6. List Logic & Equality ---"
 # This tests the fixes we just added (get_comparison_eq, anded_by)
 
 LET l1 = [1, 2]
 LET l2 = [1, 2]
 LET l3 = [3, 4]
 
-PRINT l1 == l2      # Expected: 1 (True)
-PRINT l1 == l3      # Expected: 0 (False)
-PRINT l1 != l3      # Expected: 1 (True)
+PRINTLN l1 == l2      # Expected: 1 (True)
+PRINTLN l1 == l3      # Expected: 0 (False)
+PRINTLN l1 != l3      # Expected: 1 (True)
 
 # Testing Lists in Boolean contexts
-IF [1] and [2] THEN
-  PRINT "Lists are Truthy"
+IF [1] AND [2] THEN
+  PRINTLN "Lists are Truthy"
 ENDIF
 
 # Complex combined logic
-IF (l1 == l2) and (l1 != l3) THEN
-  PRINT "Complex List Logic Passed"
+IF (l1 == l2) AND (l1 != l3) THEN
+  PRINTLN "Complex List Logic Passed"
 ENDIF
 
-PRINT ""
-PRINT "--- DONE ---"
+PRINTLN ""
+PRINTLN "--- DONE ---"

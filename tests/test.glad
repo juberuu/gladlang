@@ -1,9 +1,9 @@
 CLASS Person
-  DEF init(SELF, name)
-    SELF.name = name
+  DEF Person(name)
+    THIS.name = name
   ENDDEF
-  DEF say_hi(SELF)
-    PRINT "Hi, I am " + SELF.name
+  DEF say_hi()
+    PRINTLN "Hi, I am " + THIS.name
   ENDDEF
 ENDCLASS
 

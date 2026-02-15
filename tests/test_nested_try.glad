@@ -1,21 +1,21 @@
-PRINT "--- Test: Nested Try-Catch & Rethrowing ---"
+PRINTLN "--- Test: Nested Try-Catch & Rethrowing ---"
 
 TRY
-    PRINT "Outer TRY started..."
+    PRINTLN "Outer TRY started..."
     
     TRY
-        PRINT "  Inner TRY started..."
+        PRINTLN "  Inner TRY started..."
         THROW "Error from Inner"
     CATCH innerErr
-        PRINT "  Inner CATCH caught: " + innerErr
-        PRINT "  Rethrowing error to Outer..."
+        PRINTLN "  Inner CATCH caught: " + innerErr
+        PRINTLN "  Rethrowing error to Outer..."
         THROW innerErr
     FINALLY
-        PRINT "  Inner FINALLY executed."
+        PRINTLN "  Inner FINALLY executed."
     ENDTRY
 
 CATCH outerErr
-    PRINT "Outer CATCH caught rethrown error: " + outerErr
+    PRINTLN "Outer CATCH caught rethrown error: " + outerErr
 FINALLY
-    PRINT "Outer FINALLY executed."
+    PRINTLN "Outer FINALLY executed."
 ENDTRY

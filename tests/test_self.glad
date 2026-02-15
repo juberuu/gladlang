@@ -1,35 +1,35 @@
-PRINT "--- SELF Keyword Tester ---"
+PRINTLN "--- THIS Keyword Tester ---"
 
 CLASS Counter
-  DEF init(SELF)
-    SELF.count = 0
+  DEF Counter()
+    THIS.count = 0
   ENDDEF
   
   # A helper method
-  DEF _increment(SELF)
-    SELF.count = SELF.count + 1
+  DEF _increment()
+    THIS.count = THIS.count + 1
   ENDDEF
   
-  # A public method that calls another method using SELF
-  DEF add_two(SELF)
-    PRINT "Adding two..."
-    SELF._increment() # Call 1
-    SELF._increment() # Call 2
+  # A public method that calls another method using THIS
+  DEF add_two()
+    PRINTLN "Adding two..."
+    THIS._increment() # Call 1
+    THIS._increment() # Call 2
   ENDDEF
   
-  DEF get_count(SELF)
-    RETURN SELF.count
+  DEF get_count()
+    RETURN THIS.count
   ENDDEF
 ENDCLASS
 
-PRINT "Creating counter..."
+PRINTLN "Creating counter..."
 LET c = NEW Counter()
-PRINT "Initial count: " + c.get_count() # Should be 0
+PRINTLN "Initial count: " + c.get_count() # Should be 0
 
-PRINT "Calling add_two..."
+PRINTLN "Calling add_two..."
 c.add_two()
-PRINT "Count after add_two: " + c.get_count() # Should be 2
+PRINTLN "Count after add_two: " + c.get_count() # Should be 2
 
-PRINT "Calling add_two again..."
+PRINTLN "Calling add_two again..."
 c.add_two()
-PRINT "Count after second add_two: " + c.get_count() # Should be 4
+PRINTLN "Count after second add_two: " + c.get_count() # Should be 4

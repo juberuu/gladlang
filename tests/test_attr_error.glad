@@ -1,15 +1,15 @@
-PRINT "--- Attribute Error Tester ---"
+PRINTLN "--- Attribute Error Tester ---"
 
 CLASS Person
-  DEF init(SELF, name)
-    SELF.name = name
+  DEF Person(name)
+    THIS.name = name
   ENDDEF
 ENDCLASS
 
 LET p = NEW Person("Alex")
-PRINT "Person's name: " + p.name
+PRINTLN "Person's name: " + p.name
 
-PRINT "Attempting to access 'p.age'..."
+PRINTLN "Attempting to access 'p.age'..."
 LET age = p.age # This line should crash, 'age' was never defined
 
-PRINT "This line should NOT be printed."
+PRINTLN "This line should NOT be printed."

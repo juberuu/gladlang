@@ -1,0 +1,172 @@
+PRINTLN("=== TESTING INHERITANCE FEATURES ===")
+
+# -----------------------------------------
+# 1. Single Inheritance
+# -----------------------------------------
+PRINTLN("\n[1] Single Inheritance Check:")
+
+CLASS Animal
+    DEF speak()
+        PRINTLN("Generic Animal Sound")
+    ENDDEF
+    
+    DEF info()
+        RETURN "I am an animal"
+    ENDDEF
+ENDCLASS
+
+CLASS Dog INHERITS Animal
+    DEF speak()
+        PRINTLN("Woof!")
+    ENDDEF
+ENDCLASS
+
+LET dog = NEW Dog()
+dog.speak()         # Expected: Woof!
+PRINTLN(dog.info()) # Expected: I am an animal
+
+# -----------------------------------------
+# 2. Multilevel Inheritance
+# -----------------------------------------
+PRINTLN("\n[2] Multilevel Inheritance Check:")
+
+CLASS LivingBeing
+    DEF breathe()
+        PRINTLN("Breathing...")
+    ENDDEF
+ENDCLASS
+
+CLASS Mammal INHERITS LivingBeing
+    DEF warm_blooded()
+        RETURN 1
+    ENDDEF
+ENDCLASS
+
+CLASS Human INHERITS Mammal
+    DEF speak()
+        PRINTLN("Hello World")
+    ENDDEF
+ENDCLASS
+
+LET person = NEW Human()
+person.breathe()      # Inherited from LivingBeing (Grandparent)
+PRINTLN("Is warm blooded? " + STR(person.warm_blooded())) # Inherited from Mammal (Parent)
+person.speak()        # Own method
+
+# -----------------------------------------
+# 3. Hierarchical Inheritance
+# -----------------------------------------
+PRINTLN("\n[3] Hierarchical Inheritance Check:")
+
+# Parent: Shape
+CLASS Shape
+    DEF type() RETURN "Generic Shape" ENDDEF
+ENDCLASS
+
+# Child 1: Circle
+CLASS Circle INHERITS Shape
+    DEF draw() PRINTLN("Drawing Circle") ENDDEF
+ENDCLASS
+
+# Child 2: Square
+CLASS Square INHERITS Shape
+    DEF draw() PRINTLN("Drawing Square") ENDDEF
+ENDCLASS
+
+LET c = NEW Circle()
+LET s = NEW Square()
+
+PRINTLN(c.type()) # Expected: Generic Shape
+c.draw()          # Expected: Drawing Circle
+
+PRINTLN(s.type()) # Expected: Generic Shape
+s.draw()          # Expected: Drawing Square
+
+# -----------------------------------------
+# 4. Multiple Inheritance
+# -----------------------------------------
+PRINTLN("\n[4] Multiple Inheritance Check:")
+
+CLASS Flyer
+    DEF fly()
+        PRINTLN("I can fly")
+    ENDDEF
+ENDCLASS
+
+CLASS Swimmer
+    DEF swim()
+        PRINTLN("I can swim")
+    ENDDEF
+ENDCLASS
+
+CLASS Duck INHERITS Flyer, Swimmer
+    DEF quack()
+        PRINTLN("Quack!")
+    ENDDEF
+ENDCLASS
+
+LET donald = NEW Duck()
+donald.quack()
+donald.fly()   # From Flyer
+donald.swim()  # From Swimmer
+
+# -----------------------------------------
+# 5. Hybrid Inheritance (The Diamond Problem)
+# -----------------------------------------
+PRINTLN("\n[5] Hybrid Inheritance (Diamond Problem) Check:")
+PRINTLN("Structure: A -> B, A -> C, D -> B, C")
+
+CLASS A
+    DEF identify()
+        PRINTLN("Method from Class A")
+    ENDDEF
+ENDCLASS
+
+CLASS B INHERITS A
+    DEF identify()
+        PRINTLN("Method from Class B")
+    ENDDEF
+ENDCLASS
+
+CLASS C INHERITS A
+    DEF identify()
+        PRINTLN("Method from Class C")
+    ENDDEF
+ENDCLASS
+
+# D inherits from B and C. 
+# MRO should be D -> B -> C -> A
+# So B's method should win over C's method because B is listed first.
+CLASS D_LeftFirst INHERITS B, C
+ENDCLASS
+
+# MRO should be D -> C -> B -> A
+# So C's method should win.
+CLASS D_RightFirst INHERITS C, B
+ENDCLASS
+
+LET d1 = NEW D_LeftFirst()
+PRINTLN("D(B, C) calls:")
+d1.identify() # Expected: Method from Class B
+
+LET d2 = NEW D_RightFirst()
+PRINTLN("D(C, B) calls:")
+d2.identify() # Expected: Method from Class C
+
+# -----------------------------------------
+# 6. Instanceof / Type Checking Logic
+# -----------------------------------------
+PRINTLN("\n[6] MRO & Member Access Check:")
+
+CLASS Base
+    LET base_val = 100
+ENDCLASS
+
+CLASS Derived INHERITS Base
+    DEF get_base_val()
+        RETURN THIS.base_val
+    ENDDEF
+ENDCLASS
+
+LET obj = NEW Derived()
+PRINTLN("Accessing inherited field via THIS: " + STR(obj.get_base_val()))

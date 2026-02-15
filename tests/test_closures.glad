@@ -1,4 +1,4 @@
-PRINT "--- Closure Tester ---"
+PRINTLN "--- Closure Tester ---"
 
 # This function creates and returns *another* function
 DEF make_adder(a)
@@ -12,16 +12,16 @@ DEF make_adder(a)
   RETURN adder_func
 ENDDEF
 
-PRINT "Creating add_five..."
+PRINTLN "Creating add_five..."
 # 'add_five' is now a function that holds 'a = 5' in its memory
 LET add_five = make_adder(5)
 
-PRINT "Creating add_ten..."
+PRINTLN "Creating add_ten..."
 # 'add_ten' is a different function that holds 'a = 10'
 LET add_ten = make_adder(10)
 
-PRINT "--- Testing Closures ---"
+PRINTLN "--- Testing Closures ---"
 # Now we call the new functions
-PRINT "add_five(3) = " + add_five(3)   # Should be 8
-PRINT "add_ten(3) = " + add_ten(3)     # Should be 13
-PRINT "add_five(10) = " + add_five(10) # Should be 15
+PRINTLN "add_five(3) = " + add_five(3)   # Should be 8
+PRINTLN "add_ten(3) = " + add_ten(3)     # Should be 13
+PRINTLN "add_five(10) = " + add_five(10) # Should be 15

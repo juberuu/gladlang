@@ -1,26 +1,26 @@
-PRINT "--- Loop Tester ---"
+PRINTLN "--- Loop Tester ---"
 
-PRINT "Test 1: Simple countdown"
+PRINTLN "Test 1: Simple countdown"
 LET i = 5
 WHILE i > 0
-  PRINT "i = " + i
+  PRINTLN "i = " + i
   LET i = i - 1
 ENDWHILE
-PRINT "Loop 1 finished."
+PRINTLN "Loop 1 finished."
 
-PRINT "--- Test 2: CONTINUE (print even numbers) ---"
+PRINTLN "--- Test 2: CONTINUE (print even numbers) ---"
 LET i = 10
 WHILE i > 0
   LET i = i - 1
-  # If the number is odd, skip the PRINT
+  # If the number is odd, skip the PRINTLN
   IF (i - (INT(i / 2) * 2)) != 0 THEN
     CONTINUE
   ENDIF
-  PRINT "Even number: " + i
+  PRINTLN "Even number: " + i
 ENDWHILE
-PRINT "Loop 2 finished."
+PRINTLN "Loop 2 finished."
 
-PRINT "--- Test 3: BREAK (find first multiple of 7) ---"
+PRINTLN "--- Test 3: BREAK (find first multiple of 7) ---"
 LET i = 100
 LET found = NULL
 WHILE i > 0
@@ -30,5 +30,5 @@ WHILE i > 0
   ENDIF
   LET i = i - 1
 ENDWHILE
-PRINT "Loop 3 finished."
-PRINT "Found first multiple of 7 (under 100): " + found
+PRINTLN "Loop 3 finished."
+PRINTLN "Found first multiple of 7 (under 100): " + found
