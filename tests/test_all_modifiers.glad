@@ -1,0 +1,161 @@
+PRINTLN "==========================================="
+PRINTLN " COMPREHENSIVE ACCESS MODIFIERS TEST SUITE "
+PRINTLN "==========================================="
+PRINTLN ""
+
+CLASS BaseEntity
+    # --- 1. ENUMS ---
+    PUBLIC ENUM PubEnum
+        A, B, C
+    ENDENUM
+
+    PRIVATE ENUM PrivEnum
+        X, Y, Z
+    ENDENUM
+
+    # --- 2. STATIC ATTRIBUTES ---
+    # FIXED: Added the 'LET' keyword for class-level static variables
+    PUBLIC STATIC LET pub_static_val = "I am a Public Static String"
+    PRIVATE STATIC LET priv_static_val = "I am a Private Static String"
+
+    DEF BaseEntity()
+        # --- 3. INSTANCE ATTRIBUTES (ALL DATA TYPES) ---
+        # Instance attributes are correctly defined inside the constructor
+        
+        # PUBLIC attributes (Accessible everywhere)
+        PUBLIC THIS.pub_num = 42
+        PUBLIC THIS.pub_list = [1, 2, 3]
+        PUBLIC THIS.pub_null = NULL
+
+        # PRIVATE attributes (Accessible only within BaseEntity)
+        PRIVATE THIS.priv_str = "Top Secret String"
+        PRIVATE THIS.priv_dict = {"key": "secret_value"}
+
+        # PROTECTED attributes (Accessible in BaseEntity and subclasses)
+        PROTECTED THIS.prot_bool = TRUE
+        PROTECTED THIS.prot_float = 3.14159
+    ENDDEF
+
+    # --- 4. METHODS ---
+    PUBLIC DEF pub_method()
+        RETURN "Public Method Executed"
+    ENDDEF
+
+    PRIVATE DEF priv_method()
+        RETURN "Private Method Executed"
+    ENDDEF
+
+    PROTECTED DEF prot_method()
+        RETURN "Protected Method Executed"
+    ENDDEF
+
+    # --- 5. INTERNAL ACCESS TESTING ---
+    PUBLIC DEF test_internal_access()
+        PRINTLN "Internal Private String: " + THIS.priv_str
+        PRINTLN "Internal Private Dict: " + STR(THIS.priv_dict)
+        PRINTLN "Internal Private Method: " + THIS.priv_method()
+        PRINTLN "Internal Private Static: " + BaseEntity.priv_static_val
+        PRINTLN "Internal Private Enum: " + STR(BaseEntity.PrivEnum.X)
+    ENDDEF
+ENDCLASS
+
+
+CLASS ChildEntity INHERITS BaseEntity
+    DEF ChildEntity()
+        SUPER()
+    ENDDEF
+
+    # --- 6. PROTECTED INHERITANCE TESTING ---
+    PUBLIC DEF test_protected_access()
+        PRINTLN "Subclass Protected Bool: " + STR(THIS.prot_bool)
+        PRINTLN "Subclass Protected Float: " + STR(THIS.prot_float)
+        PRINTLN "Subclass Protected Method: " + THIS.prot_method()
+    ENDDEF
+
+    # Attempt to access Parent's Private members from Child
+    PUBLIC DEF attempt_private_access()
+        PRINTLN "Attempting to access parent's private field from subclass..."
+        TRY
+            PRINTLN THIS.priv_str
+        CATCH err
+            PRINTLN "SUCCESS: Caught expected error -> " + STR(err)
+        ENDTRY
+    ENDDEF
+ENDCLASS
+
+
+# ==========================================
+# EXECUTING THE TESTS
+# ==========================================
+
+LET base_obj = NEW BaseEntity()
+LET child_obj = NEW ChildEntity()
+
+PRINTLN "--- TEST BLOCK A: INTERNAL ACCESS (Should Succeed) ---"
+base_obj.test_internal_access()
+PRINTLN ""
+
+PRINTLN "--- TEST BLOCK B: SUBCLASS (PROTECTED) ACCESS (Should Succeed) ---"
+child_obj.test_protected_access()
+PRINTLN ""
+child_obj.attempt_private_access()
+PRINTLN ""
+
+PRINTLN "--- TEST BLOCK C: EXTERNAL PUBLIC ACCESS (Should Succeed) ---"
+PRINTLN "Public Number: " + STR(base_obj.pub_num)
+PRINTLN "Public List: " + STR(base_obj.pub_list)
+PRINTLN "Public Null: " + STR(base_obj.pub_null)
+PRINTLN "Public Method: " + base_obj.pub_method()
+PRINTLN "Public Static: " + BaseEntity.pub_static_val
+PRINTLN "Public Enum: " + STR(BaseEntity.PubEnum.A)
+PRINTLN ""
+
+PRINTLN "--- TEST BLOCK D: EXTERNAL PROTECTED ACCESS (Should Fail) ---"
+TRY
+    PRINTLN base_obj.prot_bool
+CATCH err
+    PRINTLN "SUCCESS: Caught protected attribute error -> " + STR(err)
+ENDTRY
+
+TRY
+    PRINTLN base_obj.prot_method()
+CATCH err
+    PRINTLN "SUCCESS: Caught protected method error -> " + STR(err)
+ENDTRY
+PRINTLN ""
+
+PRINTLN "--- TEST BLOCK E: EXTERNAL PRIVATE ACCESS (Should Fail) ---"
+TRY
+    PRINTLN base_obj.priv_str
+CATCH err
+    PRINTLN "SUCCESS: Caught private attribute error -> " + STR(err)
+ENDTRY
+
+TRY
+    PRINTLN base_obj.priv_dict
+CATCH err
+    PRINTLN "SUCCESS: Caught private dictionary error -> " + STR(err)
+ENDTRY
+
+TRY
+    PRINTLN base_obj.priv_method()
+CATCH err
+    PRINTLN "SUCCESS: Caught private method error -> " + STR(err)
+ENDTRY
+
+TRY
+    PRINTLN BaseEntity.priv_static_val
+CATCH err
+    PRINTLN "SUCCESS: Caught private static attribute error -> " + STR(err)
+ENDTRY
+
+TRY
+    PRINTLN BaseEntity.PrivEnum.X
+CATCH err
+    PRINTLN "SUCCESS: Caught private enum error -> " + STR(err)
+ENDTRY
+PRINTLN ""
+
+PRINTLN "==========================================="
+PRINTLN "               TESTS COMPLETE              "
+PRINTLN "==========================================="

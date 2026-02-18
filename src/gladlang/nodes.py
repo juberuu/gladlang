@@ -149,9 +149,10 @@ class FunDefNode:
 
 
 class VisibilityStmtNode:
-    def __init__(self, visibility, assign_node):
+    def __init__(self, visibility, assign_node, is_final=False):
         self.visibility = visibility
         self.assign_node = assign_node
+        self.is_final = is_final
         self.pos_start = assign_node.pos_start
         self.pos_end = assign_node.pos_end
 
@@ -372,3 +373,11 @@ class SwitchNode:
             self.pos_end = cases[-1][1].pos_end
         else:
             self.pos_end = switch_value_node.pos_end
+
+
+class EnumNode:
+    def __init__(self, enum_name_tok, cases, pos_start, pos_end):
+        self.enum_name_tok = enum_name_tok
+        self.cases = cases
+        self.pos_start = pos_start
+        self.pos_end = pos_end

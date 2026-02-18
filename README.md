@@ -27,6 +27,7 @@ This is the full overview of the GladLang language, its features, and how to run
         - [Dictionaries](#dictionaries)
         - [Booleans](#booleans)
         - [Null](#null)
+        - [Enums](#enums)
     - [3. Operators](#3-operators)
         - [Math Operations](#math-operations)
         - [Compound Assignments](#compound-assignments)
@@ -100,6 +101,7 @@ GladLang supports a rich, modern feature set:
   * **Parent Delegation:** Full support for `SUPER` in both constructors and overridden methods, plus explicit parent targeting.
   * **Static Members:** Java-style `STATIC` fields, methods, and constants (`STATIC FINAL`).
   * **Operators:** Ternary Operator (`condition ? true : false`) for concise conditional logic.
+  * **Enums:** Fully encapsulated, immutable `ENUM` types with auto-incrementing values and explicit assignments.
   * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, strict unbound method type-checking, and secure encapsulation.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
   * **Constants:** Declare immutable values using `FINAL`. These are fully protected from shadowing, reassignment, and modification via loops or increment operators.
@@ -345,6 +347,34 @@ PRINTLN NOT t   # 0 (False)
 
 The `NULL` keyword represents a null or "nothing" value. It is falsy and prints as `0`. Functions with no `RETURN` statement implicitly return `NULL`.
 
+#### Enums
+
+GladLang supports strict, immutable `ENUM` types. Enums can be zero-indexed implicitly, or you can assign explicit values. They also support comma-separated cases. 
+
+```glad
+# Basic Enum (Implicit 0-indexing)
+ENUM Colors
+  RED
+  GREEN
+  BLUE
+ENDENUM
+
+PRINTLN Colors.RED   # 0
+PRINTLN Colors.GREEN # 1
+
+# Explicit & Auto-Incrementing Values
+ENUM HTTPStatus
+  OK = 200
+  NOT_FOUND = 404
+  CUSTOM_ERROR       # Implicitly becomes 405
+ENDENUM
+
+# Comma-Separated
+ENUM Days
+  MON, TUE, WED, THU, FRI
+ENDENUM
+```
+
 -----
 
 ### 3\. Operators
@@ -406,7 +436,7 @@ x <<= 2       # x is now 4
 
 ```
 
-#### Comparisons & Logic
+#### Comparisons, Logic & Type Checking
 
 You can compare values, chain comparisons for ranges, check object identity, and perform runtime type-checking.
 

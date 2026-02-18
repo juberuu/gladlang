@@ -115,7 +115,7 @@ class Value:
     def get_attr(self, name_tok):
         return None, self.illegal_operation()
 
-    def set_attr(self, name_tok, value, context=None, visibility=None):
+    def set_attr(self, name_tok, value, context=None, visibility=None, as_final=False):
         return None, self.illegal_operation()
 
     def get_element_at(self, index):
@@ -944,23 +944,34 @@ class Class(BaseFunction):
             )
         )
 
-    def set_attr(self, name_tok, value, context=None, visibility=None):
+    def set_attr(self, name_tok, value, context=None, visibility=None, as_final=False):
         name = name_tok.value
 
         if visibility == "FINAL":
-            if name in self.static_symbol_table.finals:
+            visibility = "PUBLIC"
+            as_final = True
+
+        if as_final or visibility is not None:
+            if name in self.static_symbol_table.symbols:
                 return None, RTError(
                     name_tok.pos_start,
                     name_tok.pos_end,
-                    f"Cannot reassign constant '{name}'",
+                    f"Static field '{name}' is already defined",
                     context,
                 )
             self.static_symbol_table.set(
-                name, value, visibility="PUBLIC", as_final=True
+                name, value, visibility=(visibility or "PUBLIC"), as_final=as_final
             )
             return value, None
 
         if self.static_symbol_table.get(name):
+            if name in self.static_symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot reassign static constant '{name}'",
+                    context,
+                )
             err = self.static_symbol_table.update(name, value)
             if err:
                 return None, RTError(name_tok.pos_start, name_tok.pos_end, err, context)
@@ -1152,25 +1163,36 @@ class Instance(Value):
 
         return member, None
 
-    def set_attr(self, name_tok, value, context=None, visibility=None):
+    def set_attr(self, name_tok, value, context=None, visibility=None, as_final=False):
         name = name_tok.value
 
         if visibility == "FINAL":
-            if name in self.symbol_table.finals:
+            visibility = "PUBLIC"
+            as_final = True
+
+        mangled_name = None
+        if context and context.active_class:
+            mangled_name = f"_{context.active_class.name}__{name}"
+
+        if visibility is not None or as_final:
+            target_name = mangled_name if visibility == "PRIVATE" else name
+
+            if target_name in self.symbol_table.symbols:
                 return None, RTError(
                     name_tok.pos_start,
                     name_tok.pos_end,
-                    f"Cannot reassign constant '{name}'",
+                    f"Attribute '{name}' is already defined",
                     context,
                 )
-            self.symbol_table.set(name, value, visibility="PUBLIC", as_final=True)
-            return value, None
 
-        if visibility == "PRIVATE" and context and context.active_class:
-            mangled_name = f"_{context.active_class.name}__{name}"
-            self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
+            self.symbol_table.set(
+                target_name,
+                value,
+                visibility=(visibility or "PUBLIC"),
+                as_final=as_final,
+            )
 
-            if self.symbol_table.get(name):
+            if visibility == "PRIVATE" and self.symbol_table.get(name):
                 if name in self.symbol_table.finals:
                     return None, RTError(
                         name_tok.pos_start,
@@ -1182,11 +1204,16 @@ class Instance(Value):
 
             return value, None
 
-        if context and context.active_class:
-            mangled_name = f"_{context.active_class.name}__{name}"
-            if self.symbol_table.get(mangled_name):
-                self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
-                return value, None
+        if mangled_name and self.symbol_table.get(mangled_name):
+            if mangled_name in self.symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot reassign constant '{name}'",
+                    context,
+                )
+            self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
+            return value, None
 
         if self.symbol_table.get(name):
             current_vis = self.symbol_table.get_visibility(name)
@@ -1194,10 +1221,27 @@ class Instance(Value):
             if error:
                 return None, error
 
-        if visibility is None:
-            visibility = self.symbol_table.get_visibility(name)
+            if name in self.symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot reassign constant '{name}'",
+                    context,
+                )
 
-        self.symbol_table.set(name, value, visibility=visibility)
+            self.symbol_table.set(name, value, visibility=current_vis)
+            return value, None
+
+        if self.class_ref.static_symbol_table.get(name):
+            if name in self.class_ref.static_symbol_table.finals:
+                return None, RTError(
+                    name_tok.pos_start,
+                    name_tok.pos_end,
+                    f"Cannot shadow static constant '{name}' with an instance variable",
+                    context,
+                )
+
+        self.symbol_table.set(name, value, visibility="PUBLIC")
         return value, None
 
     def get_comparison_eq(self, other, visited=None):
@@ -1333,6 +1377,52 @@ class Type(Value):
 
     def __repr__(self):
         return f"<type {self.name}>"
+
+
+class Enum(Value):
+    def __init__(self, name, elements_dict):
+        super().__init__()
+        self.name = name
+        self.elements_dict = elements_dict
+
+    def get_attr(self, name_tok, context=None):
+        name = name_tok.value
+        if name in self.elements_dict:
+            val = self.elements_dict[name]
+            return val.copy().set_pos(name_tok.pos_start, name_tok.pos_end), None
+        return None, RTError(
+            name_tok.pos_start,
+            name_tok.pos_end,
+            f"Enum '{self.name}' has no case '{name}'",
+            self.context,
+        )
+
+    def set_attr(self, name_tok, value, context=None, visibility=None, as_final=False):
+        return None, RTError(
+            name_tok.pos_start,
+            name_tok.pos_end,
+            f"Cannot reassign enum case '{name_tok.value}'",
+            self.context,
+        )
+
+    def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, Enum):
+            return Number(1 if self is other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
+
+    def get_comparison_ne(self, other):
+        if isinstance(other, Enum):
+            return Number(1 if self is not other else 0).set_context(self.context), None
+        return None, self.illegal_operation(other)
+
+    def copy(self):
+        copy = Enum(self.name, self.elements_dict)
+        copy.set_pos(self.pos_start, self.pos_end)
+        copy.set_context(self.context)
+        return copy
+
+    def __repr__(self):
+        return f"<enum {self.name}>"
 
 
 class BoundMethod(BaseFunction):

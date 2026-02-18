@@ -54,6 +54,7 @@ class Parser:
                 "ENDCLASS",
                 "ENDWHILE",
                 "ENDFOR",
+                "ENDENUM",
             ):
                 return res.failure(
                     InvalidSyntaxError(
@@ -98,28 +99,46 @@ class Parser:
             "PROTECTED",
             "FINAL",
         ):
-            visibility = self.current_tok.value
-            res.register_advancement()
-            self.advance()
+            visibility = "PUBLIC"
+            is_final = False
+
+            while self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
+                "PUBLIC",
+                "PRIVATE",
+                "PROTECTED",
+                "FINAL",
+            ):
+                if self.current_tok.value == "FINAL":
+                    is_final = True
+                else:
+                    visibility = self.current_tok.value
+
+                res.register_advancement()
+                self.advance()
+
+            if self.current_tok.matches(GL_KEYWORD, "ENUM"):
+                enum_node = res.register(self.enum_def())
+                if res.error:
+                    return res
+                enum_node.visibility = visibility
+                return res.success(enum_node)
 
             expr = res.register(self.expr())
             if res.error:
                 return res
 
-            if isinstance(expr, SetAttrNode):
-                return res.success(VisibilityStmtNode(visibility, expr))
-            elif isinstance(expr, VarAssignNode):
-                return res.success(VisibilityStmtNode(visibility, expr))
-
-            if not isinstance(expr, SetAttrNode):
-                return res.failure(
-                    InvalidSyntaxError(
-                        expr.pos_start,
-                        expr.pos_end,
-                        "Visibility modifiers can only be used with attribute assignments",
-                    )
+            if isinstance(expr, (SetAttrNode, VarAssignNode)):
+                return res.success(
+                    VisibilityStmtNode(visibility, expr, is_final=is_final)
                 )
-            return res.success(VisibilityStmtNode(visibility, expr))
+
+            return res.failure(
+                InvalidSyntaxError(
+                    expr.pos_start,
+                    expr.pos_end,
+                    "Visibility modifiers can only be used with variable or attribute assignments",
+                )
+            )
 
         if self.current_tok.type == GL_KEYWORD and self.current_tok.value in (
             "PRINT",
@@ -424,6 +443,9 @@ class Parser:
 
         if self.current_tok.matches(GL_KEYWORD, "CLASS"):
             return self.class_def()
+
+        if self.current_tok.matches(GL_KEYWORD, "ENUM"):
+            return self.enum_def()
 
         if self.current_tok.matches(GL_KEYWORD, "TRY"):
             return self.try_expr()
@@ -1405,6 +1427,15 @@ class Parser:
 
                 static_field_nodes.append(assign_node)
 
+            elif self.current_tok.matches(GL_KEYWORD, "ENUM"):
+                enum_node = res.register(self.enum_def())
+                if res.error:
+                    return res
+
+                enum_node.visibility = visibility
+                enum_node.is_static = True
+                static_field_nodes.append(enum_node)
+
             else:
                 return res.failure(
                     InvalidSyntaxError(
@@ -1431,6 +1462,82 @@ class Parser:
                 class_name_tok, superclass_nodes, method_nodes, static_field_nodes
             )
         )
+
+    def enum_def(self):
+        res = ParseResult()
+
+        if not self.current_tok.matches(GL_KEYWORD, "ENUM"):
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'ENUM'",
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type != GL_IDENTIFIER:
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected enum name",
+                )
+            )
+
+        enum_name_tok = self.current_tok
+        pos_start = enum_name_tok.pos_start.copy()
+        res.register_advancement()
+        self.advance()
+
+        cases = []
+        while self.current_tok.type != GL_EOF and not self.current_tok.matches(
+            GL_KEYWORD, "ENDENUM"
+        ):
+            if self.current_tok.type != GL_IDENTIFIER:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected identifier or 'ENDENUM'",
+                    )
+                )
+
+            case_name_tok = self.current_tok
+            res.register_advancement()
+            self.advance()
+
+            case_val_node = None
+            if self.current_tok.type == GL_EQ:
+                res.register_advancement()
+                self.advance()
+
+                case_val_node = res.register(self.expr())
+                if res.error:
+                    return res
+
+            cases.append((case_name_tok, case_val_node))
+
+            if self.current_tok.type == GL_COMMA:
+                res.register_advancement()
+                self.advance()
+
+        if not self.current_tok.matches(GL_KEYWORD, "ENDENUM"):
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'ENDENUM'",
+                )
+            )
+
+        pos_end = self.current_tok.pos_end.copy()
+        res.register_advancement()
+        self.advance()
+
+        return res.success(EnumNode(enum_name_tok, cases, pos_start, pos_end))
 
     def new_instance(self):
         res = ParseResult()

@@ -32,6 +32,7 @@ def get_fresh_global_scope():
     scope.set("String", Type("String"))
     scope.set("List", Type("List"))
     scope.set("Dict", Type("Dict"))
+    scope.set("Enum", Type("Enum"))
     scope.set("Function", Type("Function"))
     scope.set("Object", Type("Object"))
 
@@ -107,14 +108,16 @@ def is_complete(text):
     depth = 0
     bracket_level = 0
 
-    pattern = r"(\[|\]|\b(DEF|CLASS|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
+    pattern = r"(\[|\]|\b(DEF|CLASS|ENUM|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDENUM|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
 
     tokens = re.finditer(pattern, temp_text)
 
-    start_keys = {"DEF", "CLASS", "IF", "WHILE", "FOR", "TRY", "SWITCH"}
+    start_keys = {"DEF", "CLASS", "ENUM", "IF", "WHILE", "FOR", "TRY", "SWITCH"}
+
     end_keys = {
         "ENDDEF",
         "ENDCLASS",
+        "ENDENUM",
         "ENDIF",
         "ENDWHILE",
         "ENDFOR",
@@ -146,14 +149,16 @@ def main():
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.1.8"
+    GLADLANG_VERSION = "0.1.9"
     GLADLANG_HELP = f"""
-Usage: gladlang [command] [filename] [args...]
+Usage: gladlang [command] [filename/code] [args...]
 
 Commands:
   <no arguments>           Start the interactive GladLang shell.
   [filename.glad]          Execute a GladLang script file.
+  ["code string"]          Execute inline GladLang code directly.
   [filename.glad] [args]   Execute script and pass args to INPUT().
+  ["code string"] [args]   Execute inline code and pass args to INPUT().
   --help                   Show this help message and exit.
   --version                Show the interpreter version and exit.
 """
@@ -192,14 +197,23 @@ Commands:
                         full_text = ""
                         continue
 
-                    result, error = run("<stdin>", full_text, repl_context, instruction_limit=MAX_INSTRUCTIONS)
+                    result, error = run(
+                        "<stdin>",
+                        full_text,
+                        repl_context,
+                        instruction_limit=MAX_INSTRUCTIONS,
+                    )
 
                     if error:
                         sys.stdout.write(error.as_string() + "\n")
                     elif result:
                         clean_text = re.sub(r"#.*", "", full_text).strip()
 
-                        if clean_text.startswith("LET "):
+                        if (
+                            clean_text.startswith("LET ")
+                            or clean_text.startswith("ENUM ")
+                            or clean_text.startswith("FINAL ")
+                        ):
                             pass
                         elif isinstance(result, Number) and result.value == 0:
                             pass
@@ -239,16 +253,28 @@ Commands:
 
         else:
             try:
-                filename = arg
-
+                arg_input = arg
                 script_args = sys.argv[2:]
 
                 if script_args:
                     sys.stdin = io.StringIO("\n".join(script_args) + "\n")
 
-                text = Path(filename).read_text(encoding="utf-8")
+                is_file = False
+                try:
+                    is_file = Path(arg_input).is_file()
+                except OSError:
+                    pass
 
-                result, error = run(filename, text, instruction_limit=MAX_INSTRUCTIONS)
+                if is_file or arg_input.endswith(".glad"):
+                    text = Path(arg_input).read_text(encoding="utf-8")
+                    source_name = arg_input
+                else:
+                    text = arg_input
+                    source_name = "<cmdline>"
+
+                result, error = run(
+                    source_name, text, instruction_limit=MAX_INSTRUCTIONS
+                )
 
                 if error:
                     sys.stderr.write(error.as_string() + "\n")
@@ -256,7 +282,7 @@ Commands:
             except MemoryError:
                 sys.stderr.write("System Error: Memory Limit Exceeded\n")
             except FileNotFoundError:
-                sys.stderr.write(f"File not found: '{filename}'\n")
+                sys.stderr.write(f"File not found: '{arg_input}'\n")
             except Exception as e:
                 sys.stderr.write(f"An unexpected error occurred: {e}\n")
 

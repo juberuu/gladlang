@@ -10,6 +10,7 @@ from .values import (
     FunctionGroup,
     Super,
     Instance,
+    Enum,
 )
 from .nodes import *
 from .errors import RTError
@@ -825,6 +826,51 @@ class Interpreter:
         context.symbol_table.set(class_name, class_value)
         return res.success(class_value)
 
+    def visit_EnumNode(self, node, context):
+        res = RTResult()
+
+        enum_name = node.enum_name_tok.value
+        elements_dict = {}
+
+        current_val = 0
+
+        for case_name_tok, case_val_node in node.cases:
+            case_name = case_name_tok.value
+
+            if case_name in elements_dict:
+                return res.failure(
+                    RTError(
+                        case_name_tok.pos_start,
+                        case_name_tok.pos_end,
+                        f"Duplicate enum case '{case_name}'",
+                        context,
+                    )
+                )
+
+            if case_val_node:
+                val = res.register(self.visit(case_val_node, context))
+                if res.error:
+                    return res
+                if isinstance(val, Number):
+                    current_val = int(val.value)
+            else:
+                val = Number(current_val).set_context(context)
+
+            elements_dict[case_name] = val
+
+            if isinstance(val, Number):
+                current_val += 1
+
+        enum_val = Enum(enum_name, elements_dict)
+        enum_val.set_context(context).set_pos(node.pos_start, node.pos_end)
+
+        visibility = getattr(node, "visibility", "PUBLIC")
+        context.symbol_table.set(
+            enum_name, enum_val, visibility=visibility, as_final=True
+        )
+
+        return res.success(enum_val)
+
     def compute_mro(self, class_val):
         merge_list = [[class_val]]
 
@@ -870,6 +916,8 @@ class Interpreter:
         if target_vis == "FINAL":
             target_vis = "PUBLIC"
 
+        is_final = getattr(node, "is_final", False) or node.visibility == "FINAL"
+
         if isinstance(node.assign_node, SetAttrNode):
             object_node = node.assign_node.object_node
             attr_name = node.assign_node.attr_name_tok
@@ -883,7 +931,9 @@ class Interpreter:
             if res.error:
                 return res
 
-            _, error = obj.set_attr(attr_name, val, context, visibility=node.visibility)
+            _, error = obj.set_attr(
+                attr_name, val, context, visibility=target_vis, as_final=is_final
+            )
             if error:
                 return res.failure(error)
 
@@ -896,7 +946,7 @@ class Interpreter:
             if res.error:
                 return res
 
-            if node.visibility == "FINAL":
+            if is_final:
                 if var_name in context.symbol_table.symbols:
                     return res.failure(
                         RTError(
@@ -906,13 +956,12 @@ class Interpreter:
                             context,
                         )
                     )
-                vis_to_use = getattr(node, "target_visibility", "PUBLIC")
                 context.symbol_table.set(
-                    var_name, val, visibility=vis_to_use, as_final=True
+                    var_name, val, visibility=target_vis, as_final=True
                 )
                 return res.success(val)
 
-            context.symbol_table.set(var_name, val, visibility=node.visibility)
+            context.symbol_table.set(var_name, val, visibility=target_vis)
             return res.success(val)
 
         return res.failure(

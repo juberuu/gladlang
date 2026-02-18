@@ -1,0 +1,136 @@
+PRINTLN "==========================================="
+PRINTLN "           GLADLANG ENUM TESTS             "
+PRINTLN "==========================================="
+PRINTLN ""
+
+# ---------------------------------------------------------
+# TEST 1: Basic Enums (Implicit 0-indexed values)
+# ---------------------------------------------------------
+PRINTLN "--- Test 1: Basic Enums ---"
+ENUM Colors
+    RED
+    GREEN
+    BLUE
+ENDENUM
+
+PRINTLN "Colors.RED: ", Colors.RED       # Should print 0
+PRINTLN "Colors.GREEN: ", Colors.GREEN   # Should print 1
+PRINTLN "Colors.BLUE: ", Colors.BLUE     # Should print 2
+PRINTLN ""
+
+
+# ---------------------------------------------------------
+# TEST 2: Explicit Values & Auto-Incrementing
+# ---------------------------------------------------------
+PRINTLN "--- Test 2: Explicit & Auto-Incrementing Values ---"
+ENUM HTTPStatus
+    OK = 200
+    NOT_FOUND = 404
+    SERVER_ERROR = 500
+    CUSTOM_ERROR      # Should implicitly become 501
+ENDENUM
+
+PRINTLN "HTTPStatus.OK: ", HTTPStatus.OK
+PRINTLN "HTTPStatus.NOT_FOUND: ", HTTPStatus.NOT_FOUND
+PRINTLN "HTTPStatus.SERVER_ERROR: ", HTTPStatus.SERVER_ERROR
+PRINTLN "HTTPStatus.CUSTOM_ERROR: ", HTTPStatus.CUSTOM_ERROR
+PRINTLN ""
+
+
+# ---------------------------------------------------------
+# TEST 3: Comma-Separated Enums
+# ---------------------------------------------------------
+PRINTLN "--- Test 3: Comma-Separated Enums ---"
+ENUM Days
+    MON, TUE, WED,
+    THU, FRI
+ENDENUM
+
+PRINTLN "Days.MON: ", Days.MON           # Should print 0
+PRINTLN "Days.WED: ", Days.WED           # Should print 2
+PRINTLN "Days.FRI: ", Days.FRI           # Should print 4
+PRINTLN ""
+
+
+# ---------------------------------------------------------
+# TEST 4: Enum Object Immutability
+# ---------------------------------------------------------
+PRINTLN "--- Test 4: Enum Object Immutability ---"
+PRINTLN "Attempting to reassign the entire 'Colors' Enum..."
+TRY
+    Colors = 5
+    PRINTLN "FAIL: Successfully reassigned an Enum!"
+CATCH err
+    PRINTLN "SUCCESS: Caught expected error -> ", err
+ENDTRY
+PRINTLN ""
+
+
+# ---------------------------------------------------------
+# TEST 5: Enum Case Immutability
+# ---------------------------------------------------------
+PRINTLN "--- Test 5: Enum Case Immutability ---"
+PRINTLN "Attempting to reassign 'Colors.RED' to 10..."
+TRY
+    Colors.RED = 10
+    PRINTLN "FAIL: Successfully reassigned an Enum case!"
+CATCH err
+    PRINTLN "SUCCESS: Caught expected error -> ", err
+ENDTRY
+PRINTLN ""
+
+
+# ---------------------------------------------------------
+# TEST 6: Invalid Case Access
+# ---------------------------------------------------------
+PRINTLN "--- Test 6: Invalid Case Access ---"
+PRINTLN "Attempting to access non-existent 'Colors.YELLOW'..."
+TRY
+    LET y = Colors.YELLOW
+    PRINTLN "FAIL: Successfully accessed a non-existent case!"
+CATCH err
+    PRINTLN "SUCCESS: Caught expected error -> ", err
+ENDTRY
+PRINTLN ""
+
+CLASS Server
+    # 1. A Private Enum!
+    PRIVATE ENUM Status
+        OFFLINE
+        STARTING
+        RUNNING
+    ENDENUM
+
+    # 2. A Public Enum!
+    PUBLIC ENUM Role
+        ADMIN
+        USER
+        GUEST
+    ENDENUM
+
+    DEF Server()
+        # The class can use its own private Enum
+        PRINTLN "Server initialized with Status: ", Server.Status.OFFLINE
+    ENDDEF
+ENDCLASS
+
+PRINTLN "--- Testing Encapsulated Enums ---"
+LET srv = NEW Server()
+
+PRINTLN ""
+PRINTLN "Accessing Public Enum 'Role.ADMIN'..."
+PRINTLN "Result: ", Server.Role.ADMIN
+
+PRINTLN ""
+PRINTLN "Attempting to access Private Enum 'Status.OFFLINE' from outside..."
+TRY
+    LET my_status = Server.Status.OFFLINE
+    PRINTLN "FAIL: Successfully accessed a private enum!"
+CATCH err
+    PRINTLN "SUCCESS: Caught expected error -> ", err
+ENDTRY
+
+PRINTLN "==========================================="
+PRINTLN "           ALL TESTS COMPLETED             "
+PRINTLN "==========================================="
+

@@ -94,6 +94,8 @@ KEYWORDS = [
     "PROTECTED",
     "INSTANCEOF",
     "SUPER",
+    "ENUM",
+    "ENDENUM",
 ]
 
 DIGITS = "0123456789"
