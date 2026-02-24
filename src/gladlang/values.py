@@ -45,13 +45,9 @@ class Value:
         return None, self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
-        if not isinstance(other, List):
-            return None, Value.illegal_operation(self, other)
-
         result, error = self.get_comparison_eq(other)
         if error:
             return None, error
-
         if result.is_true():
             return Number(0).set_context(self.context), None
         else:
@@ -75,21 +71,21 @@ class Value:
     def get_comparison_instanceof(self, other):
         if isinstance(other, Type):
             if other.name == "Number" and isinstance(self, Number):
-                return Number.true, None
+                return Number.true.copy(), None
             if other.name == "String" and isinstance(self, String):
-                return Number.true, None
+                return Number.true.copy(), None
             if other.name == "List" and isinstance(self, List):
-                return Number.true, None
+                return Number.true.copy(), None
             if other.name == "Dict" and isinstance(self, Dict):
-                return Number.true, None
+                return Number.true.copy(), None
             if other.name == "Function" and isinstance(self, BaseFunction):
-                return Number.true, None
+                return Number.true.copy(), None
             if other.name == "Object":
-                return Number.true, None
-            return Number.false, None
+                return Number.true.copy(), None
+            return Number.false.copy(), None
 
         if isinstance(other, Class):
-            return Number.false, None
+            return Number.false.copy(), None
 
         return None, RTError(
             self.pos_start,
@@ -221,7 +217,30 @@ class Number(Value):
                     "Exponent too large (limit: 10000)",
                     self.context,
                 )
-            return Number(self.value**other.value).set_context(self.context), None
+            try:
+                result = self.value**other.value
+            except (ValueError, ZeroDivisionError) as e:
+                return None, RTError(
+                    other.pos_start, other.pos_end, str(e), self.context
+                )
+
+            if isinstance(result, complex):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    "Math domain error: result is complex",
+                    self.context,
+                )
+            import math
+
+            if isinstance(result, float) and math.isnan(result):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    "Math domain error: result is NaN",
+                    self.context,
+                )
+            return Number(result).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
@@ -296,38 +315,35 @@ class Number(Value):
 
     def bitted_and_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value) & int(other.value)).set_context(self.context),
-                None,
-            )
+            res = (int(self.value) & int(other.value)) & 0xFFFFFFFF
+            return Number(res).set_context(self.context), None
         return None, Value.illegal_operation(self, other)
 
     def bitted_or_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value) | int(other.value)).set_context(self.context),
-                None,
-            )
+            res = (int(self.value) | int(other.value)) & 0xFFFFFFFF
+            return Number(res).set_context(self.context), None
         return None, Value.illegal_operation(self, other)
 
     def bitted_xor_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value) ^ int(other.value)).set_context(self.context),
-                None,
-            )
+            res = (int(self.value) ^ int(other.value)) & 0xFFFFFFFF
+            return Number(res).set_context(self.context), None
         return None, Value.illegal_operation(self, other)
 
     def lshifted_by(self, other):
         if isinstance(other, Number):
             try:
-                result = int(self.value) << int(other.value)
+                result = (int(self.value) << int(other.value)) & 0xFFFFFFFF
                 return Number(result).set_context(self.context), None
             except ValueError:
                 return None, RTError(
                     other.pos_start, other.pos_end, "Negative shift count", self.context
                 )
         return None, Value.illegal_operation(self, other)
+
+    def bitted_not(self):
+        return Number((~int(self.value)) & 0xFFFFFFFF).set_context(self.context), None
 
     def rshifted_by(self, other):
         if isinstance(other, Number):
@@ -336,9 +352,6 @@ class Number(Value):
                 None,
             )
         return None, Value.illegal_operation(self, other)
-
-    def bitted_not(self):
-        return Number(~int(self.value)).set_context(self.context), None
 
     def is_true(self):
         return self.value != 0
@@ -355,7 +368,7 @@ class Number(Value):
 
 Number.false = Number(0)
 Number.true = Number(1)
-Number.null = Number(0)
+Number.null = Number.false.copy()
 
 
 class String(Value):
@@ -453,6 +466,8 @@ class String(Value):
 
 
 class List(Value):
+    MAX_LIST_SIZE = 1_000_000
+
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
@@ -470,6 +485,14 @@ class List(Value):
 
     def multed_by(self, other):
         if isinstance(other, Number):
+            result_len = len(self.elements) * int(other.value)
+            if result_len > List.MAX_LIST_SIZE:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"List repetition result ({result_len}) exceeds maximum allowed size ({List.MAX_LIST_SIZE})",
+                    self.context,
+                )
             new_list = List(self.elements * int(other.value))
             new_list.set_context(self.context)
             return new_list, None
@@ -559,7 +582,7 @@ class List(Value):
             return Number(1).set_context(self.context), None
 
     def copy(self):
-        copy = List(self.elements[:])
+        copy = List([e.copy() for e in self.elements])
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
         return copy
@@ -585,7 +608,7 @@ class Dict(Value):
         return len(self.elements) > 0
 
     def copy(self):
-        copy = Dict(self.elements.copy())
+        copy = Dict({k: v.copy() for k, v in self.elements.items()})
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
         return copy
@@ -729,15 +752,7 @@ class BaseFunction(Value):
 
     def populate_args(self, arg_names, args, new_context):
         for i in range(len(args)):
-            arg_name = arg_names[i]
-            arg_value = args[i]
-
-            if isinstance(arg_value, BaseFunction):
-                pass
-            else:
-                pass
-
-            new_context.symbol_table.set(arg_name, arg_value)
+            new_context.symbol_table.set(arg_names[i], args[i])
 
     def check_and_populate_args(self, arg_names, args, new_context):
         res = RTResult()
@@ -813,7 +828,7 @@ class Function(BaseFunction):
         if value_result.should_return:
             return res.success(value_result.return_value)
 
-        return res.success(value_result.value or Number.null)
+        return res.success(value_result.value or Number.null.copy())
 
     def copy(self):
         copy = Function(
@@ -843,8 +858,13 @@ class FunctionGroup(BaseFunction):
         arity = len(func.arg_names)
 
         if arity in self.functions:
-            raise Exception(
-                f"Duplicate function definition: '{self.name}' with {arity} arguments is already defined."
+            return RTResult().failure(
+                RTError(
+                    func.pos_start,
+                    func.pos_end,
+                    f"Overload conflict: '{self.name}' already has a variant with {arity} argument(s)",
+                    None,
+                )
             )
 
         self.functions[arity] = func
@@ -853,6 +873,18 @@ class FunctionGroup(BaseFunction):
             self.visibility = getattr(func, "visibility", "PUBLIC")
             self.is_static = getattr(func, "is_static", False)
             self.defining_class = getattr(func, "defining_class", None)
+        else:
+            if getattr(func, "visibility", "PUBLIC") != self.visibility:
+                return RTResult().failure(
+                    RTError(
+                        func.pos_start,
+                        func.pos_end,
+                        f"All overloads of '{self.name}' must have the same visibility",
+                        None,
+                    )
+                )
+
+        return None
 
     def execute(self, args, interpreter):
         arity = len(args)
@@ -989,7 +1021,7 @@ class Class(BaseFunction):
 
         for cls in self.mro:
             val = cls.static_symbol_table.get(method_name)
-            if val:
+            if val is not None:
                 visibility = cls.static_symbol_table.get_visibility(method_name)
                 defining_class = cls
 
@@ -1066,7 +1098,7 @@ class Class(BaseFunction):
                     ):
                         return method.copy().bind_to_instance(instance), None
 
-                return method, None
+                return method.copy(), None
 
         return None, RTError(
             name_tok.pos_start,
@@ -1078,10 +1110,10 @@ class Class(BaseFunction):
     def copy(self):
         copy = Class(
             self.name,
-            self.superclasses,
-            self.methods,
-            self.static_symbol_table,
-            self.mro,
+            self.superclasses[:],
+            {k: v.copy() for k, v in self.methods.items()},
+            self.static_symbol_table.copy(),
+            self.mro[:],
         )
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
@@ -1137,7 +1169,7 @@ class Instance(Value):
                 return val, None
 
         value = self.symbol_table.get(name)
-        if value:
+        if value is not None:
             visibility = self.symbol_table.get_visibility(name)
             error = self.check_access(name_tok, visibility, self.class_ref, context)
             if error:
@@ -1261,8 +1293,8 @@ class Instance(Value):
 
         if isinstance(other, Type):
             if other.name == "Object":
-                return Number.true, None
-            return Number.false, None
+                return Number.true.copy(), None
+            return Number.false.copy(), None
 
         return None, RTError(
             self.pos_start,
@@ -1353,7 +1385,7 @@ class Super(Value):
                 )
             )
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
 
     def copy(self):
         return (
@@ -1481,7 +1513,7 @@ class BoundMethod(BaseFunction):
         if value_result.should_return:
             return res.success(value_result.return_value)
 
-        return res.success(value_result.value or Number.null)
+        return res.success(value_result.value or Number.null.copy())
 
     def copy(self):
         return (
@@ -1511,13 +1543,13 @@ class BuiltInFunction(BaseFunction):
 
             prompt = ""
             if len(args) == 1:
-                prompt = str(args[0].value)
+                prompt = str(args[0])
 
             if prompt:
                 sys.stdout.write(prompt)
                 sys.stdout.flush()
 
-            text = sys.stdin.readline(4096)
+            text = sys.stdin.readline()
 
             if text:
                 text = text.rstrip("\n")
@@ -1599,7 +1631,7 @@ class BuiltInFunction(BaseFunction):
                 return res
 
             is_true = args[0].is_true()
-            return res.success(Number.true if is_true else Number.false)
+            return res.success(Number.true.copy() if is_true else Number.false.copy())
 
         elif self.name == "LEN":
             res.register(self.check_args(["value"], args))

@@ -24,9 +24,9 @@ from .interpreter import Interpreter
 def get_fresh_global_scope():
     scope = SymbolTable()
 
-    scope.set("NULL", Number(0))
-    scope.set("FALSE", Number(0))
-    scope.set("TRUE", Number(1))
+    scope.set("NULL", Number.null.copy())
+    scope.set("FALSE", Number.false.copy())
+    scope.set("TRUE", Number.true.copy())
 
     scope.set("Number", Type("Number"))
     scope.set("String", Type("String"))
@@ -84,7 +84,41 @@ def run(fn, text, context=None, instruction_limit=None):
 
 
 def is_complete(text):
-    text = re.sub(r"#.*", "", text)
+    cleaned = []
+    in_str = False
+    in_multi = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if in_multi:
+            cleaned.append(ch)
+            if text[i : i + 3] == '"""':
+                in_multi = False
+                cleaned.append('""')
+                i += 3
+                continue
+        elif in_str:
+            cleaned.append(ch)
+            if ch == "\\":
+                i += 1
+            elif ch == '"':
+                in_str = False
+        elif text[i : i + 3] == '"""':
+            in_multi = True
+            cleaned.append(ch)
+            i += 3
+            continue
+        elif ch == '"':
+            in_str = True
+            cleaned.append(ch)
+        elif ch == "#":
+            while i < len(text) and text[i] != "\n":
+                i += 1
+            continue
+        else:
+            cleaned.append(ch)
+        i += 1
+    text = "".join(cleaned)
 
     temp_text = re.sub(r'""".*?"""', "", text, flags=re.DOTALL)
     if temp_text.count('"""') % 2 != 0:
@@ -149,7 +183,7 @@ def main():
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.1.9"
+    GLADLANG_VERSION = "0.2.0"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename/code] [args...]
 
@@ -216,13 +250,21 @@ Commands:
                         ):
                             pass
                         elif isinstance(result, Number) and result.value == 0:
-                            pass
-                        elif (
-                            isinstance(result, List)
-                            and len(result.elements) == 1
-                            and result.elements[0].value == "NULL"
-                        ):
-                            pass
+                            statement_starters = (
+                                "WHILE ",
+                                "FOR ",
+                                "IF ",
+                                "PRINT",
+                                "PRINTLN",
+                                "SWITCH ",
+                                "TRY ",
+                                "THROW ",
+                            )
+                            is_statement = any(
+                                clean_text.startswith(s) for s in statement_starters
+                            )
+                            if not is_statement:
+                                sys.stdout.write(str(result) + "\n")
                         else:
                             sys.stdout.write(str(result) + "\n")
 

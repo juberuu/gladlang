@@ -8,7 +8,7 @@ from .errors import Position, IllegalCharError, InvalidSyntaxError
 def decode_escapes(s):
     try:
         return codecs.decode(s, "unicode_escape")
-    except:
+    except Exception:
         return s
 
 
@@ -29,7 +29,7 @@ class Token:
         return self.type == type_ and self.value == value
 
     def __repr__(self):
-        if self.value:
+        if self.value is not None:
             return f"{self.type}:{self.value}"
         return f"{self.type}"
 
@@ -76,7 +76,10 @@ class Lexer:
             elif self.current_char.isidentifier():
                 tokens.append(self.make_identifier())
             elif self.current_char == '"':
-                tokens.append(self.make_string())
+                tok_or_tuple = self.make_string()
+                if isinstance(tok_or_tuple, tuple):
+                    return [], tok_or_tuple[1]
+                tokens.append(tok_or_tuple)
             elif self.current_char == "+":
                 pos_start = self.pos.copy()
                 self.advance()
@@ -111,8 +114,16 @@ class Lexer:
                 pos_start = self.pos.copy()
                 self.advance()
                 if self.current_char == "*":
-                    tokens.append(Token(GL_POW, pos_start=pos_start, pos_end=self.pos))
                     self.advance()
+                    if self.current_char == "=":
+                        tokens.append(
+                            Token(GL_POWEQ, pos_start=pos_start, pos_end=self.pos)
+                        )
+                        self.advance()
+                    else:
+                        tokens.append(
+                            Token(GL_POW, pos_start=pos_start, pos_end=self.pos)
+                        )
                 elif self.current_char == "=":
                     tokens.append(
                         Token(GL_MULEQ, pos_start=pos_start, pos_end=self.pos)
@@ -248,11 +259,10 @@ class Lexer:
             elif self.current_char == "=":
                 tokens.append(self.make_equals())
             elif self.current_char == "`":
-                tokens += self.make_template_string()
-            elif self.current_char == "<":
-                tokens.append(self.make_less_than())
-            elif self.current_char == ">":
-                tokens.append(self.make_greater_than())
+                result = self.make_template_string()
+                if isinstance(result, tuple):
+                    return [], result[1]
+                tokens += result
             elif self.current_char == "{":
                 tokens.append(Token(GL_LBRACE, pos_start=self.pos))
                 self.advance()
@@ -264,6 +274,9 @@ class Lexer:
                 self.advance()
             elif self.current_char == "?":
                 tokens.append(Token(GL_QMARK, pos_start=self.pos))
+                self.advance()
+            elif self.current_char == ";":
+                tokens.append(Token(GL_SEMI, pos_start=self.pos))
                 self.advance()
             else:
                 pos_start = self.pos.copy()
@@ -343,30 +356,6 @@ class Lexer:
         else:
             return Token(GL_FLOAT, float(num_str), pos_start, self.pos)
 
-    def make_string(self, quote_type):
-        string_content = ""
-        escape_character = False
-        self.advance()
-
-        while self.current_char != None and (
-            self.current_char != quote_type or escape_character
-        ):
-            if escape_character:
-                string_content += "\\" + self.current_char
-                escape_character = False
-            else:
-                if self.current_char == "\\":
-                    escape_character = True
-                else:
-                    string_content += self.current_char
-            self.advance()
-
-        self.advance()
-
-        string_content = decode_escapes(string_content)
-
-        return Token(GL_STRING, string_content, self.pos_start, self.pos)
-
     def make_identifier(self):
         id_str = ""
         pos_start = self.pos.copy()
@@ -439,6 +428,9 @@ class Lexer:
 
                 sub_lexer = Lexer(self.fn, expr_str)
                 sub_tokens, error = sub_lexer.make_tokens()
+
+                if error:
+                    return [], error
 
                 if sub_tokens and sub_tokens[-1].type == GL_EOF:
                     sub_tokens.pop()
@@ -535,75 +527,10 @@ class Lexer:
 
             self.advance()
 
+        if self.current_char is None:
+            return None, InvalidSyntaxError(
+                pos_start, self.pos, "Unterminated string literal"
+            )
+
         self.advance()
         return Token(GL_STRING, string, pos_start, self.pos)
-
-    def make_less_than(self):
-        tok_type = GL_LT
-        pos_start = self.pos.copy()
-        self.advance()
-
-        if self.current_char == "=":
-            self.advance()
-            tok_type = GL_LTE
-
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
-
-    def make_greater_than(self):
-        tok_type = GL_GT
-        pos_start = self.pos.copy()
-        self.advance()
-
-        if self.current_char == "=":
-            self.advance()
-            tok_type = GL_GTE
-
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
-
-    def make_plus_equals(self):
-        token_type = GL_PLUS
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_PLUSEQ
-        return Token(token_type, pos_start=self.pos)
-
-    def make_minus_equals(self):
-        token_type = GL_MINUS
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_MINUSEQ
-        return Token(token_type, pos_start=self.pos)
-
-    def make_mul_equals(self):
-        token_type = GL_MUL
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_MULEQ
-        return Token(token_type, pos_start=self.pos)
-
-    def make_div_equals(self):
-        token_type = GL_DIV
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_DIVEQ
-        return Token(token_type, pos_start=self.pos)
-
-    def make_pow_equals(self):
-        token_type = GL_POW
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_POWEQ
-        return Token(token_type, pos_start=self.pos)
-
-    def make_mod_equals(self):
-        token_type = GL_MOD
-        self.advance()
-        if self.current_char == "=":
-            self.advance()
-            token_type = GL_MODEQ
-        return Token(token_type, pos_start=self.pos)

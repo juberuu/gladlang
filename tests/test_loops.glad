@@ -4,14 +4,14 @@ PRINTLN "Test 1: Simple countdown"
 LET i = 5
 WHILE i > 0
   PRINTLN "i = " + i
-  LET i = i - 1
+  i--
 ENDWHILE
 PRINTLN "Loop 1 finished."
 
 PRINTLN "--- Test 2: CONTINUE (print even numbers) ---"
 LET i = 10
 WHILE i > 0
-  LET i = i - 1
+  i--
   # If the number is odd, skip the PRINTLN
   IF (i - (INT(i / 2) * 2)) != 0 THEN
     CONTINUE
@@ -28,7 +28,7 @@ WHILE i > 0
     LET found = i
     BREAK # Exit the loop
   ENDIF
-  LET i = i - 1
+  i--
 ENDWHILE
 PRINTLN "Loop 3 finished."
 PRINTLN "Found first multiple of 7 (under 100): " + found

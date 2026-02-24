@@ -95,6 +95,7 @@ GladLang supports a rich, modern feature set:
   * **Control Flow:**
       * Full support for `IF` / `ELSE IF`, `SWITCH` / `CASE`.
       * **Universal Iteration:** `FOR` loops over Lists, Strings (chars), and Dictionaries (keys).
+      * **C-Style Iteration:** Traditional `FOR` loops (`FOR (LET I = 0; I < 10; I++)`) featuring strict block scoping and safe closure capturing.
   * **Functions:** First-class citizens, Closures, Recursion, Named/Anonymous support, and **Overloading** (by argument count).
   * **Object-Oriented:** Full OOP support with `CLASS`, `INHERITS`, Access Modifiers, and **Method/Constructor Overloading**. Object instantiation is **$O(1)$** due to constructor caching.
   * **Advanced Inheritance:** Support for **Multiple** and **Hybrid** inheritance with strict C3-style **Method Resolution Order (MRO)**. 
@@ -104,7 +105,9 @@ GladLang supports a rich, modern feature set:
   * **Enums:** Fully encapsulated, immutable `ENUM` types with auto-incrementing values and explicit assignments.
   * **OOP Safety:** Runtime checks for circular inheritance, LSP violations, strict unbound method type-checking, and secure encapsulation.
   * **Error Management:** Gracefully handle errors with `TRY`, `CATCH`, and `FINALLY`.
-  * **Constants:** Declare immutable values using `FINAL`. These are fully protected from shadowing, reassignment, and modification via loops or increment operators.
+  * **Constants:** Declare immutable values using `FINAL`. These use **Atomic Locking** (`set_if_absent`) to prevent race conditions and are fully protected from shadowing or modification.
+  * **Memory Safety:** Built-in protection against Denial-of-Service attacks. List repetition is capped at **1,000,000** elements, and a global **Instruction Budget** prevents infinite loop lockups.
+  * **Logical Accuracy:** Full **Short-Circuit Evaluation** for `AND`/`OR` operators and corrected math logic for compound assignments like `+=`.
   * **Built-ins:** `PRINTLN`, `PRINT`, `INPUT`, `STR`, `INT`, `FLOAT`, `BOOL`, `LEN`.
   * **Error Handling:** Robust, user-friendly runtime error reporting with full tracebacks.
   * **Advanced Math:** Compound assignments (`+=`, `*=`), Power (`**`), Modulo (`%`), and automatic float division.
@@ -158,6 +161,14 @@ Pass a file path to execute a script:
 
 ```bash
 gladlang "tests/test.glad"
+
+```
+
+#### Inline Execution
+Run code directly from your terminal string:
+
+```bash
+gladlang "PRINTLN 10 + 5"
 
 ```
 
@@ -549,7 +560,7 @@ Loops while a condition is `TRUE`.
 LET i = 3
 WHILE i > 0
   PRINTLN "i = " + i
-  LET i = i - 1
+  i = i - 1
 ENDWHILE
 
 # Prints:
@@ -584,6 +595,12 @@ ENDFOR
 LET points = [[1, 2], [3, 4]]
 FOR [x, y] IN points
   PRINTLN "x: " + x + ", y: " + y
+ENDFOR
+
+# --- 2. C-Style FOR Loops ---
+# FOR (initialization; condition; increment)
+FOR (LET i = 0; i < 5; i++)
+  PRINTLN "Count: " + i
 ENDFOR
 
 ```

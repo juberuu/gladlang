@@ -30,6 +30,16 @@ class SymbolTable:
             if as_final:
                 self.finals.add(name)
 
+    def set_if_absent(self, name, value, visibility="PUBLIC", as_final=False):
+        with self._lock:
+            if name in self.symbols:
+                return f"Variable '{name}' is already defined"
+            self.symbols[name] = value
+            self.visibilities[name] = visibility
+            if as_final:
+                self.finals.add(name)
+            return None
+
     def get(self, name):
         with self._lock:
             value = self.symbols.get(name)
@@ -75,7 +85,7 @@ class Context:
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
         self.depth = (parent.depth + 1) if parent else 0
-        self.active_class = None
+        self.active_class = parent.active_class if parent else None
 
 
 class RTResult:

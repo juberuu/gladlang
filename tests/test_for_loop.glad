@@ -27,3 +27,20 @@ FOR item IN my_list
   ENDIF
   PRINTLN "Item: " + item
 ENDFOR
+
+PRINTLN "--- Test 4: Local C-Style FOR Loop ---"
+FOR (LET I = 0; I < 5; I++)
+    PRINT "Local I: " + STR(I) + " | "
+ENDFOR
+
+PRINTLN "\n\n--- Test 5: Global C-Style FOR Loop ---"
+LET X = 0
+FOR (X = 0; X < 3; X++)
+    PRINTLN "Global X inside loop: " + STR(X)
+ENDFOR
+PRINTLN "Global X outside loop: " + STR(X)
+
+PRINTLN "\n--- Testing Old Iterator Loop ---"
+FOR Y IN [10, 20, 30]
+    PRINTLN "Iterator Y: " + STR(Y)
+ENDFOR

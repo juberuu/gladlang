@@ -432,10 +432,32 @@ class Parser:
             self.advance()
             pos_start = self.current_tok.pos_start.copy()
 
+            END_KEYWORDS = {
+                "ENDDEF",
+                "ELSE",
+                "ENDIF",
+                "ENDWHILE",
+                "ENDFOR",
+                "ENDTRY",
+                "ENDSWITCH",
+                "ENDCLASS",
+                "CATCH",
+                "FINALLY",
+                "CASE",
+                "DEFAULT",
+            }
+
+            if self.current_tok.type == GL_EOF or (
+                self.current_tok.type == GL_KEYWORD
+                and self.current_tok.value in END_KEYWORDS
+            ):
+                null_tok = Token(GL_INT, 0, pos_start, pos_start)
+                null_node = NumberNode(null_tok)
+                return res.success(ReturnNode(null_node, pos_start, pos_start))
+
             expr = res.register(self.expr())
             if res.error:
                 return res
-
             return res.success(ReturnNode(expr, pos_start, expr.pos_end))
 
         if self.current_tok.matches(GL_KEYWORD, "DEF"):
@@ -535,8 +557,89 @@ class Parser:
                 )
             )
 
+        pos_start = self.current_tok.pos_start.copy()
         res.register_advancement()
         self.advance()
+
+        if self.current_tok.type == GL_LPAREN:
+            res.register_advancement()
+            self.advance()
+
+            init_node = None
+            if self.current_tok.type != GL_SEMI:
+                init_node = res.register(self.statement())
+                if res.error:
+                    return res
+
+            if self.current_tok.type != GL_SEMI:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected ';'",
+                    )
+                )
+            res.register_advancement()
+            self.advance()
+
+            condition_node = None
+            if self.current_tok.type != GL_SEMI:
+                condition_node = res.register(self.expr())
+                if res.error:
+                    return res
+
+            if self.current_tok.type != GL_SEMI:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected ';'",
+                    )
+                )
+            res.register_advancement()
+            self.advance()
+
+            step_node = None
+            if self.current_tok.type != GL_RPAREN:
+                step_node = res.register(self.expr())
+                if res.error:
+                    return res
+
+            if self.current_tok.type != GL_RPAREN:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected ')'",
+                    )
+                )
+            res.register_advancement()
+            self.advance()
+
+            self.loop_count += 1
+            body_node = res.register(self.statement_list(("ENDFOR",)))
+            self.loop_count -= 1
+            if res.error:
+                return res
+
+            if not self.current_tok.matches(GL_KEYWORD, "ENDFOR"):
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "Expected 'ENDFOR'",
+                    )
+                )
+
+            pos_end = self.current_tok.pos_end.copy()
+            res.register_advancement()
+            self.advance()
+
+            return res.success(
+                CForNode(
+                    init_node, condition_node, step_node, body_node, pos_start, pos_end
+                )
+            )
 
         var_name_toks, var_res = self.parse_iter_vars()
         if var_res and var_res.error:

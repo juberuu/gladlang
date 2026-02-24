@@ -71,7 +71,7 @@ class Interpreter:
 
     def visit_StatementListNode(self, node, context):
         res = RTResult()
-        last_value = Number.null
+        last_value = Number.null.copy()
 
         for statement_node in node.statement_nodes:
             last_value = res.register(self.visit(statement_node, context))
@@ -398,7 +398,7 @@ class Interpreter:
         if not node.should_newline:
             sys.stdout.flush()
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
 
     def visit_IfNode(self, node, context):
         res = RTResult()
@@ -428,7 +428,7 @@ class Interpreter:
 
             return res.success(expr_value)
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
 
     def unpack_and_set(self, var_toks, element, context, res):
         if len(var_toks) == 1:
@@ -550,6 +550,7 @@ class Interpreter:
                             comp_context,
                         )
                     )
+                    return
                 return
 
             var_toks, iter_node, cond_node = node.iteration_specs[spec_index]
@@ -625,7 +626,7 @@ class Interpreter:
             if res.should_return:
                 return res
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
 
     def visit_WhileNode(self, node, context):
         res = RTResult()
@@ -638,7 +639,10 @@ class Interpreter:
             if not condition_value.is_true():
                 break
 
-            value = res.register(self.visit(node.body_node, context))
+            loop_context = Context("WHILE", context, node.pos_start)
+            loop_context.symbol_table = SymbolTable(context.symbol_table)
+
+            value = res.register(self.visit(node.body_node, loop_context))
             if res.error:
                 return res
 
@@ -653,7 +657,52 @@ class Interpreter:
             if res.should_return:
                 return res
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
+
+    def visit_CForNode(self, node, context):
+        res = RTResult()
+
+        init_context = Context("FOR_INIT", context, node.pos_start)
+        init_context.symbol_table = SymbolTable(context.symbol_table)
+        init_context.active_class = context.active_class
+
+        if node.init_node:
+            res.register(self.visit(node.init_node, init_context))
+            if res.error:
+                return res
+
+        while True:
+            if node.condition_node:
+                condition_value = res.register(
+                    self.visit(node.condition_node, init_context)
+                )
+                if res.error:
+                    return res
+                if not condition_value.is_true():
+                    break
+
+            body_context = Context("FOR_BODY", init_context, node.pos_start)
+            body_context.symbol_table = SymbolTable(init_context.symbol_table)
+            body_context.active_class = init_context.active_class
+
+            res.register(self.visit(node.body_node, body_context))
+            if res.error:
+                return res
+
+            if res.should_continue:
+                res.should_continue = False
+            elif res.should_break:
+                res.should_break = False
+                break
+            elif res.should_return:
+                return res
+
+            if node.step_node:
+                res.register(self.visit(node.step_node, init_context))
+                if res.error:
+                    return res
+
+        return res.success(Number.null.copy())
 
     def visit_BreakNode(self, node, context):
         return RTResult().success_break()
@@ -670,15 +719,19 @@ class Interpreter:
         func = Function(func_name, body_node, node.arg_name_toks, context)
 
         if func_name:
-            existing_val = context.symbol_table.symbols.get(func_name)
+            existing_val = context.symbol_table.get(func_name)
 
             if existing_val and isinstance(existing_val, FunctionGroup):
-                existing_val.add_function(func)
+                err = existing_val.add_function(func)
+                if err and isinstance(err, RTResult) and err.error:
+                    return err
                 func = existing_val
             elif existing_val and isinstance(existing_val, Function):
                 group = FunctionGroup(func_name)
                 group.add_function(existing_val)
-                group.add_function(func)
+                err = group.add_function(func)
+                if err and isinstance(err, RTResult) and err.error:
+                    return err
                 context.symbol_table.set(func_name, group)
                 func = group
             else:
@@ -789,11 +842,15 @@ class Interpreter:
             if method_name in methods:
                 existing = methods[method_name]
                 if isinstance(existing, FunctionGroup):
-                    existing.add_function(method_value)
+                    err = existing.add_function(method_value)
+                    if err and isinstance(err, RTResult) and err.error:
+                        return err
                 else:
                     group = FunctionGroup(method_name)
                     group.add_function(existing)
-                    group.add_function(method_value)
+                    err = group.add_function(method_value)
+                    if err and isinstance(err, RTResult) and err.error:
+                        return err
                     methods[method_name] = group
             else:
                 methods[method_name] = method_value
@@ -947,18 +1004,13 @@ class Interpreter:
                 return res
 
             if is_final:
-                if var_name in context.symbol_table.symbols:
-                    return res.failure(
-                        RTError(
-                            node.pos_start,
-                            node.pos_end,
-                            f"Variable '{var_name}' is already defined",
-                            context,
-                        )
-                    )
-                context.symbol_table.set(
+                err = context.symbol_table.set_if_absent(
                     var_name, val, visibility=target_vis, as_final=True
                 )
+                if err:
+                    return res.failure(
+                        RTError(node.pos_start, node.pos_end, err, context)
+                    )
                 return res.success(val)
 
             context.symbol_table.set(var_name, val, visibility=target_vis)
@@ -1086,11 +1138,12 @@ class Interpreter:
 
         if node.op_tok.matches(GL_KEYWORD, "AND"):
             if not left.is_true():
-                return res.success(Number.false)
+                return res.success(Number.false.copy())
 
             right = res.register(self.visit(node.right_node, context))
             if res.error:
                 return res
+
             result, error = left.anded_by(right)
             if error:
                 return res.failure(error)
@@ -1098,11 +1151,12 @@ class Interpreter:
 
         elif node.op_tok.matches(GL_KEYWORD, "OR"):
             if left.is_true():
-                return res.success(Number.true)
+                return res.success(Number.true.copy())
 
             right = res.register(self.visit(node.right_node, context))
             if res.error:
                 return res
+
             result, error = left.ored_by(right)
             if error:
                 return res.failure(error)
@@ -1111,6 +1165,8 @@ class Interpreter:
         right = res.register(self.visit(node.right_node, context))
         if res.error:
             return res
+
+        result, error = None, None
 
         if node.op_tok.type == GL_PLUS:
             result, error = left.added_to(right)
@@ -1152,6 +1208,15 @@ class Interpreter:
             result, error = left.lshifted_by(right)
         elif node.op_tok.type == GL_RSHIFT:
             result, error = left.rshifted_by(right)
+        else:
+            return res.failure(
+                RTError(
+                    node.op_tok.pos_start,
+                    node.op_tok.pos_end,
+                    f"Unsupported operator '{node.op_tok.type}'",
+                    context,
+                )
+            )
 
         if error:
             return res.failure(error)
@@ -1208,11 +1273,11 @@ class Interpreter:
                 return res.failure(error)
 
             if not result.is_true():
-                return res.success(Number.false)
+                return res.success(Number.false.copy())
 
             left_val = right_val
 
-        return res.success(Number.true)
+        return res.success(Number.true.copy())
 
     def visit_UnaryOpNode(self, node, context):
         res = RTResult()
@@ -1234,7 +1299,7 @@ class Interpreter:
                     )
 
                 value = context.symbol_table.get(var_name)
-                if not value:
+                if value is None:
                     return res.failure(
                         RTError(
                             target_node.pos_start,
@@ -1358,7 +1423,7 @@ class Interpreter:
                 )
 
             old_value = context.symbol_table.get(var_name)
-            if not old_value:
+            if old_value is None:
                 return res.failure(
                     RTError(
                         target_node.pos_start,
@@ -1475,7 +1540,9 @@ class Interpreter:
             res.register(try_res)
             if res.should_return or res.should_break or res.should_continue:
                 if node.finally_body_node:
-                    self.visit(node.finally_body_node, context)
+                    fin_res = self.visit(node.finally_body_node, context)
+                    if fin_res.error:
+                        return res.failure(fin_res.error)
                 return res
 
         if node.finally_body_node:
@@ -1483,7 +1550,7 @@ class Interpreter:
             if res.error:
                 return res
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
 
     def visit_ThrowNode(self, node, context):
         res = RTResult()
@@ -1504,21 +1571,14 @@ class Interpreter:
         res = RTResult()
         var_name = node.var_name_tok.value
 
-        if var_name in context.symbol_table.symbols:
-            return res.failure(
-                RTError(
-                    node.pos_start,
-                    node.pos_end,
-                    f"Variable '{var_name}' is already defined",
-                    context,
-                )
-            )
-
         value = res.register(self.visit(node.value_node, context))
         if res.error:
             return res
 
-        context.symbol_table.set(var_name, value, as_final=True)
+        err = context.symbol_table.set_if_absent(var_name, value, as_final=True)
+        if err:
+            return res.failure(RTError(node.pos_start, node.pos_end, err, context))
+
         return res.success(value)
 
     def visit_SwitchNode(self, node, context):
@@ -1566,4 +1626,4 @@ class Interpreter:
                 return res
             return res.success(val)
 
-        return res.success(Number.null)
+        return res.success(Number.null.copy())
