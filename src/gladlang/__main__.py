@@ -105,7 +105,7 @@ def is_complete(text):
                 in_str = False
         elif text[i : i + 3] == '"""':
             in_multi = True
-            cleaned.append(ch)
+            cleaned.append('"""')
             i += 3
             continue
         elif ch == '"':
@@ -124,7 +124,7 @@ def is_complete(text):
     if temp_text.count('"""') % 2 != 0:
         return False
 
-    temp_text = re.sub(r"`[^`]*`", "", temp_text, flags=re.DOTALL)
+    temp_text = re.sub(r"`(?:\\\\.|[^`\\\\])*`", "", temp_text, flags=re.DOTALL)
     if temp_text.count("`") % 2 != 0:
         return False
 
@@ -183,7 +183,7 @@ def main():
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.2.0"
+    GLADLANG_VERSION = "0.2.1"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename/code] [args...]
 

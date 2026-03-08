@@ -1354,7 +1354,10 @@ class Parser:
         res.register_advancement()
         self.advance()
 
+        saved_loop_count = self.loop_count
+        self.loop_count = 0
         body = res.register(self.statement_list(("ENDDEF",)))
+        self.loop_count = saved_loop_count
 
         if res.error:
             return res

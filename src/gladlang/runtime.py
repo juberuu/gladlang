@@ -1,18 +1,4 @@
-from .errors import RTError
-import threading
 from threading import Lock
-
-
-class ThreadSafeContext:
-    _storage = threading.local()
-
-    @classmethod
-    def get_current(cls):
-        return getattr(cls._storage, "context", None)
-
-    @classmethod
-    def set_current(cls, context):
-        cls._storage.context = context
 
 
 class SymbolTable:
@@ -21,19 +7,34 @@ class SymbolTable:
         self.parent = parent
         self.finals = set()
         self.visibilities = {}
+        self.defining_classes = {}
         self._lock = Lock()
 
-    def set(self, name, value, visibility="PUBLIC", as_final=False):
+    def set(
+        self, name, value, visibility="PUBLIC", as_final=False, defining_class=None
+    ):
         with self._lock:
             self.symbols[name] = value
             self.visibilities[name] = visibility
             if as_final:
                 self.finals.add(name)
+            if defining_class:
+                self.defining_classes[name] = defining_class
+
+    def is_final_in_ancestors(self, name):
+        current = self.parent
+        while current:
+            if name in current.finals:
+                return True
+            current = current.parent
+        return False
 
     def set_if_absent(self, name, value, visibility="PUBLIC", as_final=False):
         with self._lock:
             if name in self.symbols:
                 return f"Variable '{name}' is already defined"
+            if as_final and self.is_final_in_ancestors(name):
+                return f"Cannot declare constant '{name}' because it is already defined as constant in outer scope"
             self.symbols[name] = value
             self.visibilities[name] = visibility
             if as_final:
@@ -75,6 +76,7 @@ class SymbolTable:
             new_table.symbols = self.symbols.copy()
             new_table.visibilities = self.visibilities.copy()
             new_table.finals = self.finals.copy()
+            new_table.defining_classes = self.defining_classes.copy()
             return new_table
 
 
@@ -86,6 +88,7 @@ class Context:
         self.symbol_table = None
         self.depth = (parent.depth + 1) if parent else 0
         self.active_class = parent.active_class if parent else None
+        self.is_static = False
 
 
 class RTResult:

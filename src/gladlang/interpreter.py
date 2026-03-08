@@ -11,6 +11,7 @@ from .values import (
     Super,
     Instance,
     Enum,
+    Value,
 )
 from .nodes import *
 from .errors import RTError
@@ -215,7 +216,10 @@ class Interpreter:
                 return
 
             for element in iterator:
-                if not self.unpack_and_set(var_toks, element, comp_context, res):
+                for tok in var_toks:
+                    comp_context.symbol_table.remove(tok.value)
+                self.unpack_and_set(var_toks, element, comp_context, res)
+                if res.error:
                     return
 
                 if cond_node:
@@ -226,6 +230,8 @@ class Interpreter:
                         continue
 
                 evaluate_loops(spec_index + 1)
+                if res.error:
+                    return
 
         evaluate_loops(0)
 
@@ -337,6 +343,18 @@ class Interpreter:
                 .set_pos(node.pos_start, node.pos_end)
             )
             return res.success(super_val)
+
+        if var_name == "THIS" and context.is_static:
+            local_this = context.symbol_table.get("THIS")
+            if local_this is None:
+                return res.failure(
+                    RTError(
+                        node.pos_start,
+                        node.pos_end,
+                        "'THIS' cannot be used inside a static method",
+                        context,
+                    )
+                )
 
         value = context.symbol_table.get(var_name)
 
@@ -567,7 +585,10 @@ class Interpreter:
                 return
 
             for element in iterator:
-                if not self.unpack_and_set(var_toks, element, comp_context, res):
+                for tok in var_toks:
+                    comp_context.symbol_table.remove(tok.value)
+                self.unpack_and_set(var_toks, element, comp_context, res)
+                if res.error:
                     return
 
                 if cond_node:
@@ -578,6 +599,8 @@ class Interpreter:
                         continue
 
                 evaluate_loops(spec_index + 1)
+                if res.error:
+                    return
 
         evaluate_loops(0)
 
@@ -604,11 +627,15 @@ class Interpreter:
         if error:
             return res.failure(error)
 
-        for element in iterator:
-            loop_context = Context("FOR", context, node.pos_start)
-            loop_context.symbol_table = SymbolTable(context.symbol_table)
+        loop_context = Context("FOR", context, node.pos_start)
+        loop_context.symbol_table = SymbolTable(context.symbol_table)
 
-            if not self.unpack_and_set(node.var_name_toks, element, loop_context, res):
+        for element in iterator:
+            for tok in node.var_name_toks:
+                loop_context.symbol_table.remove(tok.value)
+
+            self.unpack_and_set(node.var_name_toks, element, loop_context, res)
+            if res.error:
                 return res
 
             value = res.register(self.visit(node.body_node, loop_context))
@@ -631,16 +658,18 @@ class Interpreter:
     def visit_WhileNode(self, node, context):
         res = RTResult()
 
+        loop_context = Context("WHILE", context, node.pos_start)
+        loop_context.symbol_table = SymbolTable(context.symbol_table)
+
         while True:
-            condition_value = res.register(self.visit(node.condition_node, context))
+            condition_value = res.register(
+                self.visit(node.condition_node, loop_context)
+            )
             if res.error:
                 return res
 
             if not condition_value.is_true():
                 break
-
-            loop_context = Context("WHILE", context, node.pos_start)
-            loop_context.symbol_table = SymbolTable(context.symbol_table)
 
             value = res.register(self.visit(node.body_node, loop_context))
             if res.error:
@@ -662,30 +691,26 @@ class Interpreter:
     def visit_CForNode(self, node, context):
         res = RTResult()
 
-        init_context = Context("FOR_INIT", context, node.pos_start)
-        init_context.symbol_table = SymbolTable(context.symbol_table)
-        init_context.active_class = context.active_class
+        loop_context = Context("C_FOR", context, node.pos_start)
+        loop_context.symbol_table = SymbolTable(context.symbol_table)
+        loop_context.active_class = context.active_class
 
         if node.init_node:
-            res.register(self.visit(node.init_node, init_context))
+            res.register(self.visit(node.init_node, loop_context))
             if res.error:
                 return res
 
         while True:
             if node.condition_node:
                 condition_value = res.register(
-                    self.visit(node.condition_node, init_context)
+                    self.visit(node.condition_node, loop_context)
                 )
                 if res.error:
                     return res
                 if not condition_value.is_true():
                     break
 
-            body_context = Context("FOR_BODY", init_context, node.pos_start)
-            body_context.symbol_table = SymbolTable(init_context.symbol_table)
-            body_context.active_class = init_context.active_class
-
-            res.register(self.visit(node.body_node, body_context))
+            res.register(self.visit(node.body_node, loop_context))
             if res.error:
                 return res
 
@@ -698,7 +723,7 @@ class Interpreter:
                 return res
 
             if node.step_node:
-                res.register(self.visit(node.step_node, init_context))
+                res.register(self.visit(node.step_node, loop_context))
                 if res.error:
                     return res
 
@@ -716,7 +741,18 @@ class Interpreter:
         func_name = node.var_name_tok.value if node.var_name_tok else None
         body_node = node.body_node
 
-        func = Function(func_name, body_node, node.arg_name_toks, context)
+        defining_class = (
+            context.active_class if not getattr(node, "is_static", False) else None
+        )
+        func = Function(
+            func_name,
+            body_node,
+            node.arg_name_toks,
+            context,
+            visibility=getattr(node, "visibility", "PUBLIC"),
+            defining_class=defining_class,
+            is_static=getattr(node, "is_static", False),
+        )
 
         if func_name:
             existing_val = context.symbol_table.get(func_name)
@@ -728,10 +764,13 @@ class Interpreter:
                 func = existing_val
             elif existing_val and isinstance(existing_val, Function):
                 group = FunctionGroup(func_name)
-                group.add_function(existing_val)
+                err = group.add_function(existing_val)
+                if err and isinstance(err, RTResult) and err.error:
+                    return err
                 err = group.add_function(func)
                 if err and isinstance(err, RTResult) and err.error:
                     return err
+                context.symbol_table.remove(func_name)
                 context.symbol_table.set(func_name, group)
                 func = group
             else:
@@ -880,6 +919,9 @@ class Interpreter:
 
         class_value.methods = methods
 
+        existing = context.symbol_table.get(class_name)
+        if existing is not None and isinstance(existing, Class):
+            context.symbol_table.remove(class_name)
         context.symbol_table.set(class_name, class_value)
         return res.success(class_value)
 
@@ -973,7 +1015,7 @@ class Interpreter:
         if target_vis == "FINAL":
             target_vis = "PUBLIC"
 
-        is_final = getattr(node, "is_final", False) or node.visibility == "FINAL"
+        is_final = getattr(node, "is_final", False)
 
         if isinstance(node.assign_node, SetAttrNode):
             object_node = node.assign_node.object_node
@@ -1486,6 +1528,16 @@ class Interpreter:
                 return res.failure(
                     RTError(target_node.pos_start, target_node.pos_end, err, context)
                 )
+            updated = context.symbol_table.get(var_name)
+            if updated is None or updated.value != new_value.value:
+                return res.failure(
+                    RTError(
+                        target_node.pos_start,
+                        target_node.pos_end,
+                        f"Update of variable '{var_name}' failed",
+                        context,
+                    )
+                )
 
         elif isinstance(target_node, GetAttrNode):
             _, error = obj.set_attr(target_node.attr_name_tok, new_value, context)
@@ -1524,25 +1576,40 @@ class Interpreter:
 
                 if res.error:
                     if node.finally_body_node:
-                        fin_res = self.visit(node.finally_body_node, context)
-                        if fin_res.error:
-                            return res.failure(fin_res.error)
+                        res.register(self.visit(node.finally_body_node, context))
+                        if (
+                            res.error
+                            or res.should_return
+                            or res.should_break
+                            or res.should_continue
+                        ):
+                            return res
 
                     return res
 
             else:
                 if node.finally_body_node:
-                    fin_res = self.visit(node.finally_body_node, context)
-                    if fin_res.error:
-                        return fin_res
+                    res.register(self.visit(node.finally_body_node, context))
+                    if (
+                        res.error
+                        or res.should_return
+                        or res.should_break
+                        or res.should_continue
+                    ):
+                        return res
                 return try_res
         else:
             res.register(try_res)
             if res.should_return or res.should_break or res.should_continue:
                 if node.finally_body_node:
-                    fin_res = self.visit(node.finally_body_node, context)
-                    if fin_res.error:
-                        return res.failure(fin_res.error)
+                    res.register(self.visit(node.finally_body_node, context))
+                    if (
+                        res.error
+                        or res.should_return
+                        or res.should_break
+                        or res.should_continue
+                    ):
+                        return res
                 return res
 
         if node.finally_body_node:
@@ -1596,6 +1663,15 @@ class Interpreter:
                 if res.error:
                     return res
 
+                if not isinstance(case_val, Value):
+                    return res.failure(
+                        RTError(
+                            cond_node.pos_start,
+                            cond_node.pos_end,
+                            "Case value must be a valid expression",
+                            context,
+                        )
+                    )
                 is_eq, error = switch_val.get_comparison_eq(case_val)
                 if error:
                     return res.failure(error)

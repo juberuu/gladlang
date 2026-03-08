@@ -25,7 +25,7 @@ LET i = 100
 LET found = NULL
 WHILE i > 0
   IF (i - (INT(i / 7) * 7)) == 0 THEN
-    LET found = i
+    found = i
     BREAK # Exit the loop
   ENDIF
   i--

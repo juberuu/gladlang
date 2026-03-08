@@ -108,7 +108,7 @@ class Value:
     def execute(self, args, interpreter=None):
         return RTResult().failure(self.illegal_operation())
 
-    def get_attr(self, name_tok):
+    def get_attr(self, name_tok, context=None):
         return None, self.illegal_operation()
 
     def set_attr(self, name_tok, value, context=None, visibility=None, as_final=False):
@@ -805,6 +805,7 @@ class Function(BaseFunction):
         new_context = self.generate_new_context()
 
         new_context.active_class = self.defining_class
+        new_context.is_static = self.is_static
 
         if new_context.depth > 250:
             return res.failure(
@@ -1037,10 +1038,7 @@ class Class(BaseFunction):
                 if visibility == "PROTECTED":
                     allowed = False
                     if context and context.active_class:
-                        if (
-                            defining_class in context.active_class.mro
-                            or context.active_class in defining_class.mro
-                        ):
+                        if defining_class in context.active_class.mro:
                             allowed = True
 
                     if not allowed:
@@ -1145,10 +1143,7 @@ class Instance(Value):
         if visibility == "PROTECTED":
             allowed = False
             if context and context.active_class:
-                if (
-                    defining_class in context.active_class.mro
-                    or context.active_class in defining_class.mro
-                ):
+                if defining_class in context.active_class.mro:
                     allowed = True
             if not allowed:
                 return RTError(
@@ -1162,16 +1157,24 @@ class Instance(Value):
     def get_attr(self, name_tok, context=None):
         name = name_tok.value
 
-        if context and context.active_class:
-            mangled_name = f"_{context.active_class.name}__{name}"
-            val = self.symbol_table.get(mangled_name)
-            if val:
-                return val, None
+        if self.class_ref:
+            for cls in self.class_ref.mro:
+                mangled_name = f"_{cls.name}__{name}"
+                val = self.symbol_table.get(mangled_name)
+                if val is not None:
+                    if context and context.active_class == cls:
+                        return val, None
 
         value = self.symbol_table.get(name)
         if value is not None:
             visibility = self.symbol_table.get_visibility(name)
-            error = self.check_access(name_tok, visibility, self.class_ref, context)
+            if visibility != "PUBLIC":
+                defining_class = self.symbol_table.defining_classes.get(name)
+                if defining_class is None:
+                    defining_class = self.class_ref
+            else:
+                defining_class = self.class_ref
+            error = self.check_access(name_tok, visibility, defining_class, context)
             if error:
                 return None, error
             return value, None
@@ -1222,6 +1225,7 @@ class Instance(Value):
                 value,
                 visibility=(visibility or "PUBLIC"),
                 as_final=as_final,
+                defining_class=context.active_class if context else None,
             )
 
             if visibility == "PRIVATE" and self.symbol_table.get(name):
@@ -1244,8 +1248,9 @@ class Instance(Value):
                     f"Cannot reassign constant '{name}'",
                     context,
                 )
-            self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
-            return value, None
+            err = self.symbol_table.set(mangled_name, value, visibility="PRIVATE")
+            if err:
+                return None, RTError(name_tok.pos_start, name_tok.pos_end, err, context)
 
         if self.symbol_table.get(name):
             current_vis = self.symbol_table.get_visibility(name)
@@ -1261,7 +1266,9 @@ class Instance(Value):
                     context,
                 )
 
-            self.symbol_table.set(name, value, visibility=current_vis)
+            err = self.symbol_table.set(name, value, visibility=current_vis)
+            if err:
+                return None, RTError(name_tok.pos_start, name_tok.pos_end, err, context)
             return value, None
 
         if self.class_ref.static_symbol_table.get(name):
@@ -1273,7 +1280,9 @@ class Instance(Value):
                     context,
                 )
 
-        self.symbol_table.set(name, value, visibility="PUBLIC")
+        err = self.symbol_table.set(name, value, visibility="PUBLIC", as_final=as_final)
+        if err:
+            return None, RTError(name_tok.pos_start, name_tok.pos_end, err, context)
         return value, None
 
     def get_comparison_eq(self, other, visited=None):
@@ -1648,10 +1657,10 @@ class BuiltInFunction(BaseFunction):
                 return res.success(Number(len(arg.elements)))
             elif isinstance(arg, Number):
                 return res.success(Number(len(str(arg.value))))
-            elif isinstance(arg, (Function, BuiltInFunction, Class)):
+            elif isinstance(
+                arg, (Function, FunctionGroup, BoundMethod, BuiltInFunction, Class)
+            ):
                 return res.success(Number(1))
-
-            return res.success(Number(0))
 
         return res.failure(
             RTError(

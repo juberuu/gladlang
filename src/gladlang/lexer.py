@@ -416,15 +416,33 @@ class Lexer:
 
                 expr_str = ""
                 brace_count = 1
-                while self.current_char != None and brace_count > 0:
-                    if self.current_char == "{":
-                        brace_count += 1
-                    elif self.current_char == "}":
-                        brace_count -= 1
+                in_inner_string = False
+                escape_next = False
 
-                    if brace_count > 0:
-                        expr_str += self.current_char
-                        self.advance()
+                while self.current_char is not None and brace_count > 0:
+                    ch = self.current_char
+
+                    if escape_next:
+                        expr_str += ch
+                        escape_next = False
+                    elif ch == "\\" and in_inner_string:
+                        expr_str += ch
+                        escape_next = True
+                    elif ch == '"':
+                        in_inner_string = not in_inner_string
+                        expr_str += ch
+                    elif not in_inner_string:
+                        if ch == "{":
+                            brace_count += 1
+                        elif ch == "}":
+                            brace_count -= 1
+
+                        if brace_count > 0:
+                            expr_str += ch
+                    else:
+                        expr_str += ch
+
+                    self.advance()
 
                 sub_lexer = Lexer(self.fn, expr_str)
                 sub_tokens, error = sub_lexer.make_tokens()
@@ -439,8 +457,6 @@ class Lexer:
 
                 tokens.append(Token(GL_RPAREN, pos_start=self.pos))
                 tokens.append(Token(GL_PLUS, pos_start=self.pos))
-
-                self.advance()
 
             elif escape_character:
                 if self.current_char == "n":
