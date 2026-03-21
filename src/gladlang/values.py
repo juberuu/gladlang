@@ -1,4 +1,5 @@
 import sys
+import math
 from .errors import RTError
 from .runtime import SymbolTable, Context, RTResult
 from .constants import GL_IDENTIFIER
@@ -231,7 +232,6 @@ class Number(Value):
                     "Math domain error: result is complex",
                     self.context,
                 )
-            import math
 
             if isinstance(result, float) and math.isnan(result):
                 return None, RTError(
@@ -347,10 +347,13 @@ class Number(Value):
 
     def rshifted_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value) >> int(other.value)).set_context(self.context),
-                None,
-            )
+            try:
+                result = int(self.value) >> int(other.value) & 0xFFFFFFFF
+                return Number(result).set_context(self.context), None
+            except ValueError:
+                return None, RTError(
+                    other.pos_start, other.pos_end, "Negative shift count", self.context
+                )
         return None, Value.illegal_operation(self, other)
 
     def is_true(self):
@@ -600,6 +603,8 @@ class List(Value):
 
 
 class Dict(Value):
+    MAX_DICT_SIZE = 1_000_000
+
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
@@ -615,6 +620,14 @@ class Dict(Value):
 
     def added_to(self, other):
         if isinstance(other, Dict):
+            new_len = len(self.elements) + len(other.elements)
+            if new_len > Dict.MAX_DICT_SIZE:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Dict merge result ({new_len}) exceeds maximum allowed size ({Dict.MAX_DICT_SIZE})",
+                    self.context,
+                )
             new_dict = self.copy()
             new_dict.elements.update(other.elements)
             return new_dict, None
@@ -1492,6 +1505,8 @@ class BoundMethod(BaseFunction):
 
         new_context.active_class = self.function_to_bind.defining_class
 
+        new_context.is_static = self.function_to_bind.is_static
+
         original_arg_names = self.function_to_bind.arg_names
 
         new_context.symbol_table.set("THIS", self.instance)
@@ -1593,9 +1608,14 @@ class BuiltInFunction(BaseFunction):
                 )
 
             try:
-                val = int(float(arg.value))
-                return res.success(Number(val))
-            except ValueError:
+                if isinstance(arg, Number):
+                    val = int(arg.value)
+                else:
+                    try:
+                        val = int(arg.value)
+                    except ValueError:
+                        val = int(float(arg.value))
+            except (ValueError, OverflowError):
                 return res.failure(
                     RTError(
                         self.pos_start,
@@ -1604,6 +1624,8 @@ class BuiltInFunction(BaseFunction):
                         self.context,
                     )
                 )
+
+            return res.success(Number(val))
 
         elif self.name == "FLOAT":
             res.register(self.check_args(["value"], args))
@@ -1623,7 +1645,6 @@ class BuiltInFunction(BaseFunction):
 
             try:
                 val = float(arg.value)
-                return res.success(Number(val))
             except ValueError:
                 return res.failure(
                     RTError(
@@ -1633,6 +1654,18 @@ class BuiltInFunction(BaseFunction):
                         self.context,
                     )
                 )
+
+            if math.isinf(val) or math.isnan(val):
+                return res.failure(
+                    RTError(
+                        self.pos_start,
+                        self.pos_end,
+                        f"FLOAT: result is not a finite number (got '{arg.value}')",
+                        self.context,
+                    )
+                )
+
+            return res.success(Number(val))
 
         elif self.name == "BOOL":
             res.register(self.check_args(["value"], args))
@@ -1661,15 +1694,15 @@ class BuiltInFunction(BaseFunction):
                 arg, (Function, FunctionGroup, BoundMethod, BuiltInFunction, Class)
             ):
                 return res.success(Number(1))
-
-        return res.failure(
-            RTError(
-                self.pos_start,
-                self.pos_end,
-                f"Built-in function '{self.name}' is not defined.",
-                self.context,
-            )
-        )
+            else:
+                return res.failure(
+                    RTError(
+                        self.pos_start,
+                        self.pos_end,
+                        f"LEN is not supported for type '{type(arg).__name__}'",
+                        self.context,
+                    )
+                )
 
     def copy(self):
         copy = BuiltInFunction(self.name)

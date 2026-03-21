@@ -140,7 +140,6 @@ def is_complete(text):
         return False
 
     depth = 0
-    bracket_level = 0
 
     pattern = r"(\[|\]|\b(DEF|CLASS|ENUM|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDENUM|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
 
@@ -165,11 +164,7 @@ def is_complete(text):
         if token in ("ELSE", "ELSE IF"):
             continue
 
-        if token == "[":
-            bracket_level += 1
-        elif token == "]":
-            bracket_level -= 1
-        elif token in start_keys:
+        if token in start_keys:
             depth += 1
         elif token in end_keys:
             depth -= 1
@@ -183,7 +178,7 @@ def main():
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.2.1"
+    GLADLANG_VERSION = "0.2.2"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename/code] [args...]
 
@@ -193,8 +188,8 @@ Commands:
   ["code string"]          Execute inline GladLang code directly.
   [filename.glad] [args]   Execute script and pass args to INPUT().
   ["code string"] [args]   Execute inline code and pass args to INPUT().
-  --help                   Show this help message and exit.
-  --version                Show the interpreter version and exit.
+  -h, --help               Show this help message and exit.
+  -v, --version            Show the interpreter version and exit.
 """
 
     if len(sys.argv) == 1:
@@ -240,13 +235,19 @@ Commands:
 
                     if error:
                         sys.stdout.write(error.as_string() + "\n")
-                    elif result:
+                    elif result is not None:
                         clean_text = re.sub(r"#.*", "", full_text).strip()
+
+                        if clean_text == "":
+                            full_text = ""
+                            continue
 
                         if (
                             clean_text.startswith("LET ")
                             or clean_text.startswith("ENUM ")
                             or clean_text.startswith("FINAL ")
+                            or clean_text.startswith("DEF ")
+                            or clean_text.startswith("CLASS ")
                         ):
                             pass
                         elif isinstance(result, Number) and result.value == 0:
@@ -287,39 +288,59 @@ Commands:
     elif len(sys.argv) >= 2:
         arg = sys.argv[1]
 
-        if arg == "--help":
+        if arg == "--help" or arg == "-h":
             sys.stdout.write(GLADLANG_HELP + "\n")
 
-        elif arg == "--version":
+        elif arg == "--version" or arg == "-v":
             sys.stdout.write(f"GladLang v{GLADLANG_VERSION}\n")
 
         else:
+            arg_input = arg
+            script_args = sys.argv[2:]
             try:
-                arg_input = arg
-                script_args = sys.argv[2:]
-
-                if script_args:
-                    sys.stdin = io.StringIO("\n".join(script_args) + "\n")
-
-                is_file = False
+                original_stdin = sys.stdin
                 try:
-                    is_file = Path(arg_input).is_file()
-                except OSError:
-                    pass
+                    if script_args:
+                        sys.stdin = io.StringIO("\n".join(script_args) + "\n")
 
-                if is_file or arg_input.endswith(".glad"):
-                    text = Path(arg_input).read_text(encoding="utf-8")
-                    source_name = arg_input
-                else:
-                    text = arg_input
-                    source_name = "<cmdline>"
+                    is_file = False
+                    resolved = None
+                    try:
+                        candidate = Path(arg_input).resolve()
+                        allowed_root = Path.cwd().resolve()
+                        if not str(candidate).startswith(str(allowed_root)):
+                            raise PermissionError(f"Access denied: '{arg_input}'")
+                        if candidate.is_file():
+                            is_file = True
+                            resolved = candidate
+                    except (OSError, PermissionError) as e:
+                        sys.stderr.write(f"Error accessing file: {e}\n")
+                        sys.exit(1)
 
-                result, error = run(
-                    source_name, text, instruction_limit=MAX_INSTRUCTIONS
-                )
+                    if is_file or arg_input.endswith(".glad"):
+                        path_to_read = (
+                            resolved if resolved else Path(arg_input).resolve()
+                        )
+                        if not path_to_read.suffix == ".glad" and not is_file:
+                            sys.stderr.write(
+                                f"File must have .glad extension: '{arg_input}'\n"
+                            )
+                            sys.exit(1)
+                        text = path_to_read.read_text(encoding="utf-8")
+                        source_name = str(path_to_read)
+                    else:
+                        text = arg_input
+                        source_name = "<cmdline>"
 
-                if error:
-                    sys.stderr.write(error.as_string() + "\n")
+                    result, error = run(
+                        source_name, text, instruction_limit=MAX_INSTRUCTIONS
+                    )
+
+                    if error:
+                        sys.stderr.write(error.as_string() + "\n")
+
+                finally:
+                    sys.stdin = original_stdin
 
             except MemoryError:
                 sys.stderr.write("System Error: Memory Limit Exceeded\n")

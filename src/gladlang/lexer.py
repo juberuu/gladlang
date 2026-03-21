@@ -1,15 +1,5 @@
 from .constants import *
-import codecs
-from functools import lru_cache
 from .errors import Position, IllegalCharError, InvalidSyntaxError
-
-
-@lru_cache(maxsize=1024)
-def decode_escapes(s):
-    try:
-        return codecs.decode(s, "unicode_escape")
-    except Exception:
-        return s
 
 
 class Token:
@@ -516,6 +506,8 @@ class Lexer:
                     string += "\n"
                 elif self.current_char == "t":
                     string += "\t"
+                elif self.current_char == "r":
+                    string += "\r"
                 elif self.current_char == '"':
                     string += '"'
                 elif self.current_char == "\\":

@@ -18,6 +18,15 @@ from .errors import RTError
 from .constants import *
 
 
+def is_final_anywhere(table, name):
+    while table:
+        with table._lock:
+            if name in table.finals:
+                return True
+        table = table.parent
+    return False
+
+
 class Interpreter:
     def __init__(self, instruction_limit=None):
         self.dispatch_cache = {}
@@ -173,7 +182,7 @@ class Interpreter:
         for i, var_name_tok in enumerate(node.var_name_toks):
             var_name = var_name_tok.value
 
-            if var_name in context.symbol_table.finals:
+            if is_final_anywhere(context.symbol_table, var_name):
                 return res.failure(
                     RTError(
                         var_name_tok.pos_start,
@@ -380,7 +389,7 @@ class Interpreter:
         visibility = getattr(node, "target_visibility", "PUBLIC")
 
         if node.is_declaration:
-            if var_name in context.symbol_table.finals:
+            if is_final_anywhere(context.symbol_table, var_name):
                 return res.failure(
                     RTError(
                         node.var_name_tok.pos_start,
@@ -1330,7 +1339,7 @@ class Interpreter:
             if isinstance(target_node, VarAccessNode):
                 var_name = target_node.var_name_tok.value
 
-                if var_name in context.symbol_table.finals:
+                if is_final_anywhere(context.symbol_table, var_name):
                     return res.failure(
                         RTError(
                             target_node.pos_start,
@@ -1454,7 +1463,7 @@ class Interpreter:
         if isinstance(target_node, VarAccessNode):
             var_name = target_node.var_name_tok.value
 
-            if var_name in context.symbol_table.finals:
+            if is_final_anywhere(context.symbol_table, var_name):
                 return res.failure(
                     RTError(
                         target_node.pos_start,
@@ -1527,16 +1536,6 @@ class Interpreter:
             if err:
                 return res.failure(
                     RTError(target_node.pos_start, target_node.pos_end, err, context)
-                )
-            updated = context.symbol_table.get(var_name)
-            if updated is None or updated.value != new_value.value:
-                return res.failure(
-                    RTError(
-                        target_node.pos_start,
-                        target_node.pos_end,
-                        f"Update of variable '{var_name}' failed",
-                        context,
-                    )
                 )
 
         elif isinstance(target_node, GetAttrNode):

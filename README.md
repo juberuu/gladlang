@@ -581,8 +581,8 @@ FOR item IN my_list
 ENDFOR
 
 # Iterate over Strings (Characters)
-FOR char IN "Hi"
-  PRINTLN char 
+FOR letter IN "Hi"
+  PRINTLN letter
 ENDFOR
 
 # Iterate over Dictionaries (Keys)
@@ -594,13 +594,13 @@ ENDFOR
 # Loop Destructuring (Unpacking)
 LET points = [[1, 2], [3, 4]]
 FOR [x, y] IN points
-  PRINTLN "x: " + x + ", y: " + y
+  PRINTLN "x: " + STR(x) + ", y: " + STR(y)
 ENDFOR
 
 # --- 2. C-Style FOR Loops ---
 # FOR (initialization; condition; increment)
 FOR (LET i = 0; i < 5; i++)
-  PRINTLN "Count: " + i
+  PRINTLN "Count: " + STR(i)
 ENDFOR
 
 ```

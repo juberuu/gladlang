@@ -24,8 +24,9 @@ class SymbolTable:
     def is_final_in_ancestors(self, name):
         current = self.parent
         while current:
-            if name in current.finals:
-                return True
+            with current._lock:
+                if name in current.finals:
+                    return True
             current = current.parent
         return False
 
