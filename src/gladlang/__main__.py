@@ -140,8 +140,10 @@ def is_complete(text):
         return False
 
     depth = 0
+    bracket_depth = 0
+    brace_depth = 0
 
-    pattern = r"(\[|\]|\b(DEF|CLASS|ENUM|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDENUM|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
+    pattern = r"(\[|\]|\{|\}|\b(DEF|CLASS|ENUM|IF|ELSE\s+IF|ELSE|WHILE|FOR|TRY|SWITCH|ENDDEF|ENDCLASS|ENDENUM|ENDIF|ENDWHILE|ENDFOR|ENDTRY|ENDSWITCH)\b)"
 
     tokens = re.finditer(pattern, temp_text)
 
@@ -161,7 +163,23 @@ def is_complete(text):
     for match in tokens:
         token = match.group()
 
+        if token == "[":
+            bracket_depth += 1
+            continue
+        elif token == "]":
+            bracket_depth -= 1
+            continue
+        elif token == "{":
+            brace_depth += 1
+            continue
+        elif token == "}":
+            brace_depth -= 1
+            continue
+
         if token in ("ELSE", "ELSE IF"):
+            continue
+
+        if token == "FOR" and (bracket_depth > 0 or brace_depth > 0):
             continue
 
         if token in start_keys:
@@ -174,11 +192,13 @@ def is_complete(text):
 
 def main():
     MAX_MEMORY_MB = 512
-    MAX_INSTRUCTIONS = 100000
+    MAX_INSTRUCTIONS = 100_000
+    MAX_SOURCE_BYTES = 1_000_000
+    MAX_REPL_BUFFER = 100_000
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.2.2"
+    GLADLANG_VERSION = "0.2.3"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename/code] [args...]
 
@@ -220,6 +240,13 @@ Commands:
                     break
 
                 full_text += line + "\n"
+
+                if len(full_text) > MAX_REPL_BUFFER:
+                    sys.stdout.write(
+                        "Error: Input buffer limit exceeded. Clearing buffer.\n"
+                    )
+                    full_text = ""
+                    continue
 
                 if is_complete(full_text):
                     if full_text.strip() == "":
@@ -308,8 +335,9 @@ Commands:
                     try:
                         candidate = Path(arg_input).resolve()
                         allowed_root = Path.cwd().resolve()
-                        if not str(candidate).startswith(str(allowed_root)):
+                        if not candidate.is_relative_to(allowed_root):
                             raise PermissionError(f"Access denied: '{arg_input}'")
+
                         if candidate.is_file():
                             is_file = True
                             resolved = candidate
@@ -326,7 +354,25 @@ Commands:
                                 f"File must have .glad extension: '{arg_input}'\n"
                             )
                             sys.exit(1)
-                        text = path_to_read.read_text(encoding="utf-8")
+
+                        file_size = path_to_read.stat().st_size
+                        if file_size > MAX_SOURCE_BYTES:
+                            sys.stderr.write(
+                                f"File too large: '{arg_input}' ({file_size:,} bytes). "
+                                f"Maximum allowed: {MAX_SOURCE_BYTES:,} bytes.\n"
+                            )
+                            sys.exit(1)
+
+                        try:
+                            text = path_to_read.read_text(encoding="utf-8")
+                        except UnicodeDecodeError:
+                            sys.stderr.write(
+                                f"Encoding error: '{arg_input}' is not valid UTF-8. "
+                                "Save the file as UTF-8 and try again.\n"
+                            )
+                            sys.exit(1)
+                        except Exception as e:
+                            sys.stderr.write(f"An unexpected error occurred: {e}\n")
                         source_name = str(path_to_read)
                     else:
                         text = arg_input

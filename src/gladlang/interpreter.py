@@ -204,7 +204,11 @@ class Interpreter:
         comp_context = Context("COMPREHENSION", context, node.pos_start)
         comp_context.symbol_table = SymbolTable(context.symbol_table)
 
+        had_error = False
+
         def evaluate_loops(spec_index):
+            nonlocal had_error
+
             if spec_index >= len(node.iteration_specs):
                 val = res.register(self.visit(node.output_expr_node, comp_context))
                 if not res.error:
@@ -222,6 +226,7 @@ class Interpreter:
             )
             if error:
                 res.failure(error)
+                had_error = True
                 return
 
             for element in iterator:
@@ -244,7 +249,7 @@ class Interpreter:
 
         evaluate_loops(0)
 
-        if res.error:
+        if res.error or had_error:
             return res
 
         return res.success(
@@ -556,7 +561,11 @@ class Interpreter:
         comp_context = Context("DICT_COMPREHENSION", context, node.pos_start)
         comp_context.symbol_table = SymbolTable(context.symbol_table)
 
+        had_error = False
+
         def evaluate_loops(spec_index):
+            nonlocal had_error
+
             if spec_index >= len(node.iteration_specs):
                 key_val = res.register(self.visit(node.key_expr_node, comp_context))
                 if res.error:
@@ -577,6 +586,7 @@ class Interpreter:
                             comp_context,
                         )
                     )
+                    had_error = True
                     return
                 return
 
@@ -591,6 +601,7 @@ class Interpreter:
             )
             if error:
                 res.failure(error)
+                had_error = True
                 return
 
             for element in iterator:
@@ -613,7 +624,7 @@ class Interpreter:
 
         evaluate_loops(0)
 
-        if res.error:
+        if res.error or had_error:
             return res
 
         return res.success(

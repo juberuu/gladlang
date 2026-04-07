@@ -152,27 +152,68 @@ class Value:
 
 
 class Number(Value):
+    MAX_INT_BITS = 100_000
+
     def __init__(self, value):
         super().__init__()
         self.value = value
 
     def added_to(self, other):
         if isinstance(other, Number):
-            return Number(self.value + other.value).set_context(self.context), None
-        elif isinstance(other, String):
-            return String(str(self.value) + other.value).set_context(self.context), None
-        else:
-            return None, Value.illegal_operation(self, other)
+            result = self.value + other.value
+            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result too large (exceeds integer size limit)",
+                    self.context,
+                )
+            if isinstance(result, float) and math.isinf(result):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result is infinite (float overflow)",
+                    self.context,
+                )
+            return Number(result).set_context(self.context), None
 
     def subbed_by(self, other):
         if isinstance(other, Number):
-            return Number(self.value - other.value).set_context(self.context), None
-        else:
-            return None, Value.illegal_operation(self, other)
+            result = self.value - other.value
+            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result too large (exceeds integer size limit)",
+                    self.context,
+                )
+            if isinstance(result, float) and math.isinf(result):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result is infinite (float overflow)",
+                    self.context,
+                )
+            return Number(result).set_context(self.context), None
 
     def multed_by(self, other):
         if isinstance(other, Number):
-            return Number(self.value * other.value).set_context(self.context), None
+            result = self.value * other.value
+            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result too large (exceeds integer size limit)",
+                    self.context,
+                )
+            if isinstance(result, float) and math.isinf(result):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result is infinite (float overflow)",
+                    self.context,
+                )
+            return Number(result).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
@@ -220,7 +261,7 @@ class Number(Value):
                 )
             try:
                 result = self.value**other.value
-            except (ValueError, ZeroDivisionError) as e:
+            except (ValueError, ZeroDivisionError, OverflowError) as e:
                 return None, RTError(
                     other.pos_start, other.pos_end, str(e), self.context
                 )
@@ -238,6 +279,13 @@ class Number(Value):
                     other.pos_start,
                     other.pos_end,
                     "Math domain error: result is NaN",
+                    self.context,
+                )
+            if isinstance(result, float) and math.isinf(result):
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"Arithmetic result is infinite (float overflow)",
                     self.context,
                 )
             return Number(result).set_context(self.context), None
@@ -343,7 +391,7 @@ class Number(Value):
         return None, Value.illegal_operation(self, other)
 
     def bitted_not(self):
-        return Number((~int(self.value)) & 0xFFFFFFFF).set_context(self.context), None
+        return Number(~int(self.value)).set_context(self.context), None
 
     def rshifted_by(self, other):
         if isinstance(other, Number):
@@ -480,6 +528,15 @@ class List(Value):
 
     def added_to(self, other):
         if isinstance(other, List):
+            new_len = len(self.elements) + len(other.elements)
+            if new_len > List.MAX_LIST_SIZE:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"List concatenation result ({new_len}) exceeds maximum "
+                    f"allowed size ({List.MAX_LIST_SIZE})",
+                    self.context,
+                )
             new_list = List(self.elements + other.elements)
             new_list.set_context(self.context)
             return new_list, None
@@ -1503,6 +1560,16 @@ class BoundMethod(BaseFunction):
 
         new_context = self.function_to_bind.generate_new_context()
 
+        if new_context.depth > 250:
+            return res.failure(
+                RTError(
+                    self.function_to_bind.pos_start,
+                    self.function_to_bind.pos_end,
+                    "Recursion limit exceeded",
+                    self.function_to_bind.context,
+                )
+            )
+
         new_context.active_class = self.function_to_bind.defining_class
 
         new_context.is_static = self.function_to_bind.is_static
@@ -1703,6 +1770,14 @@ class BuiltInFunction(BaseFunction):
                         self.context,
                     )
                 )
+        return res.failure(
+            RTError(
+                self.pos_start,
+                self.pos_end,
+                f"Unknown built-in function '{self.name}'",
+                self.context,
+            )
+        )
 
     def copy(self):
         copy = BuiltInFunction(self.name)

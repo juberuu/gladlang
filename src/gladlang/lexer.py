@@ -386,16 +386,17 @@ class Lexer:
 
         tokens.append(Token(GL_LPAREN, pos_start=pos_start))
 
-        string_part = ""
+        chars = []
         escape_character = False
 
-        while self.current_char != None and (
+        while self.current_char is not None and (
             self.current_char != "`" or escape_character
         ):
 
             if not escape_character and self.current_char == "$" and self.peek() == "{":
+                string_part = "".join(chars)
                 tokens.append(Token(GL_STRING, string_part, pos_start=pos_start))
-                string_part = ""
+                chars = []
 
                 tokens.append(Token(GL_PLUS, pos_start=self.pos))
                 tokens.append(Token(GL_IDENTIFIER, "STR", pos_start=self.pos))
@@ -450,24 +451,23 @@ class Lexer:
 
             elif escape_character:
                 if self.current_char == "n":
-                    string_part += "\n"
+                    chars.append("\n")
                 elif self.current_char == "t":
-                    string_part += "\t"
+                    chars.append("\t")
                 elif self.current_char == "r":
-                    string_part += "\r"
+                    chars.append("\r")
                 elif self.current_char == "`":
-                    string_part += "`"
+                    chars.append("`")
                 elif self.current_char == "\\":
-                    string_part += "\\"
+                    chars.append("\\")
                 elif self.current_char == '"':
-                    string_part += '"'
+                    chars.append('"')
                 elif self.current_char == "'":
-                    string_part += "'"
+                    chars.append("'")
                 elif self.current_char == "$":
-                    string_part += "$"
+                    chars.append("$")
                 else:
-                    string_part += self.current_char
-
+                    chars.append(self.current_char)
                 escape_character = False
                 self.advance()
 
@@ -476,9 +476,10 @@ class Lexer:
                 self.advance()
 
             else:
-                string_part += self.current_char
+                chars.append(self.current_char)
                 self.advance()
 
+        string_part = "".join(chars)
         tokens.append(Token(GL_STRING, string_part, pos_start=pos_start))
         tokens.append(Token(GL_RPAREN, pos_start=self.pos))
 
@@ -486,7 +487,7 @@ class Lexer:
         return tokens
 
     def make_string(self):
-        string = ""
+        chars = []
         pos_start = self.pos.copy()
 
         is_multiline = False
@@ -500,20 +501,20 @@ class Lexer:
 
         escape_character = False
 
-        while self.current_char != None:
+        while self.current_char is not None:
             if escape_character:
                 if self.current_char == "n":
-                    string += "\n"
+                    chars.append("\n")
                 elif self.current_char == "t":
-                    string += "\t"
+                    chars.append("\t")
                 elif self.current_char == "r":
-                    string += "\r"
+                    chars.append("\r")
                 elif self.current_char == '"':
-                    string += '"'
+                    chars.append('"')
                 elif self.current_char == "\\":
-                    string += "\\"
+                    chars.append("\\")
                 else:
-                    string += self.current_char
+                    chars.append(self.current_char)
                 escape_character = False
             elif self.current_char == "\\":
                 escape_character = True
@@ -525,13 +526,13 @@ class Lexer:
                             self.advance()
                             break
                         else:
-                            string += '""'
+                            chars.append('""')
                     else:
-                        string += '"'
+                        chars.append('"')
                 else:
                     break
             else:
-                string += self.current_char
+                chars.append(self.current_char)
 
             self.advance()
 
@@ -540,5 +541,6 @@ class Lexer:
                 pos_start, self.pos, "Unterminated string literal"
             )
 
+        string = "".join(chars)
         self.advance()
         return Token(GL_STRING, string, pos_start, self.pos)

@@ -45,9 +45,11 @@ class SymbolTable:
     def get(self, name):
         with self._lock:
             value = self.symbols.get(name)
-            if value is None and self.parent:
-                return self.parent.get(name)
-            return value
+            has_parent = self.parent is not None
+
+        if value is None and has_parent:
+            return self.parent.get(name)
+        return value
 
     def update(self, name, value):
         with self._lock:
@@ -56,9 +58,11 @@ class SymbolTable:
             if name in self.symbols:
                 self.symbols[name] = value
                 return None
-            if self.parent:
-                return self.parent.update(name, value)
-            return f"'{name}' is not defined"
+            has_parent = self.parent is not None
+
+        if has_parent:
+            return self.parent.update(name, value)
+        return f"'{name}' is not defined"
 
     def remove(self, name):
         with self._lock:
