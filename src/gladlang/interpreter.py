@@ -12,6 +12,8 @@ from .values import (
     Instance,
     Enum,
     Value,
+    TailCall,
+    BoundMethod,
 )
 from .nodes import *
 from .errors import RTError
@@ -20,10 +22,15 @@ from .constants import *
 
 def is_final_anywhere(table, name):
     while table:
+        if table._finals_count == 0:
+            table = table.parent
+            continue
+
         with table._lock:
             if name in table.finals:
                 return True
         table = table.parent
+
     return False
 
 
@@ -31,6 +38,27 @@ class Interpreter:
     def __init__(self, instruction_limit=None):
         self.dispatch_cache = {}
         self.instruction_limit = instruction_limit
+
+        self._binop_dispatch = {
+            GL_PLUS: lambda l, r: l.added_to(r),
+            GL_MINUS: lambda l, r: l.subbed_by(r),
+            GL_MUL: lambda l, r: l.multed_by(r),
+            GL_DIV: lambda l, r: l.dived_by(r),
+            GL_MOD: lambda l, r: l.modded_by(r),
+            GL_FLOORDIV: lambda l, r: l.floordived_by(r),
+            GL_POW: lambda l, r: l.powed_by(r),
+            GL_EE: lambda l, r: l.get_comparison_eq(r),
+            GL_NE: lambda l, r: l.get_comparison_ne(r),
+            GL_LT: lambda l, r: l.get_comparison_lt(r),
+            GL_GT: lambda l, r: l.get_comparison_gt(r),
+            GL_LTE: lambda l, r: l.get_comparison_lte(r),
+            GL_GTE: lambda l, r: l.get_comparison_gte(r),
+            GL_BIT_AND: lambda l, r: l.bitted_and_by(r),
+            GL_BIT_OR: lambda l, r: l.bitted_or_by(r),
+            GL_BIT_XOR: lambda l, r: l.bitted_xor_by(r),
+            GL_LSHIFT: lambda l, r: l.lshifted_by(r),
+            GL_RSHIFT: lambda l, r: l.rshifted_by(r),
+        }
 
     def visit(self, node, context):
         if self.instruction_limit is not None:
@@ -393,16 +421,17 @@ class Interpreter:
 
         visibility = getattr(node, "target_visibility", "PUBLIC")
 
-        if node.is_declaration:
-            if is_final_anywhere(context.symbol_table, var_name):
-                return res.failure(
-                    RTError(
-                        node.var_name_tok.pos_start,
-                        node.var_name_tok.pos_end,
-                        f"Cannot reassign constant '{var_name}'",
-                        context,
-                    )
+        if is_final_anywhere(context.symbol_table, var_name):
+            return res.failure(
+                RTError(
+                    node.var_name_tok.pos_start,
+                    node.var_name_tok.pos_end,
+                    f"Cannot reassign constant '{var_name}'",
+                    context,
                 )
+            )
+
+        if node.is_declaration:
             context.symbol_table.set(var_name, value, visibility=visibility)
         else:
             err = context.symbol_table.update(var_name, value)
@@ -808,7 +837,7 @@ class Interpreter:
         if res.error:
             return res
 
-        value_to_call = value_to_call.copy().set_pos(node.pos_start, node.pos_end)
+        value_to_call = value_to_call.set_pos(node.pos_start, node.pos_end)
 
         for arg_node in node.arg_nodes:
             args.append(res.register(self.visit(arg_node, context)))
@@ -824,10 +853,31 @@ class Interpreter:
     def visit_ReturnNode(self, node, context):
         res = RTResult()
 
+        tco_func = getattr(context, "_tco_func", None)
+        if tco_func is not None and isinstance(node.node_to_return, CallNode):
+            ret_node = node.node_to_return
+
+            callee = res.register(self.visit(ret_node.node_to_call, context))
+            if res.error:
+                return res
+
+            if isinstance(callee, BoundMethod):
+                underlying = callee.function_to_bind
+            else:
+                underlying = callee
+
+            if underlying is tco_func or callee is tco_func:
+                tc_args = []
+                for arg_node in ret_node.arg_nodes:
+                    arg_val = res.register(self.visit(arg_node, context))
+                    if res.error:
+                        return res
+                    tc_args.append(arg_val)
+                return res.success_return(TailCall(callee, tc_args))
+
         value = res.register(self.visit(node.node_to_return, context))
         if res.error:
             return res
-
         return res.success_return(value)
 
     def visit_ClassNode(self, node, context):
@@ -1228,49 +1278,20 @@ class Interpreter:
         if res.error:
             return res
 
-        result, error = None, None
-
-        if node.op_tok.type == GL_PLUS:
-            result, error = left.added_to(right)
-        elif node.op_tok.type == GL_MINUS:
-            result, error = left.subbed_by(right)
-        elif node.op_tok.type == GL_MUL:
-            result, error = left.multed_by(right)
-        elif node.op_tok.type == GL_DIV:
-            result, error = left.dived_by(right)
-        elif node.op_tok.type == GL_MOD:
-            result, error = left.modded_by(right)
-        elif node.op_tok.type == GL_FLOORDIV:
-            result, error = left.floordived_by(right)
-        elif node.op_tok.type == GL_POW:
-            result, error = left.powed_by(right)
-        elif node.op_tok.type == GL_EE:
-            result, error = left.get_comparison_eq(right)
-        elif node.op_tok.type == GL_NE:
-            result, error = left.get_comparison_ne(right)
-        elif node.op_tok.type == GL_LT:
-            result, error = left.get_comparison_lt(right)
-        elif node.op_tok.type == GL_GT:
-            result, error = left.get_comparison_gt(right)
-        elif node.op_tok.type == GL_LTE:
-            result, error = left.get_comparison_lte(right)
-        elif node.op_tok.type == GL_GTE:
-            result, error = left.get_comparison_gte(right)
-        elif node.op_tok.matches(GL_KEYWORD, "IS"):
+        if node.op_tok.matches(GL_KEYWORD, "IS"):
             result, error = left.get_comparison_is(right)
+            if error:
+                return res.failure(error)
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
+
         elif node.op_tok.matches(GL_KEYWORD, "INSTANCEOF"):
             result, error = left.get_comparison_instanceof(right)
-        elif node.op_tok.type == GL_BIT_AND:
-            result, error = left.bitted_and_by(right)
-        elif node.op_tok.type == GL_BIT_OR:
-            result, error = left.bitted_or_by(right)
-        elif node.op_tok.type == GL_BIT_XOR:
-            result, error = left.bitted_xor_by(right)
-        elif node.op_tok.type == GL_LSHIFT:
-            result, error = left.lshifted_by(right)
-        elif node.op_tok.type == GL_RSHIFT:
-            result, error = left.rshifted_by(right)
-        else:
+            if error:
+                return res.failure(error)
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
+
+        op = self._binop_dispatch.get(node.op_tok.type)
+        if op is None:
             return res.failure(
                 RTError(
                     node.op_tok.pos_start,
@@ -1279,11 +1300,11 @@ class Interpreter:
                     context,
                 )
             )
-
+        result, error = op(left, right)
         if error:
             return res.failure(error)
-        else:
-            return res.success(result.set_pos(node.pos_start, node.pos_end))
+
+        return res.success(result.set_pos(node.pos_start, node.pos_end))
 
     def visit_TernaryOpNode(self, node, context):
         res = RTResult()

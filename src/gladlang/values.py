@@ -7,10 +7,21 @@ from .lexer import Token
 from .nodes import *
 
 
+class TailCall:
+    __slots__ = ("function", "args")
+
+    def __init__(self, function, args):
+        self.function = function
+        self.args = args
+
+
 class Value:
+    __slots__ = ("pos_start", "pos_end", "context")
+
     def __init__(self):
-        self.set_pos()
-        self.set_context()
+        self.pos_start = None
+        self.pos_end = None
+        self.context = None
 
     def set_pos(self, pos_start=None, pos_end=None):
         self.pos_start = pos_start
@@ -154,6 +165,8 @@ class Value:
 class Number(Value):
     MAX_INT_BITS = 100_000
 
+    __slots__ = ("value",)
+
     def __init__(self, value):
         super().__init__()
         self.value = value
@@ -165,17 +178,21 @@ class Number(Value):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result too large (exceeds integer size limit)",
+                    "Arithmetic result too large (exceeds integer size limit)",
                     self.context,
                 )
             if isinstance(result, float) and math.isinf(result):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result is infinite (float overflow)",
+                    "Arithmetic result is infinite (float overflow)",
                     self.context,
                 )
             return Number(result).set_context(self.context), None
+        elif isinstance(other, String):
+            return String(str(self.value) + other.value).set_context(self.context), None
+        else:
+            return None, Value.illegal_operation(self, other)
 
     def subbed_by(self, other):
         if isinstance(other, Number):
@@ -184,17 +201,19 @@ class Number(Value):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result too large (exceeds integer size limit)",
+                    "Arithmetic result too large (exceeds integer size limit)",
                     self.context,
                 )
             if isinstance(result, float) and math.isinf(result):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result is infinite (float overflow)",
+                    "Arithmetic result is infinite (float overflow)",
                     self.context,
                 )
             return Number(result).set_context(self.context), None
+        else:
+            return None, Value.illegal_operation(self, other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
@@ -203,14 +222,14 @@ class Number(Value):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result too large (exceeds integer size limit)",
+                    "Arithmetic result too large (exceeds integer size limit)",
                     self.context,
                 )
             if isinstance(result, float) and math.isinf(result):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Arithmetic result is infinite (float overflow)",
+                    "Arithmetic result is infinite (float overflow)",
                     self.context,
                 )
             return Number(result).set_context(self.context), None
@@ -342,24 +361,27 @@ class Number(Value):
 
     def anded_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value and other.value)).set_context(self.context),
-                None,
-            )
+            if self.is_true() and other.is_true():
+                return Number(1), None
+            else:
+                return Number(0), None
         else:
-            return None, Value.illegal_operation(self, other)
+            return None, self.illegal_operation(other)
 
     def ored_by(self, other):
         if isinstance(other, Number):
-            return (
-                Number(int(self.value or other.value)).set_context(self.context),
-                None,
-            )
+            if self.is_true() or other.is_true():
+                return Number(1), None
+            else:
+                return Number(0), None
         else:
-            return None, Value.illegal_operation(self, other)
+            return None, self.illegal_operation(other)
 
     def notted(self):
-        return Number(1 if self.value == 0 else 0).set_context(self.context), None
+        if self.is_true():
+            return Number(0), None
+        else:
+            return Number(1), None
 
     def bitted_and_by(self, other):
         if isinstance(other, Number):
@@ -391,7 +413,7 @@ class Number(Value):
         return None, Value.illegal_operation(self, other)
 
     def bitted_not(self):
-        return Number(~int(self.value)).set_context(self.context), None
+        return Number((~int(self.value)) & 0xFFFFFFFF).set_context(self.context), None
 
     def rshifted_by(self, other):
         if isinstance(other, Number):
@@ -417,21 +439,55 @@ class Number(Value):
         return str(self.value)
 
 
-Number.false = Number(0)
-Number.true = Number(1)
-Number.null = Number.false.copy()
+class _FrozenNull(Number):
+    __slots__ = ()
+
+    def set_pos(self, *args):
+        return self
+
+    def set_context(self, *args):
+        return self
+
+    def copy(self):
+        return Number(self.value)
+
+
+Number.false = _FrozenNull(0)
+Number.true = _FrozenNull(1)
+Number.null = _FrozenNull(0)
 
 
 class String(Value):
+    MAX_STRING_SIZE = 10_000_000
+
+    __slots__ = ("value",)
+
     def __init__(self, value):
         super().__init__()
         self.value = value
 
     def added_to(self, other):
         if isinstance(other, String):
+            new_len = len(self.value) + len(other.value)
+            if new_len > String.MAX_STRING_SIZE:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"String concatenation result ({new_len:,} chars) exceeds maximum allowed size ({String.MAX_STRING_SIZE:,} chars)",
+                    self.context,
+                )
             return String(self.value + other.value).set_context(self.context), None
         elif isinstance(other, Number):
-            return String(self.value + str(other.value)).set_context(self.context), None
+            suffix = str(other.value)
+            new_len = len(self.value) + len(suffix)
+            if new_len > String.MAX_STRING_SIZE:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    f"String concatenation result exceeds maximum allowed size ({String.MAX_STRING_SIZE:,} chars)",
+                    self.context,
+                )
+            return String(self.value + suffix).set_context(self.context), None
         else:
             return None, self.illegal_operation(other)
 
@@ -518,6 +574,8 @@ class String(Value):
 
 class List(Value):
     MAX_LIST_SIZE = 1_000_000
+
+    __slots__ = ("elements",)
 
     def __init__(self, elements):
         super().__init__()
@@ -662,6 +720,8 @@ class List(Value):
 class Dict(Value):
     MAX_DICT_SIZE = 1_000_000
 
+    __slots__ = ("elements",)
+
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
@@ -715,6 +775,14 @@ class Dict(Value):
                 self.pos_start,
                 self.pos_end,
                 "Key must be a Number or String",
+                self.context,
+            )
+
+        if key.value not in self.elements and len(self.elements) >= Dict.MAX_DICT_SIZE:
+            return None, RTError(
+                self.pos_start,
+                self.pos_end,
+                f"Dict size limit ({Dict.MAX_DICT_SIZE:,} entries) reached. Cannot insert more keys.",
                 self.context,
             )
 
@@ -788,6 +856,8 @@ class Dict(Value):
 
 
 class BaseFunction(Value):
+    __slots__ = ("name",)
+
     def __init__(self, name):
         super().__init__()
         self.name = name or "<anonymous>"
@@ -850,6 +920,16 @@ class BaseFunction(Value):
 
 
 class Function(BaseFunction):
+    __slots__ = (
+        "body_node",
+        "arg_name_toks",
+        "arg_names",
+        "context",
+        "visibility",
+        "defining_class",
+        "is_static",
+    )
+
     def __init__(
         self,
         name,
@@ -871,35 +951,60 @@ class Function(BaseFunction):
 
     def execute(self, args, interpreter):
         res = RTResult()
+        current_func = self
+        current_args = args
+        base_depth = None
 
-        new_context = self.generate_new_context()
+        while True:
+            new_context = current_func.generate_new_context()
+            new_context.active_class = current_func.defining_class
+            new_context.is_static = current_func.is_static
 
-        new_context.active_class = self.defining_class
-        new_context.is_static = self.is_static
+            if base_depth is None:
+                base_depth = new_context.depth
+                if base_depth > 2000:
+                    return res.failure(
+                        RTError(
+                            current_func.pos_start,
+                            current_func.pos_end,
+                            "Recursion limit exceeded",
+                            current_func.context,
+                        )
+                    )
+            else:
+                new_context.depth = base_depth
 
-        if new_context.depth > 250:
-            return res.failure(
-                RTError(
-                    self.pos_start,
-                    self.pos_end,
-                    "Recursion limit exceeded",
-                    self.context,
+            new_context._tco_func = current_func
+
+            res.register(
+                current_func.check_and_populate_args(
+                    current_func.arg_names, current_args, new_context
                 )
             )
 
-        res.register(self.check_and_populate_args(self.arg_names, args, new_context))
-        if res.error:
-            return res
+            if res.error:
+                return res
 
-        value_result = interpreter.visit(self.body_node, new_context)
+            value_result = interpreter.visit(current_func.body_node, new_context)
+            if value_result.error:
+                return value_result
 
-        if value_result.error:
-            return value_result
+            if value_result.should_return:
+                ret_val = value_result.return_value
+                if isinstance(ret_val, TailCall):
+                    callee = ret_val.function
 
-        if value_result.should_return:
-            return res.success(value_result.return_value)
+                    if isinstance(callee, BoundMethod):
+                        current_func = callee.function_to_bind
+                    else:
+                        current_func = callee
 
-        return res.success(value_result.value or Number.null.copy())
+                    current_args = ret_val.args
+                    res = RTResult()
+                    continue
+                return res.success(ret_val)
+
+            return res.success(value_result.value or Number.null.copy())
 
     def copy(self):
         copy = Function(
@@ -918,6 +1023,8 @@ class Function(BaseFunction):
 
 
 class FunctionGroup(BaseFunction):
+    __slots__ = ("functions", "visibility", "is_static", "defining_class")
+
     def __init__(self, name):
         super().__init__(name)
         self.functions = {}
@@ -991,6 +1098,8 @@ class FunctionGroup(BaseFunction):
 
 
 class Class(BaseFunction):
+    __slots__ = ("superclasses", "methods", "static_symbol_table", "mro")
+
     def __init__(self, name, superclasses, methods, static_symbol_table=None, mro=None):
         super().__init__(name)
         self.superclasses = superclasses
@@ -1192,6 +1301,8 @@ class Class(BaseFunction):
 
 
 class Instance(Value):
+    __slots__ = ("class_ref", "symbol_table")
+
     def __init__(self, class_ref):
         super().__init__()
         self.class_ref = class_ref
@@ -1394,6 +1505,8 @@ class Instance(Value):
 
 
 class Super(Value):
+    __slots__ = ("instance", "start_class")
+
     def __init__(self, instance, start_class):
         super().__init__()
         self.instance = instance
@@ -1475,6 +1588,8 @@ class Super(Value):
 
 
 class Type(Value):
+    __slots__ = ("name",)
+
     def __init__(self, name):
         super().__init__()
         self.name = name
@@ -1491,6 +1606,8 @@ class Type(Value):
 
 
 class Enum(Value):
+    __slots__ = ("name", "elements_dict")
+
     def __init__(self, name, elements_dict):
         super().__init__()
         self.name = name
@@ -1537,13 +1654,21 @@ class Enum(Value):
 
 
 class BoundMethod(BaseFunction):
+    __slots__ = (
+        "function_to_bind",
+        "instance",
+        "context",
+        "visibility",
+        "defining_class",
+        "is_static",
+    )
+
     def __init__(self, name, function_to_bind, instance):
         super().__init__(name)
         self.function_to_bind = function_to_bind
         self.instance = instance
         self.context = function_to_bind.context
         self.set_pos(function_to_bind.pos_start, function_to_bind.pos_end)
-
         self.visibility = getattr(function_to_bind, "visibility", "PUBLIC")
         self.defining_class = getattr(function_to_bind, "defining_class", None)
         self.is_static = getattr(function_to_bind, "is_static", False)
@@ -1558,53 +1683,74 @@ class BoundMethod(BaseFunction):
             full_args = [self.instance] + args
             return self.function_to_bind.execute(full_args, interpreter)
 
-        new_context = self.function_to_bind.generate_new_context()
+        current_func = self.function_to_bind
+        current_instance = self.instance
+        current_args = args
+        base_depth = None
 
-        if new_context.depth > 250:
-            return res.failure(
-                RTError(
-                    self.function_to_bind.pos_start,
-                    self.function_to_bind.pos_end,
-                    "Recursion limit exceeded",
-                    self.function_to_bind.context,
+        while True:
+            new_context = current_func.generate_new_context()
+            new_context.active_class = current_func.defining_class
+            new_context.is_static = current_func.is_static
+
+            if base_depth is None:
+                base_depth = new_context.depth
+                if base_depth > 2000:
+                    return res.failure(
+                        RTError(
+                            current_func.pos_start,
+                            current_func.pos_end,
+                            "Recursion limit exceeded",
+                            current_func.context,
+                        )
+                    )
+            else:
+                new_context.depth = base_depth
+
+            new_context.symbol_table.set("THIS", current_instance)
+            new_context._tco_func = current_func
+
+            original_arg_names = current_func.arg_names
+            actual_args = current_args
+
+            if len(actual_args) > 0 and actual_args[0] is current_instance:
+                actual_args = actual_args[1:]
+
+            if len(original_arg_names) > 0 and original_arg_names[0] == "THIS":
+                expected_arg_names = original_arg_names[1:]
+            else:
+                expected_arg_names = original_arg_names
+
+            res.register(
+                current_func.check_and_populate_args(
+                    expected_arg_names, actual_args, new_context
                 )
             )
 
-        new_context.active_class = self.function_to_bind.defining_class
+            if res.error:
+                return res
 
-        new_context.is_static = self.function_to_bind.is_static
+            value_result = interpreter.visit(current_func.body_node, new_context)
+            if value_result.error:
+                return value_result
 
-        original_arg_names = self.function_to_bind.arg_names
+            if value_result.should_return:
+                ret_val = value_result.return_value
+                if isinstance(ret_val, TailCall):
+                    callee = ret_val.function
 
-        new_context.symbol_table.set("THIS", self.instance)
+                    if isinstance(callee, BoundMethod):
+                        current_func = callee.function_to_bind
+                        current_instance = callee.instance
+                    else:
+                        current_func = callee
 
-        actual_args = args
-        if len(args) > 0 and args[0] is self.instance:
-            actual_args = args[1:]
+                    current_args = ret_val.args
+                    res = RTResult()
+                    continue
+                return res.success(ret_val)
 
-        if len(original_arg_names) > 0 and original_arg_names[0] == "THIS":
-            expected_arg_names = original_arg_names[1:]
-        else:
-            expected_arg_names = original_arg_names
-
-        res.register(
-            self.function_to_bind.check_and_populate_args(
-                expected_arg_names, actual_args, new_context
-            )
-        )
-
-        if res.error:
-            return res
-
-        value_result = interpreter.visit(self.function_to_bind.body_node, new_context)
-
-        if value_result.error:
-            return value_result
-
-        if value_result.should_return:
-            return res.success(value_result.return_value)
-
-        return res.success(value_result.value or Number.null.copy())
+            return res.success(value_result.value or Number.null.copy())
 
     def copy(self):
         return (
@@ -1615,6 +1761,8 @@ class BoundMethod(BaseFunction):
 
 
 class BuiltInFunction(BaseFunction):
+    __slots__ = ()
+
     def __init__(self, name):
         super().__init__(name)
 
@@ -1739,8 +1887,10 @@ class BuiltInFunction(BaseFunction):
             if res.error:
                 return res
 
-            is_true = args[0].is_true()
-            return res.success(Number.true.copy() if is_true else Number.false.copy())
+            if args[0].is_true():
+                return res.success(Number(1))
+            else:
+                return res.success(Number(0))
 
         elif self.name == "LEN":
             res.register(self.check_args(["value"], args))

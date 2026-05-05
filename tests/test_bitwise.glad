@@ -12,7 +12,7 @@ PRINTLN "a ^ b (XOR): " + STR(a ^ b)  # Expected: 6 (0110)
 
 # 2. Unary Operator
 # ~a (NOT) = -a - 1
-PRINTLN "~a (NOT):    " + STR(~a)     # Expected: -6
+PRINTLN "~a (NOT):    " + STR(~a)     # Result is unsigned 32‑bit (4294967290 for ~5)
 
 # 3. Shift Operators
 PRINTLN "1 << 2 (LSHIFT): " + STR(1 << 2) # Expected: 4 (001 -> 100)

@@ -192,13 +192,13 @@ def is_complete(text):
 
 def main():
     MAX_MEMORY_MB = 512
-    MAX_INSTRUCTIONS = 100_000
+    MAX_INSTRUCTIONS = 1_000_000
     MAX_SOURCE_BYTES = 1_000_000
     MAX_REPL_BUFFER = 100_000
 
     set_memory_limit(MAX_MEMORY_MB)
 
-    GLADLANG_VERSION = "0.2.3"
+    GLADLANG_VERSION = "0.2.4"
     GLADLANG_HELP = f"""
 Usage: gladlang [command] [filename/code] [args...]
 
@@ -373,6 +373,8 @@ Commands:
                             sys.exit(1)
                         except Exception as e:
                             sys.stderr.write(f"An unexpected error occurred: {e}\n")
+                            sys.exit(1)
+
                         source_name = str(path_to_read)
                     else:
                         text = arg_input

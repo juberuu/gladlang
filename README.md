@@ -437,7 +437,7 @@ LET b = 3  # Binary 011
 PRINTLN a & b   # 1 (AND)
 PRINTLN a | b   # 7 (OR)
 PRINTLN a ^ b   # 6 (XOR)
-PRINTLN ~a      # -6 (NOT)
+PRINTLN ~a      # 4294967290 (bitwise NOT as unsigned 32‑bit integer)
 PRINTLN 1 << 2  # 4 (Left Shift)
 PRINTLN 8 >> 2  # 2 (Right Shift)
 

@@ -1,23 +1,40 @@
 from threading import Lock
 
 
+class _NoLock:
+    __slots__ = ()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
 class SymbolTable:
+    _THREADING_ENABLED = False
+
     def __init__(self, parent=None):
         self.symbols = {}
         self.parent = parent
         self.finals = set()
         self.visibilities = {}
         self.defining_classes = {}
-        self._lock = Lock()
+        self._lock = Lock() if SymbolTable._THREADING_ENABLED else _NoLock()
+        self._finals_count = 0
 
     def set(
         self, name, value, visibility="PUBLIC", as_final=False, defining_class=None
     ):
         with self._lock:
             self.symbols[name] = value
-            self.visibilities[name] = visibility
+            if visibility != "PUBLIC":
+                self.visibilities[name] = visibility
+
             if as_final:
                 self.finals.add(name)
+                self._finals_count += 1
+
             if defining_class:
                 self.defining_classes[name] = defining_class
 
@@ -34,12 +51,18 @@ class SymbolTable:
         with self._lock:
             if name in self.symbols:
                 return f"Variable '{name}' is already defined"
+
             if as_final and self.is_final_in_ancestors(name):
                 return f"Cannot declare constant '{name}' because it is already defined as constant in outer scope"
+
             self.symbols[name] = value
-            self.visibilities[name] = visibility
+            if visibility != "PUBLIC":
+                self.visibilities[name] = visibility
+
             if as_final:
                 self.finals.add(name)
+                self._finals_count += 1
+
             return None
 
     def get(self, name):
@@ -82,10 +105,22 @@ class SymbolTable:
             new_table.visibilities = self.visibilities.copy()
             new_table.finals = self.finals.copy()
             new_table.defining_classes = self.defining_classes.copy()
+            new_table._finals_count = len(new_table.finals)
             return new_table
 
 
 class Context:
+    __slots__ = (
+        "display_name",
+        "parent",
+        "parent_entry_pos",
+        "symbol_table",
+        "depth",
+        "active_class",
+        "is_static",
+        "_tco_func",
+    )
+
     def __init__(self, display_name, parent=None, parent_entry_pos=None):
         self.display_name = display_name
         self.parent = parent
@@ -97,7 +132,19 @@ class Context:
 
 
 class RTResult:
+    __slots__ = (
+        "value",
+        "error",
+        "return_value",
+        "should_return",
+        "should_break",
+        "should_continue",
+    )
+
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         self.value = None
         self.error = None
         self.return_value = None
@@ -105,7 +152,14 @@ class RTResult:
         self.should_break = False
         self.should_continue = False
 
+        return self
+
     def register(self, res):
+        if res.error is None and not (
+            res.should_return or res.should_break or res.should_continue
+        ):
+            return res.value
+
         if res.error:
             self.error = res.error
         if res.should_return:
@@ -115,6 +169,7 @@ class RTResult:
             self.should_break = True
         if res.should_continue:
             self.should_continue = True
+
         return res.value
 
     def success(self, value):

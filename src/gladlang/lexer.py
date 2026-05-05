@@ -3,6 +3,8 @@ from .errors import Position, IllegalCharError, InvalidSyntaxError
 
 
 class Token:
+    __slots__ = ("type", "value", "pos_start", "pos_end")
+
     def __init__(self, type_, value=None, pos_start=None, pos_end=None):
         self.type = type_
         self.value = value
