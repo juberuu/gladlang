@@ -186,8 +186,7 @@ ENDCLASS
 
 CLASS ChildShadow INHERITS ParentShadow
   DEF ChildShadow()
-    # Manual super call workaround
-    ParentShadow.ParentShadow(THIS)
+    SUPER()
     # This should NOT overwrite the parent's private 'secret'
     PRIVATE THIS.secret = "Child Secret"
   ENDDEF

@@ -11,8 +11,8 @@ PRINTLN "a | b (OR):  " + STR(a | b)  # Expected: 7 (0111)
 PRINTLN "a ^ b (XOR): " + STR(a ^ b)  # Expected: 6 (0110)
 
 # 2. Unary Operator
-# ~a (NOT) = -a - 1
-PRINTLN "~a (NOT):    " + STR(~a)     # Result is unsigned 32‑bit (4294967290 for ~5)
+# ~a (NOT) = -a - 1 (signed 32‑bit two's complement)
+PRINTLN "~a (NOT):    " + STR(~a)     # Result is signed 32‑bit (e.g., ~5 = -6)
 
 # 3. Shift Operators
 PRINTLN "1 << 2 (LSHIFT): " + STR(1 << 2) # Expected: 4 (001 -> 100)
@@ -46,7 +46,7 @@ PRINTLN "4 ^ 2 & 3  (Check & vs ^):  " + STR(4 ^ 2 & 3)
 
 PRINTLN ""
 PRINTLN "=== Comparison Logic Test ==="
-# This verifies the fix in parser.py (allowing bitwise ops in conditions)
+
 LET flags = 5 # 101
 LET MASK = 4  # 100
 
@@ -64,3 +64,15 @@ TRY
 CATCH error
     PRINTLN "Success! Caught expected error: " + error
 ENDTRY
+
+PRINTLN ""
+PRINTLN "=== Test: >>= Compound Assignment ==="
+LET rshift_val = 64
+PRINTLN "Initial: " + rshift_val
+rshift_val >>= 2
+PRINTLN "64 >>= 2 => " + rshift_val + " (expected: 16)"
+rshift_val >>= 1
+PRINTLN "16 >>= 1 => " + rshift_val + " (expected: 8)"
+LET neg_rshift = -16
+neg_rshift >>= 2
+PRINTLN "-16 >>= 2 => " + neg_rshift + " (expected: -4)"

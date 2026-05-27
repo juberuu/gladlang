@@ -170,3 +170,13 @@ ENDCLASS
 
 LET obj = NEW Derived()
 PRINTLN("Accessing inherited field via THIS: " + STR(obj.get_base_val()))
+
+PRINTLN "\n[7] MRO Cycle Detection"
+TRY
+    # Attempt to create a class that inherits from itself
+    CLASS SelfInherit INHERITS SelfInherit
+    ENDCLASS
+    PRINTLN "FAIL: Self-inheritance not detected"
+CATCH e
+    PRINTLN "SUCCESS: Self-inheritance error caught -> " + e
+ENDTRY

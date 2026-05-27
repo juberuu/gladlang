@@ -1,8 +1,0 @@
-PRINTLN "--- Type Error Tester (Math on String) ---"
-PRINTLN "Enter a number (e.g., 5):"
-LET num_str = INPUT() # This is a String, e.g., "5"
-
-PRINTLN "Attempting to calculate num_str * 10..."
-LET result = num_str * 10 # This should crash (String * Number)
-
-PRINTLN "This line should NOT be printed."

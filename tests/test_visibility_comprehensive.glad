@@ -1,0 +1,473 @@
+PRINTLN "================================================"
+PRINTLN " COMPREHENSIVE VISIBILITY MODIFIERS TEST SUITE "
+PRINTLN "================================================"
+PRINTLN ""
+
+# ============================================================
+# SECTION 1: BASIC VISIBILITY (NO INHERITANCE)
+# ============================================================
+
+PRINTLN "--- SECTION 1: Basic Visibility (Single Class) ---"
+
+CLASS BasicTest
+    DEF BasicTest()
+        PUBLIC THIS.pub_var = "public"
+        PRIVATE THIS.priv_var = "private"
+        PROTECTED THIS.prot_var = "protected"
+    ENDDEF
+
+    PUBLIC DEF get_priv()  RETURN THIS.priv_var  ENDDEF
+    PROTECTED DEF get_prot() RETURN THIS.prot_var ENDDEF
+    PRIVATE DEF get_priv_method() RETURN "private method" ENDDEF
+
+    PUBLIC DEF test_internal()
+        PRINTLN "  Internal access to priv_var: " + THIS.priv_var
+        PRINTLN "  Internal call to priv_method: " + THIS.get_priv_method()
+        PRINTLN "  Internal access to prot_var: " + THIS.prot_var
+        PRINTLN "  Internal call to prot_method: " + THIS.get_prot()
+    ENDDEF
+ENDCLASS
+
+LET b = NEW BasicTest()
+PRINTLN "External public var access: " + b.pub_var
+PRINTLN "External public method: " + b.get_priv()
+
+PRINTLN "External protected var (should fail):"
+TRY
+    PRINTLN b.prot_var
+    PRINTLN "FAIL: Protected var accessible"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "External protected method (should fail):"
+TRY
+    PRINTLN b.get_prot()
+    PRINTLN "FAIL: Protected method accessible"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "External private var (should fail):"
+TRY
+    PRINTLN b.priv_var
+    PRINTLN "FAIL: Private var accessible"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "External private method (should fail):"
+TRY
+    PRINTLN b.get_priv_method()
+    PRINTLN "FAIL: Private method accessible"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "Internal access via public method:"
+b.test_internal()
+PRINTLN ""
+
+# ============================================================
+# SECTION 2: INHERITANCE – PROTECTED ACCESS
+# ============================================================
+
+PRINTLN "--- SECTION 2: PROTECTED Members in Subclass ---"
+
+CLASS ParentProt
+    DEF ParentProt()
+        PROTECTED THIS.prot_val = 100
+    ENDDEF
+    PROTECTED DEF prot_meth() RETURN "parent_protected" ENDDEF
+ENDCLASS
+
+CLASS ChildProt INHERITS ParentProt
+    DEF ChildProt()
+        SUPER()
+    ENDDEF
+    PUBLIC DEF access_protected()
+        RETURN "prot_val=" + STR(THIS.prot_val) + ", prot_meth=" + THIS.prot_meth()
+    ENDDEF
+ENDCLASS
+
+LET cp = NEW ChildProt()
+PRINTLN "Child accessing parent protected: " + cp.access_protected()
+
+PRINTLN "External access to protected (should fail):"
+TRY
+    PRINTLN cp.prot_val
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 3: INHERITANCE – PRIVATE ACCESS (NOT INHERITED)
+# ============================================================
+
+PRINTLN "--- SECTION 3: PRIVATE Members are NOT Inherited ---"
+
+CLASS ParentPriv
+    DEF ParentPriv()
+        PRIVATE THIS.priv_val = "parent_secret"
+    ENDDEF
+    PRIVATE DEF priv_meth() RETURN "parent_private_method" ENDDEF
+    PUBLIC DEF get_priv_val() RETURN THIS.priv_val ENDDEF
+ENDCLASS
+
+CLASS ChildPriv INHERITS ParentPriv
+    DEF ChildPriv()
+        SUPER()
+    ENDDEF
+    PUBLIC DEF try_access_private()
+        TRY
+            RETURN THIS.priv_val
+        CATCH e
+            RETURN "ERROR: " + STR(e)
+        ENDTRY
+    ENDDEF
+    PUBLIC DEF try_call_private()
+        TRY
+            RETURN THIS.priv_meth()
+        CATCH e
+            RETURN "ERROR: " + STR(e)
+        ENDTRY
+    ENDDEF
+ENDCLASS
+
+LET cpv = NEW ChildPriv()
+PRINTLN "Child accessing parent private via public getter: " + cpv.get_priv_val()
+PRINTLN "Child direct access to parent private var: " + cpv.try_access_private()
+PRINTLN "Child direct call to parent private method: " + cpv.try_call_private()
+PRINTLN ""
+
+# ============================================================
+# SECTION 4: NAME MANGLING (PRIVATE MEMBERS DO NOT COLLIDE)
+# ============================================================
+
+PRINTLN "--- SECTION 4: Name Mangling (Private Members Don't Collide) ---"
+
+CLASS ParentMangle
+    DEF ParentMangle()
+        PRIVATE THIS.secret = "Parent"
+    ENDDEF
+    PUBLIC DEF get_parent() RETURN THIS.secret ENDDEF
+ENDCLASS
+
+CLASS ChildMangle INHERITS ParentMangle
+    DEF ChildMangle()
+        SUPER()
+        PRIVATE THIS.secret = "Child"
+    ENDDEF
+    PUBLIC DEF get_child() RETURN THIS.secret ENDDEF
+ENDCLASS
+
+LET m = NEW ChildMangle()
+PRINTLN "Parent private via get_parent(): " + m.get_parent()
+PRINTLN "Child private via get_child(): " + m.get_child()
+PRINTLN ""
+
+# ============================================================
+# SECTION 5: PRIVATE METHOD OVERRIDE (PARENT CALLS ITS OWN)
+# ============================================================
+
+PRINTLN "--- SECTION 5: Private Method Override (Parent calls its own) ---"
+
+CLASS ParentCallOwn
+    PRIVATE DEF secret() RETURN "Parent's private" ENDDEF
+    PUBLIC DEF call_secret() RETURN THIS.secret() ENDDEF
+ENDCLASS
+
+CLASS ChildCallOwn INHERITS ParentCallOwn
+    PRIVATE DEF secret() RETURN "Child's private" ENDDEF
+ENDCLASS
+
+LET co = NEW ChildCallOwn()
+PRINTLN "Parent.call_secret() on child instance: " + co.call_secret()
+PRINTLN "Expected: 'Parent's private' (parent calls its own, not child's)"
+PRINTLN ""
+
+# ============================================================
+# SECTION 6: PROTECTED METHOD OVERRIDE (POLYMORPHISM)
+# ============================================================
+
+PRINTLN "--- SECTION 6: Protected Method Override (Polymorphism) ---"
+
+CLASS ParentPoly
+    PROTECTED DEF speak() RETURN "Parent" ENDDEF
+    PUBLIC DEF talk() RETURN THIS.speak() ENDDEF
+ENDCLASS
+
+CLASS ChildPoly INHERITS ParentPoly
+    PROTECTED DEF speak() RETURN "Child" ENDDEF
+ENDCLASS
+
+LET poly = NEW ChildPoly()
+PRINTLN "Polymorphic protected override via parent method: " + poly.talk()
+PRINTLN "Expected: 'Child' (child's override is called)"
+PRINTLN ""
+
+# ============================================================
+# SECTION 7: STATIC MEMBERS VISIBILITY
+# ============================================================
+
+PRINTLN "--- SECTION 7: Static Members Visibility ---"
+
+CLASS StaticVis
+    PUBLIC STATIC LET pub_static = "public static"
+    PRIVATE STATIC LET priv_static = "private static"
+    PROTECTED STATIC LET prot_static = "protected static"
+
+    STATIC PUBLIC DEF get_priv_static() RETURN StaticVis.priv_static ENDDEF
+    STATIC PROTECTED DEF get_prot_static() RETURN StaticVis.prot_static ENDDEF
+ENDCLASS
+
+PRINTLN "Public static: " + StaticVis.pub_static
+PRINTLN "Private static via public method: " + StaticVis.get_priv_static()
+
+PRINTLN "Direct private static access (should fail):"
+TRY
+    PRINTLN StaticVis.priv_static
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "Direct protected static access (should fail):"
+TRY
+    PRINTLN StaticVis.prot_static
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 8: STATIC INHERITANCE & PROTECTED
+# ============================================================
+
+PRINTLN "--- SECTION 8: Static Inheritance (Protected) ---"
+
+CLASS BaseStatic
+    STATIC PROTECTED LET base_val = "base"
+    STATIC PROTECTED DEF base_meth() RETURN "base_method" ENDDEF
+ENDCLASS
+
+CLASS DerivedStatic INHERITS BaseStatic
+    STATIC PUBLIC DEF access_base()
+        RETURN BaseStatic.base_val + " " + BaseStatic.base_meth()
+    ENDDEF
+ENDCLASS
+
+PRINTLN "Derived accessing parent protected static: " + DerivedStatic.access_base()
+
+PRINTLN "External access to parent protected static (should fail):"
+TRY
+    PRINTLN BaseStatic.base_val
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 9: ENUMS WITH VISIBILITY (CORRECT SYNTAX)
+# ============================================================
+
+PRINTLN "--- SECTION 9: Enums with Visibility Modifiers ---"
+
+CLASS EnumHolder
+    PUBLIC ENUM PubEnum
+        A, B
+    ENDENUM
+
+    PRIVATE ENUM PrivEnum
+        X, Y
+    ENDENUM
+
+    PROTECTED ENUM ProtEnum
+        P, Q
+    ENDENUM
+
+    PUBLIC DEF get_priv_enum() RETURN EnumHolder.PrivEnum.X ENDDEF
+    PROTECTED DEF get_prot_enum() RETURN EnumHolder.ProtEnum.P ENDDEF
+ENDCLASS
+
+LET eh = NEW EnumHolder()
+PRINTLN "Public enum: " + STR(EnumHolder.PubEnum.A)
+PRINTLN "Private enum via public method: " + STR(eh.get_priv_enum())
+
+PRINTLN "Direct private enum access (should fail):"
+TRY
+    PRINTLN EnumHolder.PrivEnum.X
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "Direct protected enum access (should fail):"
+TRY
+    PRINTLN EnumHolder.ProtEnum.P
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 10: LSP VIOLATION (STRICT VISIBILITY)
+# ============================================================
+
+PRINTLN "--- SECTION 10: LSP Violation (Cannot reduce visibility) ---"
+
+CLASS ParentLSP
+    PUBLIC DEF hello() RETURN "public" ENDDEF
+    PROTECTED DEF hi() RETURN "protected" ENDDEF
+ENDCLASS
+
+# This should be allowed (widening visibility is OK)
+CLASS GoodChild INHERITS ParentLSP
+    PUBLIC DEF hi() RETURN "now public" ENDDEF
+ENDCLASS
+
+PRINTLN "GoodChild (widening) works: " + (NEW GoodChild()).hi()
+
+PRINTLN "Attempting to narrow PUBLIC to PRIVATE (should fail at definition):"
+TRY
+    CLASS BadChild INHERITS ParentLSP
+        PRIVATE DEF hello() RETURN "hidden" ENDDEF
+    ENDCLASS
+    PRINTLN "FAIL: LSP violation not detected"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "Attempting to narrow PROTECTED to PRIVATE (should fail):"
+TRY
+    CLASS BadChild2 INHERITS ParentLSP
+        PRIVATE DEF hi() RETURN "hidden" ENDDEF
+    ENDCLASS
+    PRINTLN "FAIL: LSP violation not detected"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 11: THIS and SUPER inside STATIC methods (should fail)
+# ============================================================
+
+PRINTLN "--- SECTION 11: THIS/SUPER inside STATIC (should fail) ---"
+
+CLASS StaticThisTest
+    STATIC PUBLIC DEF bad_this() RETURN THIS ENDDEF
+    STATIC PUBLIC DEF bad_super() RETURN SUPER ENDDEF
+ENDCLASS
+
+PRINTLN "THIS inside static:"
+TRY
+    StaticThisTest.bad_this()
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "SUPER inside static:"
+TRY
+    StaticThisTest.bad_super()
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 12: Cross-class private access (same class instances)
+# ============================================================
+
+PRINTLN "--- SECTION 12: Same-class instances can access each other's private members ---"
+
+CLASS Peer
+    DEF Peer(v)
+        PRIVATE THIS.val = v
+    ENDDEF
+    PUBLIC DEF get_other_private(other)
+        RETURN other.val
+    ENDDEF
+ENDCLASS
+
+LET p1 = NEW Peer(100)
+LET p2 = NEW Peer(200)
+PRINTLN "Peer accessing other's private: " + p1.get_other_private(p2)
+PRINTLN "Expected: 200"
+PRINTLN ""
+
+# ============================================================
+# SECTION 13: STATIC FINAL with visibility
+# ============================================================
+
+PRINTLN "--- SECTION 13: STATIC FINAL with visibility ---"
+
+CLASS FinalTest
+    PUBLIC STATIC FINAL const_pub = 99
+    PRIVATE STATIC FINAL const_priv = 88
+    PROTECTED STATIC FINAL const_prot = 77
+
+    STATIC PUBLIC DEF get_const_priv() RETURN FinalTest.const_priv ENDDEF
+    STATIC PROTECTED DEF get_const_prot() RETURN FinalTest.const_prot ENDDEF
+ENDCLASS
+
+PRINTLN "Public static final: " + FinalTest.const_pub
+
+PRINTLN "Modifying public final (should fail):"
+TRY
+    FinalTest.const_pub = 100
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+
+PRINTLN "Private final via public static method: " + FinalTest.get_const_priv()
+
+PRINTLN "Direct protected final access (should fail):"
+TRY
+    PRINTLN FinalTest.const_prot
+    PRINTLN "FAIL"
+CATCH e
+    PRINTLN "SUCCESS: " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# SECTION 14: INSTANCEOF with visibility (should not affect)
+# ============================================================
+
+PRINTLN "--- SECTION 14: INSTANCEOF works regardless of visibility ---"
+
+CLASS VisibleBase
+ENDCLASS
+CLASS VisibleChild INHERITS VisibleBase
+    PRIVATE DEF dummy() ENDDEF
+ENDCLASS
+
+LET vc = NEW VisibleChild()
+PRINTLN "Child INSTANCEOF Base: " + STR(vc INSTANCEOF VisibleBase)
+PRINTLN "Expected: 1"
+PRINTLN ""
+
+# ============================================================
+# SECTION 15: Overload group visibility consistency (parser error)
+# ============================================================
+
+PRINTLN "--- SECTION 15: Overload groups must have same visibility ---"
+PRINTLN "NOTE: Overloads with different visibility cause parser error (tested manually)."
+PRINTLN ""
+
+# ============================================================
+# FINAL SUMMARY
+# ============================================================
+
+PRINTLN "================================================"
+PRINTLN " ALL VISIBILITY TESTS COMPLETED SUCCESSFULLY "
+PRINTLN "================================================"

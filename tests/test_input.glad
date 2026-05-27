@@ -2,3 +2,7 @@ PRINTLN "--- Input Tester ---"
 PRINT "What is your name?"
 LET name = INPUT()
 PRINTLN "Hello, " + name + "! Welcome to GladLang."
+
+PRINTLN "\n--- Test 2: INPUT with prompt ---"
+LET with_prompt = INPUT("Enter something with prompt: ")
+PRINTLN "You entered: " + with_prompt

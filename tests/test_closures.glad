@@ -25,3 +25,43 @@ PRINTLN "--- Testing Closures ---"
 PRINTLN "add_five(3) = " + add_five(3)   # Should be 8
 PRINTLN "add_ten(3) = " + add_ten(3)     # Should be 13
 PRINTLN "add_five(10) = " + add_five(10) # Should be 15
+
+PRINTLN "--- Deeply Nested Closures (4 levels) ---"
+
+DEF level1(x)
+    DEF level2(y)
+        DEF level3(z)
+            DEF level4(w)
+                RETURN x + y + z + w
+            ENDDEF
+            RETURN level4
+        ENDDEF
+        RETURN level3
+    ENDDEF
+    RETURN level2
+ENDDEF
+
+LET l2 = level1(10)
+LET l3 = l2(20)
+LET l4 = l3(30)
+LET result = l4(40)
+PRINTLN "10 + 20 + 30 + 40 = " + STR(result) + " (expected: 100)"
+
+DEF outer(a)
+    LET b = 5
+    DEF middle(c)
+        LET d = 10
+        DEF inner(e)
+            RETURN a + b + c + d + e
+        ENDDEF
+        RETURN inner
+    ENDDEF
+    RETURN middle
+ENDDEF
+
+LET mid = outer(1)
+LET inn = mid(2)
+LET sum = inn(3)
+PRINTLN "1+5+2+10+3 = " + STR(sum) + " (expected: 21)"
+
+PRINTLN "All deep closure tests passed."

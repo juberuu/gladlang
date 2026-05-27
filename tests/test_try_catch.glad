@@ -53,3 +53,33 @@ CATCH accessErr
     PRINTLN "SUCCESS! Variable 'e' is not accessible here."
     PRINTLN "Error details: " + accessErr
 ENDTRY
+
+PRINTLN "\n--- Test 5: RETURN inside FINALLY ---"
+DEF test_finally_return()
+    TRY
+        RETURN 1
+    FINALLY
+        PRINTLN "Finally executed"
+        RETURN 2
+    ENDTRY
+ENDDEF
+LET result = test_finally_return()
+PRINTLN "Returned value: " + result + " (expected: 2, FINALLY overrides)"
+
+PRINTLN "\n--- Test 6: TRY with only FINALLY (error caught by outer CATCH) ---"
+TRY
+    TRY
+        PRINTLN "Inside inner TRY (no CATCH)"
+        LET x = 10 / 0
+    FINALLY
+        PRINTLN "Inner FINALLY executed"
+    ENDTRY
+CATCH err
+    PRINTLN "Outer CATCH caught the error: " + err
+ENDTRY
+PRINTLN "Program continues after caught error"
+
+PRINTLN "\n--- Test 7: THROW outside TRY (should crash) ---"
+PRINTLN "About to throw..."
+THROW "Unhandled exception"
+PRINTLN "This line should NOT print"

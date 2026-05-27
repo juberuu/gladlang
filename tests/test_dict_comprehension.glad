@@ -1,0 +1,34 @@
+PRINTLN "=== DICTIONARY COMPREHENSION TESTS ==="
+
+# 1. Simple dictionary comprehension
+LET squares = {n: n*n FOR n IN [1, 2, 3, 4, 5]}
+PRINTLN "Squares: " + STR(squares)
+
+# 2. With condition (filter)
+LET even_squares = {n: n*n FOR n IN [1,2,3,4,5] IF n % 2 == 0}
+PRINTLN "Even squares: " + STR(even_squares)
+
+# 3. Using string keys
+LET name_lengths = {name: LEN(name) FOR name IN ["Alice", "Bob", "Charlie"]}
+PRINTLN "Name lengths: " + STR(name_lengths)
+
+# 4. Nested loops – Cartesian product (use list as value)
+LET colors = ["Red", "Blue"]
+LET sizes = ["S", "M", "L"]
+LET product = {c + "-" + s: [c, s] FOR c IN colors FOR s IN sizes}
+PRINTLN "Cartesian product dict: " + STR(product)
+
+# 5. Nested with filter (using list value)
+LET filtered = {c + "-" + s: [c, s] FOR c IN colors FOR s IN sizes IF c == "Red" OR s == "L"}
+PRINTLN "Filtered product: " + STR(filtered)
+
+# 6. Using expression as key (number arithmetic)
+LET pairs = [[1,10], [2,20], [3,30]]
+LET inverted = {val: key FOR [key, val] IN pairs}
+PRINTLN "Inverted dict: " + STR(inverted)
+
+# 7. Empty dict comprehension
+LET empty = {x: x*2 FOR x IN []}
+PRINTLN "Empty result: " + STR(empty)
+
+PRINTLN "=== ALL DICT COMP TESTS PASSED ==="

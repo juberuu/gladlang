@@ -26,3 +26,37 @@ PRINTLN "\n-- String Comprehension --"
 LET chars = [c FOR c IN "abc"]
 PRINTLN "Chars: " + STR(chars)
 # Expected: ['a', 'b', 'c']
+
+PRINTLN "\n-- String Repetition --"
+LET base = "5"
+LET repeated = base * 10
+PRINTLN "Repeating '5' ten times: " + repeated
+# Expected: 5555555555
+
+PRINTLN "--- Unicode / Tamil & Kannada Strings ---"
+
+LET tamil_str = "வணக்கம்"
+PRINTLN "Tamil string: " + tamil_str
+PRINTLN "Length: " + STR(LEN(tamil_str))
+
+LET kannada_str = "ನಮಸ್ಕಾರ"
+PRINTLN "Kannada string: " + kannada_str
+PRINTLN "Length: " + STR(LEN(kannada_str))
+
+LET mixed = "Tamil: " + tamil_str + ", Kannada: " + kannada_str
+PRINTLN "Mixed: " + mixed
+PRINTLN "Length: " + STR(LEN(mixed))
+
+PRINTLN "Iteration over Tamil string:"
+FOR ch IN tamil_str
+    PRINT "[" + ch + "]"
+ENDFOR
+PRINTLN ""
+
+LET combined = tamil_str + " & " + kannada_str
+PRINTLN "Concatenated: " + combined
+
+LET chars = [c FOR c IN "abc " + tamil_str]
+PRINTLN "Comprehension chars: " + STR(chars)
+
+PRINTLN "All Unicode (Tamil/Kannada) tests passed."

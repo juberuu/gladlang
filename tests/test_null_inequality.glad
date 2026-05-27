@@ -1,0 +1,40 @@
+PRINTLN "=== Testing NULL != FALSE ==="
+
+LET result1 = NULL != FALSE
+PRINTLN "NULL != FALSE => " + STR(result1) + " (expected: 1)"
+
+LET result2 = NULL == FALSE
+PRINTLN "NULL == FALSE => " + STR(result2) + " (expected: 0)"
+
+LET result3 = NULL != NULL
+PRINTLN "NULL != NULL => " + STR(result3) + " (expected: 0)"
+
+LET result4 = NULL == NULL
+PRINTLN "NULL == NULL => " + STR(result4) + " (expected: 1)"
+
+LET result5 = TRUE != FALSE
+PRINTLN "TRUE != FALSE => " + STR(result5) + " (expected: 1)"
+
+LET result6 = TRUE != 1
+PRINTLN "TRUE != 1 => " + STR(result6) + " (expected: 0)"
+
+# Edge case: numeric equality with NULL (NULL has value 0)
+LET result7 = NULL == 0
+PRINTLN "NULL == 0 => " + STR(result7) + " (expected: 1)"
+
+LET result8 = NULL != 0
+PRINTLN "NULL != 0 => " + STR(result8) + " (expected: 0)"
+
+PRINTLN ""
+PRINTLN "=== IF guard test ==="
+IF NULL != FALSE THEN
+    PRINTLN "PASS: IF NULL != FALSE executed (correct)"
+ELSE
+    PRINTLN "FAIL: IF NULL != FALSE did NOT execute"
+ENDIF
+
+IF NULL == FALSE THEN
+    PRINTLN "FAIL: IF NULL == FALSE executed (should not)"
+ELSE
+    PRINTLN "PASS: IF NULL == FALSE skipped (correct)"
+ENDIF

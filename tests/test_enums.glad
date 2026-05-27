@@ -130,6 +130,19 @@ CATCH err
     PRINTLN "SUCCESS: Caught expected error -> ", err
 ENDTRY
 
+PRINTLN "\n--- Test 7: Duplicate Enum Case Names ---"
+PRINTLN "Attempting to create enum with duplicate case (should fail)..."
+TRY
+    ENUM DuplicateTest
+        FIRST
+        SECOND
+        FIRST
+    ENDENUM
+    PRINTLN "FAIL: Duplicate case not detected"
+CATCH e
+    PRINTLN "SUCCESS: Caught expected error -> " + e
+ENDTRY
+
 PRINTLN "==========================================="
 PRINTLN "           ALL TESTS COMPLETED             "
 PRINTLN "==========================================="

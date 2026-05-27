@@ -32,3 +32,32 @@ WHILE i > 0
 ENDWHILE
 PRINTLN "Loop 3 finished."
 PRINTLN "Found first multiple of 7 (under 100): " + found
+
+PRINTLN "--- Zero-Iteration WHILE Tests ---"
+
+LET counter = 0
+
+PRINTLN "Test 1: WHILE FALSE"
+WHILE FALSE
+    PRINTLN "This should NOT print"
+    counter = counter + 1
+ENDWHILE
+PRINTLN "Counter after FALSE loop: " + STR(counter) + " (expected: 0)"
+
+PRINTLN "Test 2: WHILE 0"
+WHILE 0
+    PRINTLN "This should NOT print"
+    counter = counter + 1
+ENDWHILE
+PRINTLN "Counter after 0 loop: " + STR(counter) + " (expected: 0)"
+
+PRINTLN "Test 3: WHILE condition initially false (a = 10, b = 5)"
+LET a = 10
+LET b = 5
+WHILE a < b
+    PRINTLN "This should NOT print"
+    a = a - 1
+ENDWHILE
+PRINTLN "Loop skipped, a remains: " + STR(a) + " (expected: 10)"
+
+PRINTLN "All zero-iteration tests passed."

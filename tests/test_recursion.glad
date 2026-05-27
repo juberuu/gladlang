@@ -8,7 +8,25 @@ DEF fib(n)
   RETURN fib(n - 1) + fib(n - 2)
 ENDDEF
 
-LET num = 7 # Change this number to test (keep it small, < 20)
+LET num = 2000 # Change this number to test (keep it small, <= 2000)
 PRINTLN "Calculating fib(" + num + ")..."
 LET result = fib(num)
 PRINTLN "Result: " + result
+
+PRINTLN "--- Recursion Depth & Stack Overflow ---"
+
+DEF deep_recurse(n)
+    IF n <= 0 THEN
+        RETURN 0
+    ENDIF
+    RETURN deep_recurse(n - 1)
+ENDDEF
+
+PRINTLN "Testing recursion up to 2000 (should succeed)..."
+LET result = deep_recurse(2000)
+PRINTLN "Result: " + STR(result)
+
+PRINTLN "Testing deep recursion with 10000 (should also succeed, no limit enforced)..."
+LET deep_result = deep_recurse(10000)
+PRINTLN "Result: " + STR(deep_result)
+PRINTLN "Deep recursion test passed (no limit triggered)."

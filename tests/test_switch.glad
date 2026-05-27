@@ -81,4 +81,22 @@ SWITCH s
         PRINTLN "Unknown fruit"
 ENDSWITCH
 
+PRINTLN "\n--- Testing Duplicate Case Values (Should error or ignore) ---"
+LET val = 10
+TRY
+    SWITCH val
+        CASE 5:
+            PRINTLN "Case 5"
+        CASE 10:
+            PRINTLN "Case 10 first"
+        CASE 10:
+            PRINTLN "Case 10 duplicate"
+        DEFAULT:
+            PRINTLN "Default"
+    ENDSWITCH
+    PRINTLN "Duplicate case values are currently allowed (last match wins)"
+CATCH e
+    PRINTLN "Duplicate case detected: " + e
+ENDTRY
+
 PRINTLN "\n--- End of Tests ---"

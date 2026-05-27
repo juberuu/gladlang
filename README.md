@@ -358,6 +358,8 @@ PRINTLN NOT t   # 0 (False)
 
 The `NULL` keyword represents a null or "nothing" value. It is falsy and prints as `0`. Functions with no `RETURN` statement implicitly return `NULL`.
 
+**Important:** `NULL` is numerically equal to `0` (e.g., `NULL == 0` → `TRUE`). This follows the language's design that `NULL` coerces to `0` in numeric contexts. For strict identity checks, use the `IS` operator (`NULL IS 0` → `FALSE`).
+
 #### Enums
 
 GladLang supports strict, immutable `ENUM` types. Enums can be zero-indexed implicitly, or you can assign explicit values. They also support comma-separated cases. 
@@ -428,7 +430,7 @@ score %= 5   # score is now 3.0
 
 #### Bitwise Operators
 
-Perform binary manipulation on integers.
+Perform binary manipulation on integers. All bitwise operations are performed on **signed 32‑bit integers** (two's complement).
 
 ```glad
 LET a = 5  # Binary 101
@@ -437,7 +439,7 @@ LET b = 3  # Binary 011
 PRINTLN a & b   # 1 (AND)
 PRINTLN a | b   # 7 (OR)
 PRINTLN a ^ b   # 6 (XOR)
-PRINTLN ~a      # 4294967290 (bitwise NOT as unsigned 32‑bit integer)
+PRINTLN ~a      # -6 (bitwise NOT)
 PRINTLN 1 << 2  # 4 (Left Shift)
 PRINTLN 8 >> 2  # 2 (Right Shift)
 

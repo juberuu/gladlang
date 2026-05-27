@@ -134,6 +134,32 @@ LET z2 = 50
 z2 += 0
 IF z2 == 50 THEN PRINTLN "PASS: Add Zero Identity verified" ELSE PRINTLN "FAIL" ENDIF
 
+PRINTLN "\n[Testing Floor-Divide Assignment //=]"
+LET fd1 = 17
+fd1 //= 3
+PRINTLN "17 //= 3 => " + fd1 + " (expected: 5)"
+LET fd2 = -17
+fd2 //= 3
+PRINTLN "-17 //= 3 => " + fd2 + " (expected: -6)"
+LET fd3 = 10.5
+fd3 //= 3
+PRINTLN "10.5 //= 3 => " + fd3 + " (expected: 3.0)"
+
+PRINTLN "\n[Testing Power Assignment **=]"
+LET pow1 = 2
+pow1 **= 10
+PRINTLN "2 **= 10 => " + pow1 + " (expected: 1024)"
+LET pow2 = 5
+pow2 **= 2
+PRINTLN "5 **= 2 => " + pow2 + " (expected: 25)"
+TRY
+    LET pow_big = 2
+    pow_big **= 200000
+    PRINTLN "FAIL: Exponent limit not enforced"
+CATCH e
+    PRINTLN "SUCCESS: Caught exponent too large -> " + e
+ENDTRY
+
 # ==========================================
 # 3. THE DANGER ZONE (Division by Zero)
 # ==========================================

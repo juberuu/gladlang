@@ -120,4 +120,72 @@ CATCH error
     PRINTLN "PASS: Caught expected error: " + error
 ENDTRY
 
+PRINTLN "--- STATIC FINAL ENUM in Class ---"
+
+CLASS AppConfig
+    PUBLIC ENUM LogLevel
+        DEBUG
+        INFO
+        WARN
+        ERROR
+    ENDENUM
+
+    PUBLIC STATIC FINAL MAX_RETRIES = 5
+    PUBLIC STATIC FINAL DEFAULT_LEVEL = LogLevel.INFO
+ENDCLASS
+
+PRINTLN "LogLevel.DEBUG = " + STR(AppConfig.LogLevel.DEBUG) + " (expected: 0)"
+PRINTLN "LogLevel.INFO = " + STR(AppConfig.LogLevel.INFO) + " (expected: 1)"
+PRINTLN "LogLevel.WARN = " + STR(AppConfig.LogLevel.WARN) + " (expected: 2)"
+PRINTLN "LogLevel.ERROR = " + STR(AppConfig.LogLevel.ERROR) + " (expected: 3)"
+PRINTLN "MAX_RETRIES = " + STR(AppConfig.MAX_RETRIES) + " (expected: 5)"
+PRINTLN "DEFAULT_LEVEL = " + STR(AppConfig.DEFAULT_LEVEL) + " (expected: 1)"
+
+PRINTLN ""
+PRINTLN "Attempting to modify STATIC FINAL (should fail)..."
+TRY
+    AppConfig.MAX_RETRIES = 10
+    PRINTLN "FAIL: Should not allow modification"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+
+TRY
+    AppConfig.LogLevel.DEBUG = 99
+    PRINTLN "FAIL: Should not modify enum case"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+
+PRINTLN "-> Attempting to use THIS inside a STATIC method..."
+CLASS StaticThisTester
+    STATIC PUBLIC DEF bad_method()
+        RETURN THIS.some_field
+    ENDDEF
+ENDCLASS
+TRY
+    StaticThisTester.bad_method()
+    PRINTLN "FAIL: Should have rejected THIS in static method"
+CATCH e
+    PRINTLN "SUCCESS: Caught expected error -> " + e
+ENDTRY
+
+PRINTLN "-> Attempting to use SUPER inside a STATIC method..."
+CLASS SuperStaticParent
+    STATIC DEF parent_method()
+        RETURN "parent"
+    ENDDEF
+ENDCLASS
+CLASS SuperStaticChild INHERITS SuperStaticParent
+    STATIC PUBLIC DEF child_method()
+        RETURN SUPER.parent_method()
+    ENDDEF
+ENDCLASS
+TRY
+    SuperStaticChild.child_method()
+    PRINTLN "FAIL: Should have rejected SUPER in static method"
+CATCH e
+    PRINTLN "SUCCESS: Caught expected error -> " + e
+ENDTRY
+
 PRINTLN "\n=== ALL TESTS COMPLETED ==="

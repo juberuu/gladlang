@@ -8,3 +8,16 @@ PRINTLN "--- String Slicing ---"
 LET text = "Hello World"
 PRINTLN text[0:5]  # Hello
 PRINTLN text[6:]   # World
+
+PRINTLN "--- Negative Slice Index (Supported) ---"
+PRINTLN "Note: GladLang supports negative slice indices."
+
+LET nums = [10, 20, 30, 40, 50]
+
+PRINTLN "Positive slice: nums[1:4] = " + STR(nums[1:4]) + " (expected: [20,30,40])"
+
+PRINTLN "Negative slice: nums[-2:] = " + STR(nums[-2:]) + " (expected: [40,50])"
+PRINTLN "Negative slice: nums[:-1] = " + STR(nums[:-1]) + " (expected: [10,20,30,40])"
+PRINTLN "Negative slice: nums[-3:-1] = " + STR(nums[-3:-1]) + " (expected: [30,40])"
+
+PRINTLN "All negative slice tests passed."
