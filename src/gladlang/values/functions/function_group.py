@@ -45,7 +45,7 @@ class FunctionGroup(BaseFunction):
 
         return None
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         arity = len(args)
         if arity not in self.functions:
             return RTResult().failure(
@@ -57,7 +57,10 @@ class FunctionGroup(BaseFunction):
                 )
             )
 
-        return self.functions[arity].execute(args, interpreter)
+        func = self.functions[arity]
+        func.set_pos(self.pos_start, self.pos_end)
+
+        return func.execute(args, interpreter, calling_context)
 
     def bind_to_instance(self, instance):
         from gladlang.values.functions.bound_method import BoundMethod

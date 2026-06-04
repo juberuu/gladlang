@@ -29,14 +29,24 @@ class BoundMethod(BaseFunction):
     def bind_to_instance(self, instance):
         return BoundMethod(self.name, self.function_to_bind, instance)
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
+
         from gladlang.values.functions.function_group import FunctionGroup
         from gladlang.values.nulls.tailcall import TailCall
 
         if isinstance(self.function_to_bind, FunctionGroup):
             full_args = [self.instance] + args
-            return self.function_to_bind.execute(full_args, interpreter)
+            fg = self.function_to_bind
+
+            if fg.context is None or fg.pos_start is None:
+                fg = fg.copy()
+                if self.context is not None:
+                    fg.set_context(self.context)
+
+                fg.set_pos(self.pos_start, self.pos_end)
+
+            return fg.execute(full_args, interpreter, calling_context)
 
         current_func = self.function_to_bind
         current_instance = self.instance
@@ -44,19 +54,23 @@ class BoundMethod(BaseFunction):
         base_depth = None
 
         while True:
-            new_context = current_func.generate_new_context()
+            new_context = current_func.generate_new_context(
+                calling_context if base_depth is None else None
+            )
+
             new_context.active_class = current_func.defining_class
             new_context.is_static = current_func.is_static
 
             if base_depth is None:
                 base_depth = new_context.depth
+                new_context.parent_entry_pos = self.pos_start
                 if base_depth > 2000:
                     return res.failure(
                         RTError(
                             current_func.pos_start,
                             current_func.pos_end,
                             "Recursion limit exceeded",
-                            current_func.context,
+                            new_context,
                         )
                     )
             else:

@@ -306,7 +306,7 @@ class Instance(Value):
             None,
         )
 
-    def execute(self, args, interpreter=None):
+    def execute(self, args, interpreter=None, calling_context=None):
         return RTResult().failure(self._illegal())
 
     def notted(self):

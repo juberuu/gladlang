@@ -1,18 +1,18 @@
-import os
+import re
+from pathlib import Path
 from setuptools import setup, find_packages
 
-version_file = os.path.join("src", "gladlang", "version.py")
-with open(version_file, encoding="utf-8") as f:
-    exec(f.read())
-
-with open("README.md", encoding="utf-8") as f:
-    long_description = f.read()
+version = re.search(
+    r'^__version__\s*=\s*[\'"]([^\'"]+)[\'"]',
+    Path("src/gladlang/version.py").read_text(encoding="utf-8"),
+    re.MULTILINE,
+).group(1)
 
 setup(
     name="gladlang",
-    version=__version__,
+    version=version,
     description="The GladLang Interpreter",
-    long_description=long_description,
+    long_description=Path("README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     author="Glad432",
     license="MIT",

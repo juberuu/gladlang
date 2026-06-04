@@ -131,7 +131,7 @@ class Value:
     def notted(self):
         return None, self.illegal_operation()
 
-    def execute(self, args, interpreter=None):
+    def execute(self, args, interpreter=None, calling_context=None):
         from gladlang.runtime.rt_result import RTResult
 
         return RTResult().failure(self.illegal_operation())

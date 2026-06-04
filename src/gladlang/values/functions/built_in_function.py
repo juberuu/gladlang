@@ -17,7 +17,7 @@ class BuiltInFunction(BaseFunction):
     def __init__(self, name):
         super().__init__(name)
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
 
         if self.name == "INPUT":

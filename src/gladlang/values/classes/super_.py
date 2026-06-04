@@ -91,7 +91,7 @@ class Super(Value):
             context,
         )
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
         mro = self.instance.class_ref.mro
 
@@ -159,9 +159,9 @@ class Super(Value):
                 break
 
         if method:
-            result = (
-                method.copy().bind_to_instance(self.instance).execute(args, interpreter)
-            )
+            bound = method.copy().bind_to_instance(self.instance)
+            bound.set_pos(self.pos_start, self.pos_end)
+            result = bound.execute(args, interpreter, calling_context)
 
             if result.error:
                 return result

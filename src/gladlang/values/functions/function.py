@@ -40,7 +40,7 @@ class Function(BaseFunction):
         self.is_static = is_static
         self._memo_cache = {}
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
 
         from gladlang.values.primitives.string import String
@@ -108,7 +108,10 @@ class Function(BaseFunction):
         final_result = None
 
         while True:
-            new_context = current_func.generate_new_context()
+            new_context = current_func.generate_new_context(
+                calling_context if base_depth is None else None
+            )
+
             new_context.active_class = current_func.defining_class
             new_context.is_static = current_func.is_static
 
@@ -120,7 +123,7 @@ class Function(BaseFunction):
                             current_func.pos_start,
                             current_func.pos_end,
                             "Recursion limit exceeded",
-                            current_func.context,
+                            new_context,
                         )
                     )
             else:

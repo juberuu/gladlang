@@ -25,8 +25,10 @@ class BaseFunction(Value):
         self.context = context
         return self
 
-    def generate_new_context(self):
-        new_context = Context(self.name, self.context, self.pos_start)
+    def generate_new_context(self, calling_context=None):
+        parent = calling_context if calling_context is not None else self.context
+
+        new_context = Context(self.name, parent, self.pos_start)
         new_context.symbol_table = SymbolTable(self.context.symbol_table)
         return new_context
 
@@ -97,15 +99,21 @@ class BaseFunction(Value):
     def check_and_populate_args(self, arg_names, args, new_context):
         res = RTResult()
 
-        res.register(self.check_args(arg_names, args))
-        if res.error:
-            return res
+        if len(args) != len(arg_names):
+            return res.failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    f"Incorrect argument count for '{self.name}'. Expected {len(arg_names)}, got {len(args)}",
+                    new_context,
+                )
+            )
 
         self.populate_args(arg_names, args, new_context)
 
         return res.success(None)
 
-    def execute(self, args, interpreter):
+    def execute(self, args, interpreter, calling_context=None):
         return RTResult().failure(
             RTError(
                 self.pos_start,

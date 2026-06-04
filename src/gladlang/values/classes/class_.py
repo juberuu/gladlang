@@ -25,8 +25,17 @@ class Class(BaseFunction):
         self.mro = mro if mro else [self]
         self._method_cache = {}
 
-    def instantiate(self, args, context=None, interpreter=None):
+    def instantiate(
+        self,
+        args,
+        context=None,
+        interpreter=None,
+        call_pos_start=None,
+        call_pos_end=None,
+        calling_context=None,
+    ):
         res = RTResult()
+
         from gladlang.values.classes.instance import Instance
         from gladlang.values.functions.function import Function
         from gladlang.core.constants import GL_IDENTIFIER
@@ -50,7 +59,10 @@ class Class(BaseFunction):
                 return res.failure(error)
 
             bound_init = init_method.copy().bind_to_instance(instance)
-            res.register(bound_init.execute(args, interpreter))
+            if call_pos_start is not None:
+                bound_init.set_pos(call_pos_start, call_pos_end)
+
+            res.register(bound_init.execute(args, interpreter, calling_context))
             if res.error:
                 return res
 
@@ -58,16 +70,16 @@ class Class(BaseFunction):
             if len(args) > 0:
                 return res.failure(
                     RTError(
-                        self.pos_start,
-                        self.pos_end,
+                        call_pos_start or self.pos_start,
+                        call_pos_end or self.pos_end,
                         f"'{self.name}' does not have a constructor that accepts arguments",
-                        self.context,
+                        context or self.context,
                     )
                 )
 
         return res.success(instance)
 
-    def execute(self, args, interpreter=None):
+    def execute(self, args, interpreter=None, calling_context=None):
         return RTResult().failure(
             RTError(
                 self.pos_start,
@@ -297,7 +309,7 @@ class Class(BaseFunction):
             name_tok.pos_start,
             name_tok.pos_end,
             f"Class '{self.name}' has no member '{method_name}'",
-            self.context,
+            context,
         )
 
     def copy(self):
@@ -308,6 +320,7 @@ class Class(BaseFunction):
             self.static_symbol_table.copy(),
             self.mro[:],
         )
+
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
