@@ -22,7 +22,7 @@ class LexerNumbers:
                 if self.current_char is None or not (
                     self.current_char in DIGITS or self.current_char.lower() in "abcdef"
                 ):
-                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                    return None, IllegalCharError(
                         pos_start, self.pos, "Invalid hex literal"
                     )
 
@@ -32,14 +32,14 @@ class LexerNumbers:
                     num_str += self.current_char
                     self.advance()
 
-                return Token(GL_INT, int(num_str, 16), pos_start, self.pos)
+                return Token(GL_INT, int(num_str, 16), pos_start, self.pos), None
 
             elif peek_char in ("o", "O"):
                 self.advance()
                 self.advance()
 
                 if self.current_char is None or self.current_char not in "01234567":
-                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                    return None, IllegalCharError(
                         pos_start, self.pos, "Invalid octal literal"
                     )
 
@@ -47,14 +47,14 @@ class LexerNumbers:
                     num_str += self.current_char
                     self.advance()
 
-                return Token(GL_INT, int(num_str, 8), pos_start, self.pos)
+                return Token(GL_INT, int(num_str, 8), pos_start, self.pos), None
 
             elif peek_char in ("b", "B"):
                 self.advance()
                 self.advance()
 
                 if self.current_char is None or self.current_char not in "01":
-                    return Token(GL_INT, 0, pos_start, self.pos), IllegalCharError(
+                    return None, IllegalCharError(
                         pos_start, self.pos, "Invalid binary literal"
                     )
 
@@ -62,7 +62,7 @@ class LexerNumbers:
                     num_str += self.current_char
                     self.advance()
 
-                return Token(GL_INT, int(num_str, 2), pos_start, self.pos)
+                return Token(GL_INT, int(num_str, 2), pos_start, self.pos), None
 
         while self.current_char is not None and self.current_char in DIGITS + ".":
             if self.current_char == ".":
@@ -76,6 +76,6 @@ class LexerNumbers:
             self.advance()
 
         if dot_count == 0:
-            return Token(GL_INT, int(num_str), pos_start, self.pos)
+            return Token(GL_INT, int(num_str), pos_start, self.pos), None
         else:
-            return Token(GL_FLOAT, float(num_str), pos_start, self.pos)
+            return Token(GL_FLOAT, float(num_str), pos_start, self.pos), None

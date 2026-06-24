@@ -45,12 +45,12 @@ class SymbolTable:
         return False
 
     def set_if_absent(self, name, value, visibility="PUBLIC", as_final=False):
-        if as_final and self.is_final_in_ancestors(name):
-            return f"Cannot declare constant '{name}' because it is already defined as constant in outer scope"
-
         with self._lock:
             if name in self.symbols:
                 return f"Variable '{name}' is already defined"
+
+            if as_final and self.is_final_in_ancestors(name):
+                return f"Cannot declare constant '{name}' because it is already defined as constant in outer scope"
 
             self.symbols[name] = value
             if visibility != "PUBLIC":
@@ -63,28 +63,33 @@ class SymbolTable:
             return None
 
     def get(self, name):
-        with self._lock:
-            value = self.symbols.get(name)
-            has_parent = self.parent is not None
+        current = self
+        while current is not None:
+            with current._lock:
+                value = current.symbols.get(name)
+                if value is not None:
+                    return value
 
-        if value is None and has_parent:
-            return self.parent.get(name)
+                parent = current.parent
 
-        return value
+            current = parent
+
+        return None
 
     def update(self, name, value):
-        with self._lock:
-            if name in self.finals:
-                return f"Cannot reassign constant '{name}'"
+        current = self
+        while current is not None:
+            with current._lock:
+                if name in current.finals:
+                    return f"Cannot reassign constant '{name}'"
 
-            if name in self.symbols:
-                self.symbols[name] = value
-                return None
+                if name in current.symbols:
+                    current.symbols[name] = value
+                    return None
 
-            has_parent = self.parent is not None
+                parent = current.parent
 
-        if has_parent:
-            return self.parent.update(name, value)
+            current = parent
 
         return f"'{name}' is not defined"
 

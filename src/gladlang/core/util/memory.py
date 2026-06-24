@@ -22,7 +22,7 @@ def start_memory_watchdog(max_mb):
                 sys.stderr.write("System Error: Memory Limit Exceeded\n")
                 _os._exit(1)
 
-            time.sleep(0.5)
+            time.sleep(0.05)
 
     t = threading.Thread(target=watch, daemon=True)
     t.start()

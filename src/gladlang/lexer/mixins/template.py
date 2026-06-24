@@ -1,5 +1,6 @@
 """Backtick template string lexing (interpolation)."""
 
+from gladlang.core.errors import InvalidSyntaxError
 from gladlang.lexer.token import Token
 from gladlang.core.constants.token_types import (
     GL_STRING,
@@ -12,7 +13,17 @@ from gladlang.core.constants.token_types import (
 
 
 class LexerTemplate:
-    def make_template_string(self):
+    def make_template_string(self, _depth=0):
+        MAX_TEMPLATE_DEPTH = 10
+        MAX_INTERPOLATION_SIZE = 10000
+
+        if _depth >= MAX_TEMPLATE_DEPTH:
+            return [], InvalidSyntaxError(
+                self.pos.copy(),
+                self.pos.copy(),
+                f"Template string nesting depth exceeds limit ({MAX_TEMPLATE_DEPTH})",
+            )
+
         from gladlang.lexer.lexer import Lexer
 
         tokens = []
@@ -82,8 +93,15 @@ class LexerTemplate:
 
                 interp_start_col = max(0, col - 2)
 
-                sub_lexer = Lexer(self.fn, expr_str)
+                if len(expr_str) > MAX_INTERPOLATION_SIZE:
+                    return [], InvalidSyntaxError(
+                        self.pos.copy(),
+                        self.pos.copy(),
+                        f"Interpolation expression too large (limit {MAX_INTERPOLATION_SIZE})",
+                    )
 
+                sub_lexer = Lexer(self.fn, expr_str)
+                sub_lexer._template_depth = _depth + 1
                 sub_tokens, error = sub_lexer.make_tokens()
 
                 if error:

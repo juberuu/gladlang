@@ -47,8 +47,8 @@ ENDTRY
 PRINTLN ""
 PRINTLN "--- Test 5: Loophole - List Comprehension ---"
 TRY
-    PRINTLN "Attempting: [x FOR pi IN [1, 2]]"
-    LET list = [x FOR pi IN [1, 2]]
+    PRINTLN "Attempting: [pi FOR pi IN [1, 2]]"
+    LET list = [pi FOR pi IN [1, 2]]
     PRINTLN "FAIL: Interpreter did not stop comprehension overwrite!"
 CATCH e
     PRINTLN "SUCCESS: Caught error: " + e

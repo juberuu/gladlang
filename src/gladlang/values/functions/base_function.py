@@ -29,7 +29,12 @@ class BaseFunction(Value):
         parent = calling_context if calling_context is not None else self.context
 
         new_context = Context(self.name, parent, self.pos_start)
-        new_context.symbol_table = SymbolTable(self.context.symbol_table)
+
+        if self.context is None:
+            new_context.symbol_table = SymbolTable()
+        else:
+            new_context.symbol_table = SymbolTable(self.context.symbol_table)
+
         return new_context
 
     def get_comparison_eq(self, other, visited=None):
@@ -78,7 +83,7 @@ class BaseFunction(Value):
         is_true = self.is_true() or other.is_true()
         return Number(1 if is_true else 0).set_context(self.context), None
 
-    def check_args(self, arg_names, args):
+    def check_args(self, arg_names, args, calling_context=None):
         res = RTResult()
         if len(args) != len(arg_names):
             return res.failure(
@@ -86,7 +91,7 @@ class BaseFunction(Value):
                     self.pos_start,
                     self.pos_end,
                     f"Incorrect argument count for '{self.name}'. Expected {len(arg_names)}, got {len(args)}",
-                    self.context,
+                    calling_context or self.context,
                 )
             )
 
@@ -98,6 +103,9 @@ class BaseFunction(Value):
 
     def check_and_populate_args(self, arg_names, args, new_context):
         res = RTResult()
+
+        if arg_names is None:
+            return res.success(None)
 
         if len(args) != len(arg_names):
             return res.failure(

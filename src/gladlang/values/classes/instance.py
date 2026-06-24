@@ -315,14 +315,21 @@ class Instance(Value):
     def copy(self):
         copy = Instance(self.class_ref)
         for name, val in self.symbol_table.symbols.items():
-            copy.symbol_table.set(
-                name,
-                val.copy(),
-                visibility=self.symbol_table.get_visibility(name),
-                as_final=(name in self.symbol_table.finals),
-                defining_class=self.symbol_table.defining_classes.get(name),
-            )
+            copy.symbol_table.symbols[name] = val
+            if name in self.symbol_table.visibilities:
+                copy.symbol_table.visibilities[name] = self.symbol_table.visibilities[
+                    name
+                ]
 
+            if name in self.symbol_table.finals:
+                copy.symbol_table.finals.add(name)
+
+            if name in self.symbol_table.defining_classes:
+                copy.symbol_table.defining_classes[
+                    name
+                ] = self.symbol_table.defining_classes[name]
+
+        copy.symbol_table._finals_count = len(copy.symbol_table.finals)
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
 

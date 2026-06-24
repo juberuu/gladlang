@@ -15,13 +15,13 @@ def detach_source_from_node(node, _visited=None):
         return
 
     if _visited is None:
-        _visited = set()
+        _visited = {}
 
     node_id = id(node)
-    if node_id in _visited:
+    if node_id in _visited and _visited[node_id] is node:
         return
 
-    _visited.add(node_id)
+    _visited[node_id] = node
 
     if hasattr(node, "pos_start") and node.pos_start:
         node.pos_start.detach_source()

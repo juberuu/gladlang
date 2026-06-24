@@ -1,0 +1,177 @@
+PRINTLN "============================================="
+PRINTLN "   NUMERIC EDGE CASE TESTS (NEGATIVE ZERO,   "
+PRINTLN "   INFINITY, NaN, AND BOUNDARY CONDITIONS)   "
+PRINTLN "============================================="
+PRINTLN ""
+
+# ============================================================
+# 1. NEGATIVE ZERO LITERAL AND ARITHMETIC
+# ============================================================
+PRINTLN "--- 1. Negative Zero ---"
+
+LET neg_zero = -0
+PRINTLN "Literal -0 => " + STR(neg_zero)
+PRINTLN "neg_zero == 0 => " + STR(neg_zero == 0)          # Expected: 1
+PRINTLN "neg_zero < 0  => " + STR(neg_zero < 0)           # Expected: 0
+PRINTLN "neg_zero > 0  => " + STR(neg_zero > 0)           # Expected: 0
+PRINTLN "neg_zero <= 0 => " + STR(neg_zero <= 0)          # Expected: 1
+PRINTLN "neg_zero >= 0 => " + STR(neg_zero >= 0)          # Expected: 1
+PRINTLN "BOOL(neg_zero) => " + STR(BOOL(neg_zero))        # Expected: 0 (false)
+
+# Arithmetic with negative zero
+LET nz2 = 0 * -1
+PRINTLN "0 * -1 => " + STR(nz2)
+PRINTLN "nz2 == neg_zero => " + STR(nz2 == neg_zero)      # Expected: 1
+
+# Addition with negative zero
+LET sum = neg_zero + 5
+PRINTLN "neg_zero + 5 => " + STR(sum)                     # Expected: 5
+
+# String representation
+PRINTLN "STR(neg_zero) => '" + STR(neg_zero) + "'"         # Expected: '0' or '-0.0' depending on implementation
+PRINTLN ""
+
+# ============================================================
+# 2. MODULO WITH NEGATIVE NUMBERS (Python‑like semantics)
+# ============================================================
+PRINTLN "--- 2. Modulo with Negative Numbers ---"
+# GladLang uses Python‑style modulo where sign of divisor matters.
+# Test cases:
+PRINTLN " 5 %  3 => " + STR(5 % 3)        # Expected: 2
+PRINTLN " 5 % -3 => " + STR(5 % -3)       # Expected: -1 (since 5 = -1 * -3 + 2? Actually 5 % -3 = -1)
+PRINTLN "-5 %  3 => " + STR(-5 % 3)       # Expected: 1
+PRINTLN "-5 % -3 => " + STR(-5 % -3)      # Expected: -2
+PRINTLN ""
+
+# ============================================================
+# 3. FLOOR DIVISION WITH NEGATIVE NUMBERS
+# ============================================================
+PRINTLN "--- 3. Floor Division with Negative Numbers ---"
+PRINTLN " 5 //  3 => " + STR(5 // 3)      # Expected: 1
+PRINTLN " 5 // -3 => " + STR(5 // -3)     # Expected: -2
+PRINTLN "-5 //  3 => " + STR(-5 // 3)     # Expected: -2
+PRINTLN "-5 // -3 => " + STR(-5 // -3)    # Expected: 1
+PRINTLN ""
+
+# ============================================================
+# 4. DIVISION BY ZERO (already covered, but include for completeness)
+# ============================================================
+PRINTLN "--- 4. Division by Zero ---"
+PRINTLN "Attempting 1 / 0 ..."
+TRY
+    LET _ = 1 / 0
+    PRINTLN "FAIL: Division by zero did not raise error"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+
+PRINTLN "Attempting -1 / 0 ..."
+TRY
+    LET _ = -1 / 0
+    PRINTLN "FAIL: Division by zero did not raise error"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+PRINTLN ""
+
+# ============================================================
+# 5. FLOAT CONVERSION EDGE CASES
+# ============================================================
+PRINTLN "--- 5. Float Conversion Edge Cases ---"
+
+# Leading/trailing zeros
+PRINTLN "FLOAT(\"0.0\") => " + STR(FLOAT("0.0"))       # Expected: 0.0
+PRINTLN "FLOAT(\"-0.0\") => " + STR(FLOAT("-0.0"))     # Expected: 0.0 (or -0.0)
+PRINTLN "FLOAT(\"00.5\") => " + STR(FLOAT("00.5"))     # Expected: 0.5
+
+# Very large numbers (should still convert)
+PRINTLN "FLOAT(\"1e100\") => " + STR(FLOAT("1e100"))   # Might be inf if beyond range, but let's see
+# Actually, Python float can handle it, but may overflow; GladLang uses Python float, so it can produce inf.
+# We'll test if it raises error or gives inf.
+TRY
+    LET huge_float = FLOAT("1e1000")
+    PRINTLN "FLOAT(\"1e1000\") => " + STR(huge_float)   # Expected: inf or error? Let's check.
+CATCH e
+    PRINTLN "FLOAT(\"1e1000\") raised error: " + e
+ENDTRY
+
+# Leading sign with spaces (not supported maybe)
+PRINTLN "FLOAT(\" +5.2\") => " + STR(FLOAT(" +5.2"))   # Should convert
+PRINTLN ""
+
+# ============================================================
+# 6. INTEGER CONVERSION EDGE CASES
+# ============================================================
+PRINTLN "--- 6. Integer Conversion Edge Cases ---"
+PRINTLN "INT(\"0.0\") => " + STR(INT("0.0"))           # Expected: 0
+PRINTLN "INT(\"-0.0\") => " + STR(INT("-0.0"))         # Expected: 0
+PRINTLN "INT(\"00042\") => " + STR(INT("00042"))       # Expected: 42
+PRINTLN "INT(\"-00042\") => " + STR(INT("-00042"))     # Expected: -42
+
+# Overflow in integer conversion? (Python int is arbitrary precision)
+LET big_int = INT("123456789012345678901234567890")
+PRINTLN "INT(\"123456789012345678901234567890\") => " + STR(big_int)
+PRINTLN ""
+
+# ============================================================
+# 7. BOOLEAN CONVERSION OF NUMERIC EDGE CASES
+# ============================================================
+PRINTLN "--- 7. Boolean Conversion ---"
+PRINTLN "BOOL(-0) => " + STR(BOOL(-0))                 # Expected: 0
+PRINTLN "BOOL(0.0) => " + STR(BOOL(0.0))               # Expected: 0
+PRINTLN "BOOL(-0.0) => " + STR(BOOL(-0.0))             # Expected: 0
+PRINTLN "BOOL(0.0001) => " + STR(BOOL(0.0001))         # Expected: 1
+PRINTLN ""
+
+# ============================================================
+# 8. POWER OPERATOR WITH NEGATIVE BASES AND EXPONENTS
+# ============================================================
+PRINTLN "--- 8. Power Operator Edge Cases ---"
+PRINTLN "(-2) ** 3 => " + STR((-2) ** 3)               # Expected: -8
+PRINTLN "(-2) ** 4 => " + STR((-2) ** 4)               # Expected: 16
+PRINTLN "0 ** 0 => " + STR(0 ** 0)                     # Expected: 1 (Python returns 1)
+PRINTLN "0 ** 5 => " + STR(0 ** 5)                     # Expected: 0
+PRINTLN "5 ** 0 => " + STR(5 ** 0)                     # Expected: 1
+
+# Negative exponent (should give float)
+PRINTLN "2 ** -1 => " + STR(2 ** -1)                   # Expected: 0.5
+PRINTLN "4 ** -2 => " + STR(4 ** -2)                   # Expected: 0.0625
+PRINTLN ""
+
+# ============================================================
+# 9. SHIFT OPERATORS WITH NEGATIVE SHIFT COUNTS (already covered)
+# ============================================================
+PRINTLN "--- 9. Shift Operators Edge Cases ---"
+PRINTLN "1 << 0 => " + STR(1 << 0)                     # Expected: 1
+PRINTLN "1 >> 0 => " + STR(1 >> 0)                     # Expected: 1
+PRINTLN "8 >> 10 => " + STR(8 >> 10)                   # Expected: 0
+PRINTLN "-8 >> 2 => " + STR(-8 >> 2)                   # Expected: -2 (sign‑propagating)
+PRINTLN ""
+
+# ============================================================
+# 10. STRING REPRESENTATION OF -0.0
+# ============================================================
+PRINTLN "--- 10. String representation of negative zero ---"
+LET nz_float = FLOAT("-0.0")
+PRINTLN "FLOAT(\"-0.0\") as STR: '" + STR(nz_float) + "'"
+# It might print "-0.0" or "0.0" depending on how Python's str handles it.
+# Python's str(-0.0) gives "-0.0". But our Number stores it as float, so it should be the same.
+PRINTLN ""
+
+# ============================================================
+# 11. COMPARISONS WITH -0.0 AND 0.0
+# ============================================================
+PRINTLN "--- 11. Comparisons with -0.0 and 0.0 ---"
+LET pos_zero = 0.0
+LET neg_zero_float = -0.0
+PRINTLN "neg_zero_float == pos_zero => " + STR(neg_zero_float == pos_zero)    # Expected: 1
+PRINTLN "neg_zero_float < pos_zero => " + STR(neg_zero_float < pos_zero)      # Expected: 0
+PRINTLN "neg_zero_float > pos_zero => " + STR(neg_zero_float > pos_zero)      # Expected: 0
+PRINTLN "neg_zero_float <= pos_zero => " + STR(neg_zero_float <= pos_zero)    # Expected: 1
+PRINTLN "neg_zero_float >= pos_zero => " + STR(neg_zero_float >= pos_zero)    # Expected: 1
+PRINTLN "neg_zero_float IS pos_zero => " + STR(neg_zero_float IS pos_zero)    # Expected: 0 (different objects)
+PRINTLN ""
+
+PRINTLN "============================================="
+PRINTLN "        ALL NUMERIC EDGE TESTS COMPLETE      "
+PRINTLN "============================================="

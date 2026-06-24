@@ -129,24 +129,32 @@ class Class(BaseFunction):
             context.active_class if context and context.active_class else None
         )
 
-        cache_key = (method_name, allow_instance, active_class, self)
+        cache_key = (method_name, allow_instance)
 
         if cache_key in self._method_cache:
-            cached_value, cached_vis, cached_def = self._method_cache[cache_key]
-            from gladlang.values.functions.base_function import BaseFunction as BF
+            cached_value, cached_vis, cached_def, cached_kind = self._method_cache[
+                cache_key
+            ]
+
+            from gladlang.values.functions.base_function import BaseFunction
             from gladlang.values.functions.bound_method import BoundMethod
 
-            def _check_vis(vis, def_cls):
+            def _check_vis(vis, def_cls, kind):
                 if vis == "PRIVATE":
                     if (
                         not context
                         or not context.active_class
                         or context.active_class != def_cls
                     ):
+                        msg = (
+                            f"Cannot access private static field '{method_name}'"
+                            if kind == "field"
+                            else f"Cannot access private method '{method_name}' via Class"
+                        )
                         return RTError(
                             name_tok.pos_start,
                             name_tok.pos_end,
-                            f"Cannot access private member '{method_name}'",
+                            msg,
                             context,
                         )
 
@@ -168,20 +176,25 @@ class Class(BaseFunction):
                                 allowed = True
 
                     if not allowed:
+                        msg = (
+                            f"Cannot access protected static field '{method_name}'"
+                            if kind == "field"
+                            else f"Cannot access protected method '{method_name}' via Class"
+                        )
                         return RTError(
                             name_tok.pos_start,
                             name_tok.pos_end,
-                            f"Cannot access protected member '{method_name}'",
+                            msg,
                             context,
                         )
 
                 return None
 
-            err = _check_vis(cached_vis, cached_def)
+            err = _check_vis(cached_vis, cached_def, cached_kind)
             if err:
                 return None, err
 
-            if isinstance(cached_value, (BF, BoundMethod)):
+            if isinstance(cached_value, (BaseFunction, BoundMethod)):
                 return cached_value.copy(), None
 
             return cached_value, None
@@ -226,8 +239,12 @@ class Class(BaseFunction):
                             context,
                         )
 
-                self._method_cache[cache_key] = (val, visibility, defining_class)
-
+                self._method_cache[cache_key] = (
+                    val,
+                    visibility,
+                    defining_class,
+                    "field",
+                )
                 return val, None
 
             method = cls.methods.get(method_name)
@@ -275,7 +292,12 @@ class Class(BaseFunction):
                         .set_context(self.context)
                         .set_pos(name_tok.pos_start, name_tok.pos_end)
                     )
-                    self._method_cache[cache_key] = (result, visibility, defining_class)
+                    self._method_cache[cache_key] = (
+                        result,
+                        visibility,
+                        defining_class,
+                        "method",
+                    )
                     return result, None
 
                 if context:
@@ -293,6 +315,7 @@ class Class(BaseFunction):
                             bound,
                             visibility,
                             defining_class,
+                            "method",
                         )
 
                         return bound, None
@@ -301,6 +324,7 @@ class Class(BaseFunction):
                     method.copy(),
                     visibility,
                     defining_class,
+                    "method",
                 )
 
                 return method.copy(), None
@@ -316,13 +340,15 @@ class Class(BaseFunction):
         copy = Class(
             self.name,
             self.superclasses[:],
-            {k: v.copy() for k, v in self.methods.items()},
+            self.methods,
             self.static_symbol_table.copy(),
             self.mro[:],
         )
 
+        copy._method_cache = self._method_cache
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
+
         return copy
 
     def __repr__(self):

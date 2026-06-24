@@ -22,6 +22,9 @@ class MutableNull(Number):
             )
 
         if isinstance(other, Number):
+            if self._is_null:
+                return Number(0).set_context(self.context), None
+
             return (
                 Number(int(self.value == other.value)).set_context(self.context),
                 None,

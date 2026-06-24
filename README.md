@@ -358,7 +358,7 @@ PRINTLN NOT t   # 0 (False)
 
 The `NULL` keyword represents a null or "nothing" value. It is falsy and prints as `0`. Functions with no `RETURN` statement implicitly return `NULL`.
 
-**Important:** `NULL` is numerically equal to `0` (e.g., `NULL == 0` → `TRUE`). This follows the language's design that `NULL` coerces to `0` in numeric contexts. For strict identity checks, use the `IS` operator (`NULL IS 0` → `FALSE`).
+**Important:** `NULL` is a distinct value representing "nothing". It is falsy (e.g., `IF NULL THEN ...` is false). It is **not** numerically equal to `0` (e.g., `NULL == 0` → `FALSE`). For identity checks, use the `IS` operator (`NULL IS NULL` → `TRUE`; `NULL IS 0` → `FALSE`). Functions with no `RETURN` statement implicitly return `NULL`.
 
 #### Enums
 
@@ -939,7 +939,7 @@ PRINTLN Config.increment()    # 1
   * `INT(value)`: Casts a String or Float to an Integer.
   * `FLOAT(value)`: Casts a String or Integer to a Float.
   * `BOOL(value)`: Casts a value to its Boolean representation (`TRUE` or `FALSE`).
-  * `LEN(value)`: Returns the length of a String, List, Dict, or Number. Alias: `LENGTH()`.
+  * `LEN(value)`: Returns the length of a String, List, or Dict. (Calling `LEN` on a `Number` will raise a runtime error.) Alias: `LENGTH()`.
 
 -----
 

@@ -19,6 +19,7 @@ class BuiltInFunction(BaseFunction):
 
     def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
+        ctx = calling_context or self.context
 
         if self.name == "INPUT":
             if len(args) > 1:
@@ -27,7 +28,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         "INPUT takes at most 1 argument",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -46,7 +47,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         "INPUT: end of file reached (no input available)",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -55,7 +56,9 @@ class BuiltInFunction(BaseFunction):
             return res.success(String(text))
 
         elif self.name == "STR":
-            res.register(self.check_args(["value"], args))
+            res.register(
+                self.check_args(["value"], args, calling_context=calling_context)
+            )
             if res.error:
                 return res
 
@@ -67,7 +70,9 @@ class BuiltInFunction(BaseFunction):
             return res.success(String(str(val)))
 
         elif self.name == "INT":
-            res.register(self.check_args(["value"], args))
+            res.register(
+                self.check_args(["value"], args, calling_context=calling_context)
+            )
             if res.error:
                 return res
 
@@ -79,7 +84,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"Argument for INT must be a Number or String, got {type(arg).__name__}",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -98,14 +103,16 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"Cannot convert '{arg.value}' to INT",
-                        self.context,
+                        ctx,
                     )
                 )
 
             return res.success(Number(val))
 
         elif self.name == "FLOAT":
-            res.register(self.check_args(["value"], args))
+            res.register(
+                self.check_args(["value"], args, calling_context=calling_context)
+            )
             if res.error:
                 return res
 
@@ -116,7 +123,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"Argument for FLOAT must be a Number or String, got {type(arg).__name__}",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -128,7 +135,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"Cannot convert '{arg.value}' to FLOAT",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -138,21 +145,25 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"FLOAT: result is not a finite number (got '{arg.value}')",
-                        self.context,
+                        ctx,
                     )
                 )
 
             return res.success(Number(val))
 
         elif self.name == "BOOL":
-            res.register(self.check_args(["value"], args))
+            res.register(
+                self.check_args(["value"], args, calling_context=calling_context)
+            )
             if res.error:
                 return res
 
             return res.success(Number(1) if args[0].is_true() else Number(0))
 
         elif self.name == "LEN":
-            res.register(self.check_args(["value"], args))
+            res.register(
+                self.check_args(["value"], args, calling_context=calling_context)
+            )
             if res.error:
                 return res
 
@@ -169,7 +180,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         "LEN is not defined for Number, use STR(n) first if you want the digit count",
-                        self.context,
+                        ctx,
                     )
                 )
             else:
@@ -186,7 +197,7 @@ class BuiltInFunction(BaseFunction):
                             self.pos_start,
                             self.pos_end,
                             f"LEN is not defined for type '{type(arg).__name__}'",
-                            self.context,
+                            ctx,
                         )
                     )
 
@@ -195,7 +206,7 @@ class BuiltInFunction(BaseFunction):
                         self.pos_start,
                         self.pos_end,
                         f"LEN is not supported for type '{type(arg).__name__}'",
-                        self.context,
+                        ctx,
                     )
                 )
 
@@ -204,7 +215,7 @@ class BuiltInFunction(BaseFunction):
                 self.pos_start,
                 self.pos_end,
                 f"Unknown built-in function '{self.name}'",
-                self.context,
+                ctx,
             )
         )
 

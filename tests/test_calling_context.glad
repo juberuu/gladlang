@@ -1,0 +1,263 @@
+PRINTLN "=============================================="
+PRINTLN " CALLING CONTEXT — FULL CALL STACK TEST SUITE"
+PRINTLN "=============================================="
+PRINTLN ""
+
+LET pass_count = 0
+LET fail_count = 0
+
+DEF pass(name)
+  PRINTLN "[PASS] " + name
+  pass_count = pass_count + 1
+ENDDEF
+
+DEF fail(name, reason)
+  PRINTLN "[FAIL] " + name + " -> " + reason
+  fail_count = fail_count + 1
+ENDDEF
+
+PRINTLN "--- A: Method called from nested function ---"
+
+CLASS _A_Widget
+  DEF _A_Widget()
+    THIS.v = 0
+  ENDDEF
+  DEF explode()
+    LET _z = 1 / 0
+  ENDDEF
+ENDCLASS
+
+DEF _a_outer()
+  LET _w = NEW _A_Widget()
+  _w.explode()
+ENDDEF
+
+TRY
+  _a_outer()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("A: method error propagates through outer function correctly")
+  ELSE
+    fail("A", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- B: Overloaded function called from nested function ---"
+
+DEF _b_inner(a, b)
+  RETURN a / b
+ENDDEF
+
+DEF _b_inner(a, b, c)
+  RETURN a + b + c
+ENDDEF
+
+DEF _b_outer()
+  _b_inner(10, 0)
+ENDDEF
+
+TRY
+  _b_outer()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("B: overloaded function error propagates through outer function correctly")
+  ELSE
+    fail("B", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- C: Wrong arity — cross-scope call (Crash 8 scenario) ---"
+
+DEF _c_inner(a, b)
+  RETURN a + b
+ENDDEF
+
+DEF _c_outer()
+  _c_inner(1)
+ENDDEF
+
+TRY
+  _c_outer()
+CATCH e
+  IF e == "Incorrect argument count for '_c_inner'. Expected 2, got 1" THEN
+    pass("C: wrong-arity error propagates through outer function correctly")
+  ELSE
+    fail("C", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- D: NEW called from inside another function ---"
+
+CLASS _D_Bomb
+  DEF _D_Bomb()
+    LET _x = 1 / 0
+  ENDDEF
+ENDCLASS
+
+DEF _d_maker()
+  LET _b = NEW _D_Bomb()
+ENDDEF
+
+TRY
+  _d_maker()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("D: constructor error propagates through outer function correctly")
+  ELSE
+    fail("D", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- E: SUPER() chain — intermediate class now visible ---"
+
+CLASS _E_Animal
+  DEF _E_Animal()
+    LET _x = 1 / 0
+  ENDDEF
+ENDCLASS
+
+CLASS _E_Dog INHERITS _E_Animal
+  DEF _E_Dog()
+    SUPER()
+  ENDDEF
+ENDCLASS
+
+TRY
+  LET _d = NEW _E_Dog()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("E: SUPER() chain error propagates correctly")
+  ELSE
+    fail("E", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- F: Deep SUPER() chain — 3 levels ---"
+
+CLASS _F_A
+  DEF _F_A()
+    LET _x = 1 / 0
+  ENDDEF
+ENDCLASS
+
+CLASS _F_B INHERITS _F_A
+  DEF _F_B()
+    SUPER()
+  ENDDEF
+ENDCLASS
+
+CLASS _F_C INHERITS _F_B
+  DEF _F_C()
+    SUPER()
+  ENDDEF
+ENDCLASS
+
+TRY
+  LET _fc = NEW _F_C()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("F: 3-level SUPER() chain error propagates correctly")
+  ELSE
+    fail("F", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- G: Method -> Method -> error chain ---"
+
+CLASS _G_Runner
+  DEF _G_Runner()
+    THIS.v = 0
+  ENDDEF
+  DEF go()
+    LET _z = 1 / 0
+  ENDDEF
+  DEF run()
+    THIS.go()
+  ENDDEF
+ENDCLASS
+
+TRY
+  LET _gr = NEW _G_Runner()
+  _gr.run()
+CATCH e
+  IF e == "Division by zero" THEN
+    pass("G: method-to-method error propagates correctly")
+  ELSE
+    fail("G", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- H: Overloaded method wrong arity from nested function ---"
+
+CLASS _H_Calc
+  DEF calc(x)
+    RETURN x * 2
+  ENDDEF
+  DEF calc(x, y)
+    RETURN x + y
+  ENDDEF
+ENDCLASS
+
+DEF _h_caller()
+  LET _c = NEW _H_Calc()
+  _c.calc()
+ENDDEF
+
+TRY
+  _h_caller()
+CATCH e
+  IF e == "No variant of function 'calc' found that accepts 1 arguments" THEN
+    pass("H: overloaded method wrong-arity error propagates through caller correctly")
+  ELSE
+    fail("H", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "--- I: Built-in error through 2-level function chain ---"
+
+DEF _i_inner()
+  LEN(1, 2, 3)
+ENDDEF
+
+DEF _i_outer()
+  _i_inner()
+ENDDEF
+
+TRY
+  _i_outer()
+CATCH e
+  IF e == "Incorrect argument count for 'LEN'. Expected 1, got 3" THEN
+    pass("I: built-in error propagates through 2-level function chain correctly")
+  ELSE
+    fail("I", "wrong message: " + e)
+  ENDIF
+ENDTRY
+
+PRINTLN ""
+
+PRINTLN "=============================================="
+PRINTLN " RESULTS"
+PRINTLN "=============================================="
+PRINTLN "PASSED: " + pass_count
+PRINTLN "FAILED: " + fail_count
+IF fail_count == 0 THEN
+  PRINTLN "ALL TESTS PASSED"
+ELSE
+  PRINTLN "SOME TESTS FAILED — check output above"
+ENDIF

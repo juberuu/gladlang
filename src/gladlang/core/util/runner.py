@@ -6,6 +6,7 @@ def run(fn, text, context=None, instruction_limit=None):
     from gladlang.parser.parser import Parser
     from gladlang.interpreter.interpreter import Interpreter
     from gladlang.runtime.context import Context
+    from gladlang.core.errors import InvalidSyntaxError
     from gladlang.core.util.source_detach import detach_source_from_node
     from gladlang.core.util.global_scope import get_fresh_global_scope
 
@@ -17,7 +18,17 @@ def run(fn, text, context=None, instruction_limit=None):
 
     parser = Parser(tokens)
 
-    ast = parser.parse()
+    try:
+        ast = parser.parse()
+    except RecursionError:
+        first = tokens[0] if tokens else None
+        last = tokens[-1] if tokens else first
+
+        return None, InvalidSyntaxError(
+            first.pos_start if first else None,
+            last.pos_end if last else None,
+            "Expression too complex (maximum recursion depth exceeded during parsing)",
+        )
 
     if ast.error:
         return None, ast.error

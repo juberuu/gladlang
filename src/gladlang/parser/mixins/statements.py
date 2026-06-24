@@ -100,26 +100,14 @@ class ParserStatements:
             if res.error:
                 return res
 
-            exprs.append(first_expr)
+            exprs = [first_expr]
 
-            while True:
-                if self.current_tok.type == GL_COMMA:
-                    res.register_advancement()
-                    self.advance()
-                    exprs.append(res.register(self.expr()))
-                    if res.error:
-                        return res
-
-                elif self.current_tok.pos_start.ln == exprs[
-                    -1
-                ].pos_end.ln and self.current_tok.type not in (GL_EOF, GL_KEYWORD):
-                    next_expr = res.register(self.expr())
-                    if res.error:
-                        return res
-
-                    exprs.append(next_expr)
-                else:
-                    break
+            while self.current_tok.type == GL_COMMA:
+                res.register_advancement()
+                self.advance()
+                exprs.append(res.register(self.expr()))
+                if res.error:
+                    return res
 
             return res.success(PrintNode(exprs, should_newline=is_println))
 

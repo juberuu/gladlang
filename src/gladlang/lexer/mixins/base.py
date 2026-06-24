@@ -77,6 +77,9 @@ class LexerBase:
             self.advance()
 
     def make_tokens(self):
+        if not hasattr(self, "_template_depth"):
+            self._template_depth = 0
+
         tokens = []
         while self.current_char is not None:
             if self.current_char in " \t\r\n":
@@ -84,9 +87,9 @@ class LexerBase:
             elif self.current_char == "#":
                 self.skip_comment()
             elif self.current_char in DIGITS:
-                tok = self.make_number()
-                if isinstance(tok, tuple):
-                    return [], tok[1]
+                tok, error = self.make_number()
+                if error:
+                    return [], error
 
                 tokens.append(tok)
             elif self.current_char.isidentifier():

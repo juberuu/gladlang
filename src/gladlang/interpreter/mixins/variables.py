@@ -16,6 +16,16 @@ class InterpreterVariables:
     def visit_VarAccessNode(self, node, context):
         res = RTResult()
 
+        if context is None:
+            return res.failure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    "Internal error: missing execution context",
+                    None,
+                )
+            )
+
         var_name = node.var_name_tok.value
 
         if var_name == "SUPER":
@@ -76,6 +86,16 @@ class InterpreterVariables:
 
     def visit_VarAssignNode(self, node, context):
         res = RTResult()
+
+        if context is None:
+            return res.failure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    "Internal error: missing execution context",
+                    None,
+                )
+            )
 
         var_name = node.var_name_tok.value
         value = res.register(self.visit(node.value_node, context))

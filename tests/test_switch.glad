@@ -94,7 +94,7 @@ TRY
         DEFAULT:
             PRINTLN "Default"
     ENDSWITCH
-    PRINTLN "Duplicate case values are currently allowed (last match wins)"
+    PRINTLN "Duplicate case values are currently allowed (first match wins, no fallthrough)"
 CATCH e
     PRINTLN "Duplicate case detected: " + e
 ENDTRY

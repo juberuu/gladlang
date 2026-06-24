@@ -27,11 +27,36 @@ def strip_double_quoted(text):
 
 
 def is_complete(text):
-    temp_text = re.sub(r'""".*?"""', "", text, flags=re.DOTALL)
-    if temp_text.count('"""') % 2 != 0:
+    temp_text = text
+    i = 0
+    in_triple = False
+    in_backtick = False
+
+    while i < len(temp_text):
+        if not in_triple and not in_backtick and temp_text.startswith('"""', i):
+            in_triple = True
+            i += 3
+            continue
+
+        if in_triple and temp_text.startswith('"""', i):
+            in_triple = False
+            i += 3
+            continue
+
+        if not in_triple and not in_backtick and temp_text[i] == "`":
+            in_backtick = True
+            i += 1
+            continue
+
+        if in_backtick and temp_text[i] == "`" and (i == 0 or temp_text[i - 1] != "\\"):
+            in_backtick = False
+            i += 1
+            continue
+
+        i += 1
+    if in_triple or in_backtick:
         return False
 
-    temp_text = re.sub(r"`(?:\\\\.|[^`\\\\])*`", "", temp_text, flags=re.DOTALL)
     if temp_text.count("`") % 2 != 0:
         return False
 

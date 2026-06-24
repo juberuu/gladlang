@@ -457,12 +457,187 @@ PRINTLN "Expected: 1"
 PRINTLN ""
 
 # ============================================================
-# SECTION 15: Overload group visibility consistency (parser error)
+# SECTION 15: Overload groups must have same visibility
 # ============================================================
 
 PRINTLN "--- SECTION 15: Overload groups must have same visibility ---"
-PRINTLN "NOTE: Overloads with different visibility cause parser error (tested manually)."
+PRINTLN "Attempting to define overloaded methods with different visibility (should fail)..."
+TRY
+    CLASS BadOverload
+        PUBLIC DEF work(x)
+            RETURN x
+        ENDDEF
+        PRIVATE DEF work(x, y)
+            RETURN x + y
+        ENDDEF
+    ENDCLASS
+    PRINTLN "FAIL: Parser allowed inconsistent visibility"
+CATCH e
+    PRINTLN "SUCCESS: Caught expected error -> " + e
+ENDTRY
 PRINTLN ""
+
+# ============================================================
+# SECTION 16: CACHE CONSISTENCY FOR STATIC MEMBERS (Regression Test)
+# ============================================================
+
+PRINTLN "--- SECTION 16: Cache Consistency for Static Members ---"
+
+PRINTLN "Subtest A: Private static field"
+CLASS CachePrivateField
+    STATIC PRIVATE LET secret = 42
+    STATIC PUBLIC DEF get_secret()
+        RETURN CachePrivateField.secret
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Access 1: Internal access first (caches it)"
+LET val1 = CachePrivateField.get_secret()
+PRINTLN "  Internal access result: " + STR(val1)
+PRINTLN "  Direct external access (should fail):"
+LET err1 = ""
+TRY
+    LET x = CachePrivateField.secret
+    PRINTLN "  FAIL: Direct access succeeded!"
+CATCH e
+    err1 = STR(e)
+    PRINTLN "  Error: " + err1
+ENDTRY
+
+PRINTLN ""
+PRINTLN "  Access 2: Direct external access first (cache miss)"
+CLASS CachePrivateField2
+    STATIC PRIVATE LET secret = 99
+    STATIC PUBLIC DEF get_secret()
+        RETURN CachePrivateField2.secret
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Direct external access (should fail):"
+LET err2 = ""
+TRY
+    LET x = CachePrivateField2.secret
+    PRINTLN "  FAIL: Direct access succeeded!"
+CATCH e
+    err2 = STR(e)
+    PRINTLN "  Error: " + err2
+ENDTRY
+PRINTLN "  Internal access:"
+LET val2 = CachePrivateField2.get_secret()
+PRINTLN "  Internal access result: " + STR(val2)
+
+IF err1 == err2 THEN
+    PRINTLN "  PASS: error message identical regardless of cache order"
+ELSE
+    PRINTLN "  FAIL: cache-order dependent message -> '" + err1 + "' vs '" + err2 + "'"
+ENDIF
+
+PRINTLN ""
+PRINTLN "Subtest B: Protected static field"
+CLASS CacheProtectedField
+    STATIC PROTECTED LET data = "protected"
+    STATIC PUBLIC DEF get_data()
+        RETURN CacheProtectedField.data
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Access 1: Internal first"
+LET d1 = CacheProtectedField.get_data()
+PRINTLN "  Internal got: " + d1
+PRINTLN "  Direct external access (should fail):"
+LET err1 = ""
+TRY
+    LET x = CacheProtectedField.data
+    PRINTLN "  FAIL"
+CATCH e
+    err1 = STR(e)
+    PRINTLN "  Error: " + err1
+ENDTRY
+
+PRINTLN ""
+PRINTLN "  Access 2: Direct first (cache miss)"
+CLASS CacheProtectedField2
+    STATIC PROTECTED LET data = "hidden"
+    STATIC PUBLIC DEF get_data()
+        RETURN CacheProtectedField2.data
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Direct external access (should fail):"
+LET err2 = ""
+TRY
+    LET x = CacheProtectedField2.data
+    PRINTLN "  FAIL"
+CATCH e
+    err2 = STR(e)
+    PRINTLN "  Error: " + err2
+ENDTRY
+PRINTLN "  Internal access:"
+LET d2 = CacheProtectedField2.get_data()
+PRINTLN "  Internal got: " + d2
+
+IF err1 == err2 THEN
+    PRINTLN "  PASS: error message identical regardless of cache order"
+ELSE
+    PRINTLN "  FAIL: cache-order dependent message -> '" + err1 + "' vs '" + err2 + "'"
+ENDIF
+
+PRINTLN ""
+PRINTLN "Subtest C: Private static method"
+CLASS CachePrivateMethod
+    STATIC PRIVATE DEF helper()
+        RETURN "secret method"
+    ENDDEF
+    STATIC PUBLIC DEF call_helper()
+        RETURN CachePrivateMethod.helper()
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Access 1: Internal first"
+LET r1 = CachePrivateMethod.call_helper()
+PRINTLN "  Internal result: " + r1
+PRINTLN "  Direct external call (should fail):"
+LET err1 = ""
+TRY
+    LET x = CachePrivateMethod.helper()
+    PRINTLN "  FAIL"
+CATCH e
+    err1 = STR(e)
+    PRINTLN "  Error: " + err1
+ENDTRY
+
+PRINTLN ""
+PRINTLN "  Access 2: Direct first (cache miss)"
+CLASS CachePrivateMethod2
+    STATIC PRIVATE DEF helper()
+        RETURN "secret method 2"
+    ENDDEF
+    STATIC PUBLIC DEF call_helper()
+        RETURN CachePrivateMethod2.helper()
+    ENDDEF
+ENDCLASS
+
+PRINTLN "  Direct external call (should fail):"
+LET err2 = ""
+TRY
+    LET x = CachePrivateMethod2.helper()
+    PRINTLN "  FAIL"
+CATCH e
+    err2 = STR(e)
+    PRINTLN "  Error: " + err2
+ENDTRY
+PRINTLN "  Internal call:"
+LET r2 = CachePrivateMethod2.call_helper()
+PRINTLN "  Internal result: " + r2
+
+IF err1 == err2 THEN
+    PRINTLN "  PASS: error message identical regardless of cache order"
+ELSE
+    PRINTLN "  FAIL: cache-order dependent message -> '" + err1 + "' vs '" + err2 + "'"
+ENDIF
+
+PRINTLN ""
+PRINTLN "--- Cache consistency subtest completed."
 
 # ============================================================
 # FINAL SUMMARY

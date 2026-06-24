@@ -170,11 +170,21 @@ class Number(Value):
 
     def powed_by(self, other):
         if isinstance(other, Number):
-            if other.value > 10000:
+            exp = other.value
+            if exp > 1000:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    "Exponent too large (limit: 10000)",
+                    "Exponent too large (limit: 1000)",
+                    self.context,
+                )
+
+            base = self.value
+            if isinstance(base, int) and base.bit_length() > 1000 and exp > 2:
+                return None, RTError(
+                    other.pos_start,
+                    other.pos_end,
+                    "Base too large for exponentiation",
                     self.context,
                 )
 

@@ -47,13 +47,15 @@ PRINTLN "4 ^ 2 & 3  (Check & vs ^):  " + STR(4 ^ 2 & 3)
 PRINTLN ""
 PRINTLN "=== Comparison Logic Test ==="
 
-LET flags = 5 # 101
-LET MASK = 4  # 100
-
-IF flags & MASK == MASK THEN
-    PRINTLN "Bitwise AND in IF condition works correctly!"
+LET flags = 5  # 101
+LET MASK = 2   # 010
+# (flags & MASK) == MASK  ->  (5 & 2) == 2  ->  0 == 2   -> FALSE  (correct, & binds tighter)
+# flags & (MASK == MASK)  ->  5 & (2 == 2)  ->  5 & TRUE  -> TRUE   (would be wrong)
+LET bitwise_binds_tighter = (flags & MASK == MASK) == FALSE
+IF bitwise_binds_tighter THEN
+    PRINTLN "PASS: & binds tighter than == (verified, not coincidental)"
 ELSE
-    PRINTLN "Bitwise AND in IF condition FAILED!"
+    PRINTLN "FAIL: precedence regression — & vs == order changed"
 ENDIF
 
 PRINTLN ""

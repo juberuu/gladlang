@@ -20,10 +20,10 @@ PRINTLN "TRUE != 1 => " + STR(result6) + " (expected: 0)"
 
 # Edge case: numeric equality with NULL (NULL has value 0)
 LET result7 = NULL == 0
-PRINTLN "NULL == 0 => " + STR(result7) + " (expected: 1)"
+PRINTLN "NULL == 0 => " + STR(result7) + " (expected: 0)"
 
 LET result8 = NULL != 0
-PRINTLN "NULL != 0 => " + STR(result8) + " (expected: 0)"
+PRINTLN "NULL != 0 => " + STR(result8) + " (expected: 1)"
 
 PRINTLN ""
 PRINTLN "=== IF guard test ==="

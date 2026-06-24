@@ -291,21 +291,15 @@ class InterpreterStatements:
             if res.error:
                 return res
 
-            if isinstance(callee, BoundMethod):
-                underlying = callee.function_to_bind
-            else:
-                underlying = callee
+            tc_args = []
+            for arg_node in ret_node.arg_nodes:
+                arg_val = res.register(self.visit(arg_node, context))
+                if res.error:
+                    return res
 
-            if underlying is tco_func or callee is tco_func:
-                tc_args = []
-                for arg_node in ret_node.arg_nodes:
-                    arg_val = res.register(self.visit(arg_node, context))
-                    if res.error:
-                        return res
+                tc_args.append(arg_val)
 
-                    tc_args.append(arg_val)
-
-                return res.success_return(TailCall(callee, tc_args))
+            return res.success_return(TailCall(callee, tc_args))
 
         value = res.register(self.visit(node.node_to_return, context))
         if res.error:

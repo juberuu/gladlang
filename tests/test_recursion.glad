@@ -1,18 +1,3 @@
-PRINTLN "--- Recursion Tester (Fibonacci) ---"
-
-DEF fib(n)
-  IF n <= 1 THEN
-    RETURN n
-  ENDIF
-  
-  RETURN fib(n - 1) + fib(n - 2)
-ENDDEF
-
-LET num = 2000 # Change this number to test (keep it small, <= 2000)
-PRINTLN "Calculating fib(" + num + ")..."
-LET result = fib(num)
-PRINTLN "Result: " + result
-
 PRINTLN "--- Recursion Depth & Stack Overflow ---"
 
 DEF deep_recurse(n)
@@ -26,7 +11,91 @@ PRINTLN "Testing recursion up to 2000 (should succeed)..."
 LET result = deep_recurse(2000)
 PRINTLN "Result: " + STR(result)
 
-PRINTLN "Testing deep recursion with 10000 (should also succeed, no limit enforced)..."
-LET deep_result = deep_recurse(10000)
+PRINTLN "Testing deep recursion with 9999 (should succeed, staying within total call limit of 10000)..."
+LET deep_result = deep_recurse(9999)
 PRINTLN "Result: " + STR(deep_result)
-PRINTLN "Deep recursion test passed (no limit triggered)."
+PRINTLN "Deep recursion test passed (within limit)."
+
+PRINTLN "=== Recursion Limit Tests ==="
+
+# ------------------------------------------------------------
+# 1. Tail recursion (limited by total calls, not depth)
+# ------------------------------------------------------------
+PRINTLN "\n--- Tail recursion (deep_recurse) ---"
+# No redefinition – reuse the existing deep_recurse
+
+PRINTLN "Testing 5000 calls (should succeed)..."
+LET result1 = deep_recurse(5000)
+PRINTLN "Result: " + STR(result1) + " (expected 0)"
+
+PRINTLN "Testing 11000 calls (should exceed total call limit 10000)..."
+TRY
+    LET result2 = deep_recurse(11000)
+    PRINTLN "FAIL: Limit not enforced"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+
+# ------------------------------------------------------------
+# 2. Non-tail recursion (limited by total calls, not depth)
+# ------------------------------------------------------------
+PRINTLN "\n--- Non-tail recursion (non_tail_deep) ---"
+DEF non_tail_deep(n)
+    IF n <= 0 THEN
+        RETURN 0
+    ENDIF
+    LET x = non_tail_deep(n - 1)
+    RETURN x + 1
+ENDDEF
+
+PRINTLN "Testing 1999 calls (should succeed)..."
+LET result3 = non_tail_deep(1999)
+PRINTLN "Result: " + STR(result3) + " (expected 1999)"
+
+PRINTLN "Testing 11000 calls (should exceed total call limit 10000)..."
+TRY
+    LET result4 = non_tail_deep(11000)
+    PRINTLN "FAIL: Limit not enforced"
+CATCH e
+    PRINTLN "SUCCESS: Caught error -> " + e
+ENDTRY
+
+# ------------------------------------------------------------
+# 3. Mutual recursion (total calls across two functions)
+# ------------------------------------------------------------
+PRINTLN "\n--- Mutual recursion (even/odd) ---"
+DEF is_even(n)
+    IF n == 0 THEN RETURN TRUE ENDIF
+    RETURN is_odd(n - 1)
+ENDDEF
+
+DEF is_odd(n)
+    IF n == 0 THEN RETURN FALSE ENDIF
+    RETURN is_even(n - 1)
+ENDDEF
+
+PRINTLN "Testing 5000 calls (should succeed)..."
+LET even5000 = is_even(5000)
+PRINTLN "is_even(5000) = " + STR(even5000) + " (expected 1)"
+
+PRINTLN "Testing 9999 calls (total calls = 10000, should succeed)..."
+LET even9999 = is_even(9999)
+PRINTLN "is_even(9999) = " + STR(even9999) + " (expected 0 because 9999 is odd)"
+
+# ------------------------------------------------------------
+# 4. Normal (non‑recursive) calls – should be unlimited
+# ------------------------------------------------------------
+PRINTLN "\n--- Normal (non‑recursive) calls unlimited ---"
+DEF normal_add(a, b)
+    RETURN a + b
+ENDDEF
+
+PRINTLN "Calling normal_add 15000 times in a loop..."
+LET i = 0
+WHILE i < 15000
+    LET dummy = normal_add(i, i + 1)
+    i = i + 1
+ENDWHILE
+PRINTLN "Completed 15000 separate calls (no limit hit)."
+
+PRINTLN "\n=== All tests completed ==="

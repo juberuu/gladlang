@@ -6,7 +6,13 @@ from gladlang.values.functions.base_function import BaseFunction
 
 
 class FunctionGroup(BaseFunction):
-    __slots__ = ("functions", "visibility", "is_static", "defining_class")
+    __slots__ = (
+        "functions",
+        "visibility",
+        "is_static",
+        "defining_class",
+        "_call_count",
+    )
 
     def __init__(self, name):
         super().__init__(name)
@@ -14,9 +20,11 @@ class FunctionGroup(BaseFunction):
         self.visibility = "PUBLIC"
         self.is_static = False
         self.defining_class = None
+        self._call_count = 0
 
     def add_function(self, func):
         arity = len(func.arg_names)
+
         if arity in self.functions:
             return RTResult().failure(
                 RTError(
@@ -28,6 +36,7 @@ class FunctionGroup(BaseFunction):
             )
 
         self.functions[arity] = func
+
         if len(self.functions) == 1:
             self.visibility = getattr(func, "visibility", "PUBLIC")
             self.is_static = getattr(func, "is_static", False)
@@ -69,9 +78,12 @@ class FunctionGroup(BaseFunction):
 
     def copy(self):
         copy = FunctionGroup(self.name)
+
+        copy._call_count = 0
         copy.visibility = self.visibility
         copy.is_static = self.is_static
         copy.defining_class = self.defining_class
+
         for arity, func in self.functions.items():
             copy.functions[arity] = func.copy()
 

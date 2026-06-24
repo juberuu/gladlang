@@ -9,6 +9,7 @@ from gladlang.core.constants import (
     GL_RBRACE,
     GL_LSQUARE,
     GL_RSQUARE,
+    GL_QMARK,
 )
 from gladlang.core.errors import InvalidSyntaxError
 from gladlang.parser.ast import StatementListNode
@@ -17,6 +18,7 @@ from gladlang.parser.parse_result import ParseResult
 
 class ParserBase:
     MAX_NESTING = 200
+    MAX_TERNARY_CHAIN = 500
 
     def __init__(self, tokens):
         self.tokens = tokens
@@ -34,6 +36,7 @@ class ParserBase:
     def check_nesting_depth(self):
         paren_depth = brace_depth = bracket_depth = 0
         max_paren = max_brace = max_bracket = 0
+        ternary_count = 0
 
         for tok in self.tokens:
             if tok.type == GL_LPAREN:
@@ -51,6 +54,8 @@ class ParserBase:
                 max_bracket = max(max_bracket, bracket_depth)
             elif tok.type == GL_RSQUARE:
                 bracket_depth = max(0, bracket_depth - 1)
+            elif tok.type == GL_QMARK:
+                ternary_count += 1
 
         worst = max(max_paren, max_brace, max_bracket)
         if worst > self.MAX_NESTING:
@@ -65,6 +70,19 @@ class ParserBase:
                     f"Expression nesting depth ({worst}) exceeds limit ({self.MAX_NESTING})",
                 )
             )
+
+        if ternary_count > self.MAX_TERNARY_CHAIN:
+            first = self.tokens[0] if self.tokens else None
+            last = self.tokens[-1] if self.tokens else None
+
+            return ParseResult().failure(
+                InvalidSyntaxError(
+                    first.pos_start if first else None,
+                    last.pos_end if last else None,
+                    f"Too many chained ternary expressions ({ternary_count}) exceeds limit ({self.MAX_TERNARY_CHAIN})",
+                )
+            )
+
         return None
 
     def parse(self):

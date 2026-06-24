@@ -1,4 +1,4 @@
-"""Function – user-defined function with closure capture, recursion, and memoization."""
+"""Function – user-defined function with closure capture, recursion, and TCO."""
 
 from gladlang.core.errors import RTError
 from gladlang.runtime.rt_result import RTResult
@@ -7,6 +7,8 @@ from gladlang.values.primitives.number import Number
 
 
 class Function(BaseFunction):
+    MAX_TOTAL_RECURSION = 10000
+
     __slots__ = (
         "body_node",
         "arg_name_toks",
@@ -15,10 +17,8 @@ class Function(BaseFunction):
         "visibility",
         "defining_class",
         "is_static",
-        "_memo_cache",
+        "_call_count",
     )
-
-    MAX_MEMO_SIZE = 10000
 
     def __init__(
         self,
@@ -38,69 +38,13 @@ class Function(BaseFunction):
         self.visibility = visibility
         self.defining_class = defining_class
         self.is_static = is_static
-        self._memo_cache = {}
+        self._call_count = 0
 
     def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
 
-        from gladlang.values.primitives.string import String
-        from gladlang.values.primitives.list import List
-        from gladlang.values.primitives.dict import Dict
-        from gladlang.values.nulls.frozen_null import FrozenNull
-        from gladlang.values.nulls.mutable_null import MutableNull
         from gladlang.values.nulls.tailcall import TailCall
-        from gladlang.values.classes.instance import Instance
-        from gladlang.values.classes.class_ import Class
         from gladlang.values.functions.bound_method import BoundMethod
-
-        cache_key = None
-        can_memoize = True
-        arg_values = []
-        is_method = self.defining_class is not None and not self.is_static
-
-        if is_method:
-            can_memoize = False
-        else:
-            for arg in args:
-                if isinstance(arg, Number):
-                    arg_values.append(("Number", arg.value))
-                elif isinstance(arg, String):
-                    arg_values.append(("String", arg.value))
-                elif isinstance(arg, (FrozenNull, MutableNull)):
-                    arg_values.append(("Null", None))
-                elif isinstance(arg, (List, Dict, Instance, Class, Function)):
-                    can_memoize = False
-                    break
-                else:
-                    can_memoize = False
-                    break
-
-        if can_memoize:
-            cache_key = None
-            if self.is_static and self.defining_class:
-                static_symbols = self.defining_class.static_symbol_table.symbols
-                if any(isinstance(v, (List, Dict)) for v in static_symbols.values()):
-                    can_memoize = False
-                else:
-                    try:
-                        static_state = tuple(
-                            sorted(
-                                (k, v.value if isinstance(v, Number) else v.value)
-                                for k, v in static_symbols.items()
-                                if isinstance(v, (Number, String))
-                            )
-                        )
-                        cache_key = (self.name, tuple(arg_values), static_state)
-                    except Exception:
-                        can_memoize = False
-
-            if can_memoize and cache_key is None:
-                cache_key = (self.name, tuple(arg_values))
-
-            if can_memoize and cache_key in self._memo_cache:
-                cached = self._memo_cache[cache_key].copy()
-                cached.set_context(self.context)
-                return res.success(cached)
 
         current_func = self
         current_args = args
@@ -108,40 +52,96 @@ class Function(BaseFunction):
         final_result = None
 
         while True:
-            new_context = current_func.generate_new_context(
-                calling_context if base_depth is None else None
-            )
+            from gladlang.values.functions.function_group import FunctionGroup
 
-            new_context.active_class = current_func.defining_class
-            new_context.is_static = current_func.is_static
-
-            if base_depth is None:
-                base_depth = new_context.depth
-                if base_depth > 2000:
+            if isinstance(current_func, FunctionGroup):
+                arity = len(current_args)
+                if arity in current_func.functions:
+                    current_func = current_func.functions[arity]
+                else:
                     return res.failure(
                         RTError(
                             current_func.pos_start,
                             current_func.pos_end,
-                            "Recursion limit exceeded",
+                            f"No variant of function '{current_func.name}' accepts {arity} arguments",
+                            self.context,
+                        )
+                    )
+
+            if not hasattr(current_func, "body_node"):
+                return current_func.execute(current_args, interpreter, calling_context)
+
+            new_context = current_func.generate_new_context(
+                calling_context if base_depth is None else None
+            )
+
+            new_context.active_class = getattr(current_func, "defining_class", None)
+            new_context.is_static = getattr(current_func, "is_static", False)
+
+            if hasattr(current_func, "_call_count"):
+                current_func._call_count += 1
+
+                if current_func._call_count > Function.MAX_TOTAL_RECURSION:
+                    self._call_count = 0
+
+                    if (
+                        hasattr(current_func, "_call_count")
+                        and current_func is not self
+                    ):
+                        current_func._call_count = 0
+
+                    return res.failure(
+                        RTError(
+                            current_func.pos_start,
+                            current_func.pos_end,
+                            f"Total recursion calls exceeded limit ({Function.MAX_TOTAL_RECURSION})",
                             new_context,
                         )
                     )
-            else:
-                new_context.depth = base_depth
+
+            if base_depth is None:
+                base_depth = new_context.depth
+                new_context.parent_entry_pos = self.pos_start
+
+            if new_context.depth > 2000:
+                self._call_count = 0
+
+                if current_func is not self:
+                    current_func._call_count = 0
+
+                return res.failure(
+                    RTError(
+                        current_func.pos_start,
+                        current_func.pos_end,
+                        "Recursion limit exceeded",
+                        new_context,
+                    )
+                )
 
             new_context._tco_func = current_func
 
             res.register(
                 current_func.check_and_populate_args(
-                    current_func.arg_names, current_args, new_context
+                    getattr(current_func, "arg_names", None), current_args, new_context
                 )
             )
 
             if res.error:
+                self._call_count = 0
+
+                if current_func is not self:
+                    current_func._call_count = 0
+
                 return res
 
             value_result = interpreter.visit(current_func.body_node, new_context)
+
             if value_result.error:
+                self._call_count = 0
+
+                if current_func is not self:
+                    current_func._call_count = 0
+
                 return value_result
 
             if value_result.should_return:
@@ -157,17 +157,17 @@ class Function(BaseFunction):
                     res = RTResult()
 
                     continue
+
                 final_result = ret_val
                 break
 
             final_result = value_result.value or Number.null.copy()
             break
 
-        if can_memoize and cache_key is not None:
-            if len(self._memo_cache) >= self.MAX_MEMO_SIZE:
-                self._memo_cache.pop(next(iter(self._memo_cache)))
+        self._call_count = 0
 
-            self._memo_cache[cache_key] = final_result.copy()
+        if current_func is not self:
+            current_func._call_count = 0
 
         return res.success(final_result)
 
@@ -187,11 +187,7 @@ class Function(BaseFunction):
             self.is_static,
         )
 
-        if self.defining_class and self.name == self.defining_class.name:
-            copy._memo_cache = {}
-        else:
-            copy._memo_cache = self._memo_cache
-
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
+
         return copy
