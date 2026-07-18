@@ -6,7 +6,7 @@ from .memory import start_memory_watchdog, set_memory_limit
 from .source_detach import detach_value, detach_source_from_node
 from .runner import run
 from .repl_helpers import strip_double_quoted, is_complete
-from .locking import _NoLock
+from .locking import NoLock
 
 __all__ = [
     "is_final_anywhere",
@@ -18,5 +18,5 @@ __all__ = [
     "run",
     "strip_double_quoted",
     "is_complete",
-    "_NoLock",
+    "NoLock",
 ]

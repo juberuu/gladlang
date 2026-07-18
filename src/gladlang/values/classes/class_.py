@@ -1,9 +1,13 @@
 """Class – represents user-defined classes with methods, inheritance, and MRO."""
 
+from gladlang.core.constants import GL_IDENTIFIER
 from gladlang.core.errors import RTError
+from gladlang.lexer.token import Token
 from gladlang.runtime.symbol_table import SymbolTable
 from gladlang.runtime.rt_result import RTResult
 from gladlang.values.functions.base_function import BaseFunction
+from gladlang.values.functions.bound_method import BoundMethod
+from gladlang.values.functions.function import Function
 
 
 class Class(BaseFunction):
@@ -37,9 +41,6 @@ class Class(BaseFunction):
         res = RTResult()
 
         from gladlang.values.classes.instance import Instance
-        from gladlang.values.functions.function import Function
-        from gladlang.core.constants import GL_IDENTIFIER
-        from gladlang.lexer.token import Token
 
         instance = Instance(self)
         constructor_name = None
@@ -135,9 +136,6 @@ class Class(BaseFunction):
             cached_value, cached_vis, cached_def, cached_kind = self._method_cache[
                 cache_key
             ]
-
-            from gladlang.values.functions.base_function import BaseFunction
-            from gladlang.values.functions.bound_method import BoundMethod
 
             def _check_vis(vis, def_cls, kind):
                 if vis == "PRIVATE":

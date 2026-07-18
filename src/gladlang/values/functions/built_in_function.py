@@ -2,9 +2,13 @@
 
 import sys
 import math
+
 from gladlang.core.errors import RTError
 from gladlang.runtime.rt_result import RTResult
 from gladlang.values.functions.base_function import BaseFunction
+from gladlang.values.functions.bound_method import BoundMethod
+from gladlang.values.functions.function import Function
+from gladlang.values.functions.function_group import FunctionGroup
 from gladlang.values.primitives.number import Number
 from gladlang.values.primitives.string import String
 from gladlang.values.primitives.list import List
@@ -184,9 +188,6 @@ class BuiltInFunction(BaseFunction):
                     )
                 )
             else:
-                from gladlang.values.functions.function import Function
-                from gladlang.values.functions.function_group import FunctionGroup
-                from gladlang.values.functions.bound_method import BoundMethod
                 from gladlang.values.classes.class_ import Class
 
                 if isinstance(

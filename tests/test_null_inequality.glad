@@ -16,7 +16,7 @@ LET result5 = TRUE != FALSE
 PRINTLN "TRUE != FALSE => " + STR(result5) + " (expected: 1)"
 
 LET result6 = TRUE != 1
-PRINTLN "TRUE != 1 => " + STR(result6) + " (expected: 0)"
+PRINTLN "TRUE != 1 => " + STR(result6) + " (expected: 1)"
 
 # Edge case: numeric equality with NULL (NULL has value 0)
 LET result7 = NULL == 0

@@ -3,6 +3,7 @@
 from gladlang.core.errors import RTError
 from gladlang.values.primitives.number import Number
 from gladlang.values.value import Value
+from .enum_member import EnumMember
 
 
 class Enum(Value):
@@ -31,7 +32,14 @@ class Enum(Value):
         name = name_tok.value
         if name in self.elements_dict:
             val = self.elements_dict[name]
-            return val.copy().set_pos(name_tok.pos_start, name_tok.pos_end), None
+            member = EnumMember(self.name, name, val)
+
+            return (
+                member.set_pos(name_tok.pos_start, name_tok.pos_end).set_context(
+                    context
+                ),
+                None,
+            )
 
         return None, RTError(
             name_tok.pos_start,

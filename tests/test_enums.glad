@@ -13,11 +13,28 @@ ENUM Colors
     BLUE
 ENDENUM
 
-PRINTLN "Colors.RED: ", Colors.RED       # Should print 0
-PRINTLN "Colors.GREEN: ", Colors.GREEN   # Should print 1
-PRINTLN "Colors.BLUE: ", Colors.BLUE     # Should print 2
+PRINTLN "Colors.RED: ", STR(Colors.RED)       # Should print Colors.RED
+PRINTLN "Colors.GREEN: ", STR(Colors.GREEN)   # Should print Colors.GREEN
+PRINTLN "Colors.BLUE: ", STR(Colors.BLUE)     # Should print Colors.BLUE
 PRINTLN ""
 
+# Verify values are correct (optional test)
+IF Colors.RED.value == 0 THEN
+    PRINTLN "  RED value = 0 (correct)"
+ELSE
+    PRINTLN "  RED value = " + STR(Colors.RED.value) + " (FAIL)"
+ENDIF
+IF Colors.GREEN.value == 1 THEN
+    PRINTLN "  GREEN value = 1 (correct)"
+ELSE
+    PRINTLN "  GREEN value = " + STR(Colors.GREEN.value) + " (FAIL)"
+ENDIF
+IF Colors.BLUE.value == 2 THEN
+    PRINTLN "  BLUE value = 2 (correct)"
+ELSE
+    PRINTLN "  BLUE value = " + STR(Colors.BLUE.value) + " (FAIL)"
+ENDIF
+PRINTLN ""
 
 # ---------------------------------------------------------
 # TEST 2: Explicit Values & Auto-Incrementing
@@ -30,12 +47,23 @@ ENUM HTTPStatus
     CUSTOM_ERROR      # Should implicitly become 501
 ENDENUM
 
-PRINTLN "HTTPStatus.OK: ", HTTPStatus.OK
-PRINTLN "HTTPStatus.NOT_FOUND: ", HTTPStatus.NOT_FOUND
-PRINTLN "HTTPStatus.SERVER_ERROR: ", HTTPStatus.SERVER_ERROR
-PRINTLN "HTTPStatus.CUSTOM_ERROR: ", HTTPStatus.CUSTOM_ERROR
-PRINTLN ""
+PRINTLN "HTTPStatus.OK: ", STR(HTTPStatus.OK)
+PRINTLN "HTTPStatus.NOT_FOUND: ", STR(HTTPStatus.NOT_FOUND)
+PRINTLN "HTTPStatus.SERVER_ERROR: ", STR(HTTPStatus.SERVER_ERROR)
+PRINTLN "HTTPStatus.CUSTOM_ERROR: ", STR(HTTPStatus.CUSTOM_ERROR)
 
+# Verify explicit values
+IF HTTPStatus.OK.value == 200 THEN
+    PRINTLN "  OK.value = 200 (correct)"
+ELSE
+    PRINTLN "  OK.value = " + STR(HTTPStatus.OK.value) + " (FAIL)"
+ENDIF
+IF HTTPStatus.CUSTOM_ERROR.value == 501 THEN
+    PRINTLN "  CUSTOM_ERROR.value = 501 (correct, auto-increment works)"
+ELSE
+    PRINTLN "  CUSTOM_ERROR.value = " + STR(HTTPStatus.CUSTOM_ERROR.value) + " (FAIL)"
+ENDIF
+PRINTLN ""
 
 # ---------------------------------------------------------
 # TEST 3: Comma-Separated Enums
@@ -46,11 +74,27 @@ ENUM Days
     THU, FRI
 ENDENUM
 
-PRINTLN "Days.MON: ", Days.MON           # Should print 0
-PRINTLN "Days.WED: ", Days.WED           # Should print 2
-PRINTLN "Days.FRI: ", Days.FRI           # Should print 4
-PRINTLN ""
+PRINTLN "Days.MON: ", STR(Days.MON)           # Should print Days.MON
+PRINTLN "Days.WED: ", STR(Days.WED)           # Should print Days.WED
+PRINTLN "Days.FRI: ", STR(Days.FRI)           # Should print Days.FRI
 
+# Verify values
+IF Days.MON.value == 0 THEN
+    PRINTLN "  MON.value = 0 (correct)"
+ELSE
+    PRINTLN "  MON.value = " + STR(Days.MON.value) + " (FAIL)"
+ENDIF
+IF Days.WED.value == 2 THEN
+    PRINTLN "  WED.value = 2 (correct)"
+ELSE
+    PRINTLN "  WED.value = " + STR(Days.WED.value) + " (FAIL)"
+ENDIF
+IF Days.FRI.value == 4 THEN
+    PRINTLN "  FRI.value = 4 (correct)"
+ELSE
+    PRINTLN "  FRI.value = " + STR(Days.FRI.value) + " (FAIL)"
+ENDIF
+PRINTLN ""
 
 # ---------------------------------------------------------
 # TEST 4: Enum Object Immutability
@@ -65,7 +109,6 @@ CATCH err
 ENDTRY
 PRINTLN ""
 
-
 # ---------------------------------------------------------
 # TEST 5: Enum Case Immutability
 # ---------------------------------------------------------
@@ -78,7 +121,6 @@ CATCH err
     PRINTLN "SUCCESS: Caught expected error -> ", err
 ENDTRY
 PRINTLN ""
-
 
 # ---------------------------------------------------------
 # TEST 6: Invalid Case Access
@@ -93,6 +135,9 @@ CATCH err
 ENDTRY
 PRINTLN ""
 
+# ---------------------------------------------------------
+# TEST 7: Encapsulated Enums
+# ---------------------------------------------------------
 CLASS Server
     # 1. A Private Enum!
     PRIVATE ENUM Status
@@ -110,7 +155,7 @@ CLASS Server
 
     DEF Server()
         # The class can use its own private Enum
-        PRINTLN "Server initialized with Status: ", Server.Status.OFFLINE
+        PRINTLN "Server initialized with Status: ", STR(Server.Status.OFFLINE)
     ENDDEF
 ENDCLASS
 
@@ -119,7 +164,7 @@ LET srv = NEW Server()
 
 PRINTLN ""
 PRINTLN "Accessing Public Enum 'Role.ADMIN'..."
-PRINTLN "Result: ", Server.Role.ADMIN
+PRINTLN "Result: ", STR(Server.Role.ADMIN)
 
 PRINTLN ""
 PRINTLN "Attempting to access Private Enum 'Status.OFFLINE' from outside..."
@@ -130,7 +175,12 @@ CATCH err
     PRINTLN "SUCCESS: Caught expected error -> ", err
 ENDTRY
 
-PRINTLN "\n--- Test 7: Duplicate Enum Case Names ---"
+PRINTLN ""
+
+# ---------------------------------------------------------
+# TEST 8: Duplicate Enum Case Names
+# ---------------------------------------------------------
+PRINTLN "--- Test 8: Duplicate Enum Case Names ---"
 PRINTLN "Attempting to create enum with duplicate case (should fail)..."
 TRY
     ENUM DuplicateTest
@@ -142,6 +192,71 @@ TRY
 CATCH e
     PRINTLN "SUCCESS: Caught expected error -> " + e
 ENDTRY
+
+PRINTLN ""
+
+# ---------------------------------------------------------
+# TEST 9: Enum Member Comparisons
+# ---------------------------------------------------------
+PRINTLN "--- Test 9: Enum Member Comparisons ---"
+LET r1 = Colors.RED
+LET r2 = Colors.RED
+LET g = Colors.GREEN
+
+PRINTLN "r1 == r2: ", STR(r1 == r2)      # Expected: 1 (True)
+PRINTLN "r1 == g:  ", STR(r1 == g)       # Expected: 0 (False)
+PRINTLN "r1 != g:  ", STR(r1 != g)       # Expected: 1 (True)
+PRINTLN "r1 IS r2: ", STR(r1 IS r2)      # Expected: 1 (True - same member)
+PRINTLN "r1 IS g:  ", STR(r1 IS g)       # Expected: 0 (False)
+
+IF r1 == r2 THEN
+    PRINTLN "  PASS: Same enum member compares equal"
+ELSE
+    PRINTLN "  FAIL: Same enum member did NOT compare equal"
+ENDIF
+
+IF r1 != g THEN
+    PRINTLN "  PASS: Different enum members compare not equal"
+ELSE
+    PRINTLN "  FAIL: Different enum members did NOT compare not equal"
+ENDIF
+PRINTLN ""
+
+# ---------------------------------------------------------
+# TEST 10: Accessing .value Attribute
+# ---------------------------------------------------------
+PRINTLN "--- Test 10: Accessing .value Attribute ---"
+PRINTLN "Colors.RED.value = ", Colors.RED.value
+PRINTLN "Colors.GREEN.value = ", Colors.GREEN.value
+PRINTLN "Colors.BLUE.value = ", Colors.BLUE.value
+PRINTLN "HTTPStatus.OK.value = ", HTTPStatus.OK.value
+PRINTLN "HTTPStatus.CUSTOM_ERROR.value = ", HTTPStatus.CUSTOM_ERROR.value
+
+IF Colors.RED.value == 0 THEN
+    PRINTLN "  PASS: RED.value = 0"
+ELSE
+    PRINTLN "  FAIL: RED.value = " + STR(Colors.RED.value)
+ENDIF
+PRINTLN ""
+
+# ---------------------------------------------------------
+# TEST 11: Enum in IF Conditions (Truthiness)
+# ---------------------------------------------------------
+PRINTLN "--- Test 11: Enum in IF Conditions ---"
+LET e = Colors.RED
+
+IF e THEN
+    PRINTLN "  PASS: Enum member is truthy"
+ELSE
+    PRINTLN "  FAIL: Enum member is falsy"
+ENDIF
+
+IF Colors.RED.value == 0 THEN
+    PRINTLN "  PASS: RED.value = 0"
+ELSE
+    PRINTLN "  FAIL: Enum member .value is falsy (should be 0?)"
+ENDIF
+PRINTLN ""
 
 PRINTLN "==========================================="
 PRINTLN "           ALL TESTS COMPLETED             "

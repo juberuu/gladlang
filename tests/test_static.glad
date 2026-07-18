@@ -134,12 +134,12 @@ CLASS AppConfig
     PUBLIC STATIC FINAL DEFAULT_LEVEL = LogLevel.INFO
 ENDCLASS
 
-PRINTLN "LogLevel.DEBUG = " + STR(AppConfig.LogLevel.DEBUG) + " (expected: 0)"
-PRINTLN "LogLevel.INFO = " + STR(AppConfig.LogLevel.INFO) + " (expected: 1)"
-PRINTLN "LogLevel.WARN = " + STR(AppConfig.LogLevel.WARN) + " (expected: 2)"
-PRINTLN "LogLevel.ERROR = " + STR(AppConfig.LogLevel.ERROR) + " (expected: 3)"
+PRINTLN "LogLevel.DEBUG = " + STR(AppConfig.LogLevel.DEBUG) + " (expected: LogLevel.DEBUG)"
+PRINTLN "LogLevel.INFO = " + STR(AppConfig.LogLevel.INFO) + " (expected: LogLevel.INFO)"
+PRINTLN "LogLevel.WARN = " + STR(AppConfig.LogLevel.WARN) + " (expected: LogLevel.WARN)"
+PRINTLN "LogLevel.ERROR = " + STR(AppConfig.LogLevel.ERROR) + " (expected: LogLevel.ERROR)"
 PRINTLN "MAX_RETRIES = " + STR(AppConfig.MAX_RETRIES) + " (expected: 5)"
-PRINTLN "DEFAULT_LEVEL = " + STR(AppConfig.DEFAULT_LEVEL) + " (expected: 1)"
+PRINTLN "DEFAULT_LEVEL = " + STR(AppConfig.DEFAULT_LEVEL) + " (expected: LogLevel.INFO)"
 
 PRINTLN ""
 PRINTLN "Attempting to modify STATIC FINAL (should fail)..."

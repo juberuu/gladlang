@@ -356,7 +356,7 @@ PRINTLN NOT t   # 0 (False)
 
 #### Null
 
-The `NULL` keyword represents a null or "nothing" value. It is falsy and prints as `0`. Functions with no `RETURN` statement implicitly return `NULL`.
+The `NULL` keyword represents a null or "nothing" value. It is falsy and prints as `null`. Functions with no `RETURN` statement implicitly return `NULL`.
 
 **Important:** `NULL` is a distinct value representing "nothing". It is falsy (e.g., `IF NULL THEN ...` is false). It is **not** numerically equal to `0` (e.g., `NULL == 0` → `FALSE`). For identity checks, use the `IS` operator (`NULL IS NULL` → `TRUE`; `NULL IS 0` → `FALSE`). Functions with no `RETURN` statement implicitly return `NULL`.
 
@@ -372,8 +372,8 @@ ENUM Colors
   BLUE
 ENDENUM
 
-PRINTLN Colors.RED   # 0
-PRINTLN Colors.GREEN # 1
+PRINTLN Colors.RED.value   # 0
+PRINTLN Colors.GREEN.value # 1
 
 # Explicit & Auto-Incrementing Values
 ENUM HTTPStatus

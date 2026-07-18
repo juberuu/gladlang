@@ -1,6 +1,7 @@
 """Visitors for control flow statements (if, loops, try, switch, etc.)."""
 
 import sys
+
 from gladlang.core.errors import RTError
 from gladlang.runtime.rt_result import RTResult
 from gladlang.runtime.context import Context
@@ -98,7 +99,7 @@ class InterpreterStatements:
                 RTError(
                     var_toks[0].pos_start,
                     var_toks[-1].pos_end,
-                    f"ValueError: expected {len(var_toks)} values to unpack, got {len(element.elements)}",
+                    f"Cannot unpack {len(element.elements)} value(s) into {len(var_toks)} variable(s)",
                     context,
                 )
             )
@@ -171,12 +172,9 @@ class InterpreterStatements:
             return res.failure(error)
 
         loop_context = Context("FOR", context, node.pos_start)
-        loop_context.symbol_table = SymbolTable(context.symbol_table)
 
         for element in iterator:
-            for tok in node.var_name_toks:
-                loop_context.symbol_table.remove(tok.value)
-
+            loop_context.symbol_table = SymbolTable(context.symbol_table)
             self.unpack_and_set(node.var_name_toks, element, loop_context, res)
             if res.error:
                 return res
@@ -202,9 +200,9 @@ class InterpreterStatements:
         res = RTResult()
 
         loop_context = Context("WHILE", context, node.pos_start)
-        loop_context.symbol_table = SymbolTable(context.symbol_table)
 
         while True:
+            loop_context.symbol_table = SymbolTable(context.symbol_table)
             condition_value = res.register(
                 self.visit(node.condition_node, loop_context)
             )
@@ -256,7 +254,11 @@ class InterpreterStatements:
                 if not condition_value.is_true():
                     break
 
-            res.register(self.visit(node.body_node, loop_context))
+            iter_context = Context("C_FOR", context, node.pos_start)
+            iter_context.symbol_table = SymbolTable(loop_context.symbol_table)
+            iter_context.active_class = context.active_class
+
+            res.register(self.visit(node.body_node, iter_context))
             if res.error:
                 return res
 
@@ -363,7 +365,11 @@ class InterpreterStatements:
                 saved_value = try_res.value
 
         if node.finally_body_node:
-            finally_result = self.visit(node.finally_body_node, context)
+            finally_context = Context("FINALLY", context, node.pos_start)
+            finally_context.symbol_table = SymbolTable(context.symbol_table)
+            finally_context.active_class = context.active_class
+            finally_result = self.visit(node.finally_body_node, finally_context)
+
             if finally_result.error:
                 return finally_result
 
@@ -437,13 +443,8 @@ class InterpreterStatements:
                 if res.should_return:
                     return res
 
-                if res.should_break:
-                    res.should_break = False
-                    return res.success(val)
-
-                if res.should_continue:
-                    res.should_continue = False
-                    return res.success(val)
+                if res.should_break or res.should_continue:
+                    return res
 
                 return res.success(val)
 

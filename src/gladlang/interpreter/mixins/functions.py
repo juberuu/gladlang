@@ -36,23 +36,35 @@ class InterpreterFunctions:
                 )
 
             existing_val = context.symbol_table.get(func_name)
-            if existing_val and isinstance(existing_val, FunctionGroup):
-                err = existing_val.add_function(func)
-                if err and isinstance(err, RTResult) and err.error:
-                    return err
 
-                func = existing_val
+            if existing_val is not None:
+                if isinstance(existing_val, FunctionGroup):
+                    arity = len(func.arg_names)
+                    if arity in existing_val.functions:
+                        existing_val.functions[arity] = func
+                    else:
+                        err = existing_val.add_function(func)
+                        if err and isinstance(err, RTResult) and err.error:
+                            return err
 
-            elif existing_val and isinstance(existing_val, Function):
-                group = FunctionGroup(func_name)
-                group.add_function(existing_val)
-                err = group.add_function(func)
-                if err and isinstance(err, RTResult) and err.error:
-                    return err
+                    func = existing_val
 
-                context.symbol_table.remove(func_name)
-                context.symbol_table.set(func_name, group)
-                func = group
+                elif isinstance(existing_val, Function):
+                    existing_arity = len(existing_val.arg_names)
+                    new_arity = len(func.arg_names)
+                    if existing_arity == new_arity:
+                        context.symbol_table.set(func_name, func)
+                    else:
+                        group = FunctionGroup(func_name)
+                        group.add_function(existing_val)
+                        err = group.add_function(func)
+                        if err and isinstance(err, RTResult) and err.error:
+                            return err
+
+                        context.symbol_table.set(func_name, group)
+                        func = group
+                else:
+                    context.symbol_table.set(func_name, func)
             else:
                 context.symbol_table.set(func_name, func)
 

@@ -1,19 +1,19 @@
 """SymbolTable – manages variable scopes, constants, visibility, and thread-safe access."""
 
-from threading import Lock
-from gladlang.core.util.locking import _NoLock
+from threading import RLock
+
+from gladlang.core.util.locking import NoLock
+from gladlang.core.util.settings import Settings
 
 
 class SymbolTable:
-    _THREADING_ENABLED = True
-
     def __init__(self, parent=None):
         self.symbols = {}
         self.parent = parent
         self.finals = set()
         self.visibilities = {}
         self.defining_classes = {}
-        self._lock = Lock() if SymbolTable._THREADING_ENABLED else _NoLock()
+        self._lock = RLock() if Settings.THREADING_ENABLED else NoLock()
         self._finals_count = 0
 
     def set(
@@ -37,9 +37,10 @@ class SymbolTable:
     def is_final_in_ancestors(self, name):
         current = self.parent
         while current:
-            with current._lock:
-                if name in current.finals:
-                    return True
+            if name in current.finals:
+                with current._lock:
+                    if name in current.finals:
+                        return True
 
             current = current.parent
         return False
@@ -65,6 +66,12 @@ class SymbolTable:
     def get(self, name):
         current = self
         while current is not None:
+            if name in current.finals:
+                with current._lock:
+                    value = current.symbols.get(name)
+                    if value is not None:
+                        return value
+
             with current._lock:
                 value = current.symbols.get(name)
                 if value is not None:
@@ -104,8 +111,18 @@ class SymbolTable:
             self.defining_classes.pop(name, None)
 
     def get_visibility(self, name):
-        with self._lock:
-            return self.visibilities.get(name, "PUBLIC")
+        current = self
+        while current is not None:
+            with current._lock:
+                vis = current.visibilities.get(name)
+                if vis is not None:
+                    return vis
+
+                parent = current.parent
+
+            current = parent
+
+        return "PUBLIC"
 
     def copy(self):
         with self._lock:

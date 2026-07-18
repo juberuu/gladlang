@@ -1,20 +1,38 @@
 """Dict – key-value store with size limit and deep copy semantics."""
 
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
+from gladlang.values.nulls.frozen_null import FrozenNull
+from gladlang.values.nulls.mutable_null import MutableNull
 from gladlang.values.primitives.number import Number
+from gladlang.values.primitives.string import String
 from gladlang.values.value import Value
 
 
 class Dict(Value):
-    MAX_DICT_SIZE = 1_000_000
-
     __slots__ = ("elements", "pos_start", "pos_end", "context")
 
     def __init__(self, elements):
-        self.elements = elements
+        self.elements = {}
+
+        for key, value in elements.items():
+            self.elements[self._make_key(key)] = value
+
         self.pos_start = None
         self.pos_end = None
         self.context = None
+
+    def _make_key(self, key):
+        if hasattr(key, "_is_null"):
+            if key._is_null:
+                return ("__null__", key.value)
+            else:
+                return ("__false__", key.value)
+
+        if isinstance(key, (String, Number)):
+            return key.value
+
+        return key
 
     def set_pos(self, pos_start=None, pos_end=None):
         self.pos_start = pos_start
@@ -53,11 +71,11 @@ class Dict(Value):
     def added_to(self, other):
         if isinstance(other, Dict):
             new_len = len(self.elements) + len(other.elements)
-            if new_len > Dict.MAX_DICT_SIZE:
+            if new_len > Settings.MAX_DICT_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"Dict merge result ({new_len}) exceeds maximum allowed size ({Dict.MAX_DICT_SIZE})",
+                    f"Dict merge result ({new_len}) exceeds maximum allowed size ({Settings.MAX_DICT_SIZE})",
                     self.context,
                 )
 
@@ -81,8 +99,6 @@ class Dict(Value):
         return None, self._illegal(other)
 
     def get_element_at(self, key):
-        from gladlang.values.primitives.string import String
-
         if not isinstance(key, (Number, String)):
             return None, RTError(
                 self.pos_start,
@@ -91,7 +107,8 @@ class Dict(Value):
                 self.context,
             )
 
-        val = self.elements.get(key.value)
+        k = self._make_key(key)
+        val = self.elements.get(k)
         if val is None:
             return None, RTError(
                 self.pos_start,
@@ -103,8 +120,6 @@ class Dict(Value):
         return val, None
 
     def set_element_at(self, key, value):
-        from gladlang.values.primitives.string import String
-
         if not isinstance(key, (Number, String)):
             return None, RTError(
                 self.pos_start,
@@ -113,51 +128,57 @@ class Dict(Value):
                 self.context,
             )
 
-        if key.value not in self.elements and len(self.elements) >= Dict.MAX_DICT_SIZE:
+        k = self._make_key(key)
+        if k not in self.elements and len(self.elements) >= Settings.MAX_DICT_SIZE:
             return None, RTError(
                 self.pos_start,
                 self.pos_end,
-                f"Dict size limit ({Dict.MAX_DICT_SIZE:,} entries) reached. Cannot insert more keys.",
+                f"Dict size limit ({Settings.MAX_DICT_SIZE:,} entries) reached. Cannot insert more keys.",
                 self.context,
             )
 
-        self.elements[key.value] = value
+        self.elements[k] = value
         return value, None
 
     def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return (Number(0).set_context(self.context), None)
+
         if not isinstance(other, Dict):
-            return None, self._illegal(other)
+            return (None, self._illegal(other))
 
         if len(self.elements) != len(other.elements):
-            return Number(0).set_context(self.context), None
+            return (Number(0).set_context(self.context), None)
 
         if visited is None:
             visited = set()
 
         pair = (id(self), id(other))
         if pair in visited:
-            return Number(1).set_context(self.context), None
+            return (Number(1).set_context(self.context), None)
 
         visited.add(pair)
 
         try:
             for key, value in self.elements.items():
                 if key not in other.elements:
-                    return Number(0).set_context(self.context), None
+                    return (Number(0).set_context(self.context), None)
 
                 result, error = value.get_comparison_eq(other.elements[key], visited)
                 if error:
-                    return None, error
+                    return (None, error)
 
                 if not result.is_true():
-                    return Number(0).set_context(self.context), None
-
+                    return (Number(0).set_context(self.context), None)
         finally:
             visited.remove(pair)
 
-        return Number(1).set_context(self.context), None
+        return (Number(1).set_context(self.context), None)
 
     def get_comparison_ne(self, other):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(1).set_context(self.context), None
+
         if not isinstance(other, Dict):
             return None, self._illegal(other)
 
@@ -222,7 +243,7 @@ class Dict(Value):
         return None, self._illegal()
 
     def notted(self):
-        return None, self._illegal()
+        return Number(0 if self.is_true() else 1).set_context(self.context), None
 
     def _illegal(self, other=None):
         if not other:
@@ -246,13 +267,16 @@ class Dict(Value):
         kv_strings = []
 
         for key, value in self.elements.items():
-            val_str = (
-                value.to_string(visited)
-                if isinstance(value, (List, Dict))
-                else repr(value)
-            )
+            if isinstance(value, (List, Dict)):
+                val_str = value.to_string(visited)
+            elif isinstance(value, String):
+                escaped = value.value.replace("\\", "\\\\").replace('"', '\\"')
+                val_str = f'"{escaped}"'
+            else:
+                val_str = repr(value)
 
-            kv_strings.append(f"{repr(key)}: {val_str}")
+            key_str = f'"{key}"' if isinstance(key, str) else repr(key)
+            kv_strings.append(f"{key_str}: {val_str}")
 
         s = f"{{{', '.join(kv_strings)}}}"
         visited.pop()

@@ -4,6 +4,7 @@ from gladlang.core.errors import RTError
 from gladlang.runtime.context import Context
 from gladlang.runtime.symbol_table import SymbolTable
 from gladlang.runtime.rt_result import RTResult
+from gladlang.values.primitives.number import Number
 from gladlang.values.value import Value
 
 
@@ -38,12 +39,18 @@ class BaseFunction(Value):
         return new_context
 
     def get_comparison_eq(self, other, visited=None):
+        if hasattr(other, "_is_null") and other._is_null:
+            return Number(0).set_context(self.context), None
+
         if isinstance(other, BaseFunction):
             return Number(1 if self is other else 0).set_context(self.context), None
 
         return None, self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return Number(1).set_context(self.context), None
+
         if isinstance(other, BaseFunction):
             return Number(1 if self is not other else 0).set_context(self.context), None
 
@@ -160,6 +167,3 @@ class BaseFunction(Value):
 
     def __repr__(self):
         return f"<function {self.name}>"
-
-
-from gladlang.values.primitives.number import Number

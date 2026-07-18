@@ -56,6 +56,6 @@ PRINTLN "Squares > 2: " + STR(squares_map)
 
 ## Test 7:  Nested Loop & Destructuring (Inverting a list of pairs)
 LET pairs = [["A", 10], ["B", 20], ["C", 30]]
-LET inverted = {val: key FOR [key, val] IN pairs}
+inverted = {val: key FOR [key, val] IN pairs}
 PRINTLN "Inverted: " + STR(inverted)
 # Expected: {10: 'A', 20: 'B', 30: 'C'}

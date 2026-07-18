@@ -114,7 +114,12 @@ class InterpreterVariables:
             )
 
         if node.is_declaration:
-            context.symbol_table.set(var_name, value, visibility=visibility)
+            err = context.symbol_table.set_if_absent(
+                var_name, value, visibility=visibility
+            )
+
+            if err:
+                return res.failure(RTError(node.pos_start, node.pos_end, err, context))
         else:
             err = context.symbol_table.update(var_name, value)
             if err:
@@ -144,7 +149,7 @@ class InterpreterVariables:
                 RTError(
                     node.pos_start,
                     node.pos_end,
-                    f"ValueError: too many/not enough values to unpack (expected {len(node.var_name_toks)}, got {len(list_val.elements)})",
+                    f"Cannot unpack {len(list_val.elements)} value(s) into {len(node.var_name_toks)} variable(s)",
                     context,
                 )
             )
@@ -161,7 +166,17 @@ class InterpreterVariables:
                     )
                 )
 
-            context.symbol_table.set(var_name, list_val.elements[i])
+            if node.is_declaration:
+                err = context.symbol_table.set_if_absent(var_name, list_val.elements[i])
+                if err:
+                    return res.failure(
+                        RTError(
+                            var_name_tok.pos_start, var_name_tok.pos_end, err, context
+                        )
+                    )
+            else:
+                context.symbol_table.set(var_name, list_val.elements[i])
+
         return res.success(list_val)
 
     def visit_FinalVarAssignNode(self, node, context):

@@ -58,7 +58,7 @@ ENDSWITCH
 
 PRINTLN "\n--- Testing Multi-Case Match ---"
 
-LET x = 2
+x = 2
 
 SWITCH x
     CASE 1, 2, 3:

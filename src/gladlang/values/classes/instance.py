@@ -3,6 +3,9 @@
 from gladlang.core.errors import RTError
 from gladlang.runtime.symbol_table import SymbolTable
 from gladlang.runtime.rt_result import RTResult
+from gladlang.values.classes.class_ import Class
+from gladlang.values.nulls.frozen_null import FrozenNull
+from gladlang.values.nulls.mutable_null import MutableNull
 from gladlang.values.primitives.number import Number
 from gladlang.values.value import Value
 
@@ -251,12 +254,18 @@ class Instance(Value):
         return value, None
 
     def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(0).set_context(self.context), None
+
         if isinstance(other, Instance):
             return Number(1 if self is other else 0).set_context(self.context), None
 
         return None, self._illegal(other)
 
     def get_comparison_ne(self, other):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(1).set_context(self.context), None
+
         if isinstance(other, Instance):
             return Number(1 if self is not other else 0).set_context(self.context), None
 
@@ -310,7 +319,7 @@ class Instance(Value):
         return RTResult().failure(self._illegal())
 
     def notted(self):
-        return None, self._illegal()
+        return Number(0 if self.is_true() else 1).set_context(self.context), None
 
     def copy(self):
         copy = Instance(self.class_ref)

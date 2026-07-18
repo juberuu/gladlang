@@ -1,14 +1,16 @@
 """Function – user-defined function with closure capture, recursion, and TCO."""
 
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
 from gladlang.runtime.rt_result import RTResult
 from gladlang.values.functions.base_function import BaseFunction
+from gladlang.values.functions.bound_method import BoundMethod
+from gladlang.values.functions.function_group import FunctionGroup
+from gladlang.values.nulls.tailcall import TailCall
 from gladlang.values.primitives.number import Number
 
 
 class Function(BaseFunction):
-    MAX_TOTAL_RECURSION = 10000
-
     __slots__ = (
         "body_node",
         "arg_name_toks",
@@ -43,17 +45,12 @@ class Function(BaseFunction):
     def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
 
-        from gladlang.values.nulls.tailcall import TailCall
-        from gladlang.values.functions.bound_method import BoundMethod
-
         current_func = self
         current_args = args
         base_depth = None
         final_result = None
 
         while True:
-            from gladlang.values.functions.function_group import FunctionGroup
-
             if isinstance(current_func, FunctionGroup):
                 arity = len(current_args)
                 if arity in current_func.functions:
@@ -81,7 +78,7 @@ class Function(BaseFunction):
             if hasattr(current_func, "_call_count"):
                 current_func._call_count += 1
 
-                if current_func._call_count > Function.MAX_TOTAL_RECURSION:
+                if current_func._call_count > Settings.MAX_TOTAL_RECURSION:
                     self._call_count = 0
 
                     if (
@@ -94,7 +91,7 @@ class Function(BaseFunction):
                         RTError(
                             current_func.pos_start,
                             current_func.pos_end,
-                            f"Total recursion calls exceeded limit ({Function.MAX_TOTAL_RECURSION})",
+                            f"Total recursion calls exceeded limit ({Settings.MAX_TOTAL_RECURSION})",
                             new_context,
                         )
                     )
@@ -103,7 +100,7 @@ class Function(BaseFunction):
                 base_depth = new_context.depth
                 new_context.parent_entry_pos = self.pos_start
 
-            if new_context.depth > 2000:
+            if new_context.depth > Settings.MAX_CONTEXT_DEPTH:
                 self._call_count = 0
 
                 if current_func is not self:
@@ -149,14 +146,17 @@ class Function(BaseFunction):
                 if isinstance(ret_val, TailCall):
                     callee = ret_val.function
                     if isinstance(callee, BoundMethod):
-                        current_func = callee.function_to_bind
+                        self._call_count = 0
+
+                        return callee.execute(
+                            ret_val.args, interpreter, calling_context
+                        )
                     else:
                         current_func = callee
-                    current_args = ret_val.args
+                        current_args = ret_val.args
+                        res = RTResult()
 
-                    res = RTResult()
-
-                    continue
+                        continue
 
                 final_result = ret_val
                 break

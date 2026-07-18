@@ -92,22 +92,74 @@ class ParserStatements:
             "PRINTLN",
         ):
             is_println = self.current_tok.value == "PRINTLN"
+            keyword_pos = self.current_tok.pos_start.copy()
             res.register_advancement()
             self.advance()
 
+            if self.current_tok.type == GL_EOF:
+                return res.success(
+                    PrintNode(
+                        [],
+                        should_newline=is_println,
+                        pos_start=keyword_pos,
+                        pos_end=keyword_pos,
+                    )
+                )
+
             exprs = []
-            first_expr = res.register(self.expr())
-            if res.error:
-                return res
 
-            exprs = [first_expr]
-
-            while self.current_tok.type == GL_COMMA:
+            if self.current_tok.type == GL_LPAREN:
                 res.register_advancement()
                 self.advance()
-                exprs.append(res.register(self.expr()))
+
+                if self.current_tok.type != GL_RPAREN:
+                    first_expr = res.register(self.expr())
+                    if res.error:
+                        return res
+
+                    exprs.append(first_expr)
+
+                    while self.current_tok.type == GL_COMMA:
+                        res.register_advancement()
+                        self.advance()
+                        exprs.append(res.register(self.expr()))
+                        if res.error:
+                            return res
+
+                if self.current_tok.type != GL_RPAREN:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_tok.pos_start,
+                            self.current_tok.pos_end,
+                            "Expected ')'",
+                        )
+                    )
+
+                res.register_advancement()
+                self.advance()
+            else:
+                first_expr = res.register(self.expr())
                 if res.error:
                     return res
+
+                exprs.append(first_expr)
+
+                while self.current_tok.type == GL_COMMA:
+                    res.register_advancement()
+                    self.advance()
+                    exprs.append(res.register(self.expr()))
+                    if res.error:
+                        return res
+
+            if not exprs:
+                return res.success(
+                    PrintNode(
+                        [],
+                        should_newline=is_println,
+                        pos_start=keyword_pos,
+                        pos_end=keyword_pos,
+                    )
+                )
 
             return res.success(PrintNode(exprs, should_newline=is_println))
 
@@ -288,7 +340,9 @@ class ParserStatements:
                 if res.error:
                     return res
 
-                return res.success(MultiVarAssignNode(var_names, expr))
+                return res.success(
+                    MultiVarAssignNode(var_names, expr, is_declaration=True)
+                )
 
             elif self.current_tok.type == GL_IDENTIFIER:
                 var_name = self.current_tok
@@ -360,9 +414,19 @@ class ParserStatements:
                 )
 
         if self.current_tok.matches(GL_KEYWORD, "RETURN"):
+            if self.func_count == 0:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start,
+                        self.current_tok.pos_end,
+                        "'RETURN' outside of function",
+                    )
+                )
+
             res.register_advancement()
             self.advance()
             pos_start = self.current_tok.pos_start.copy()
+
             END_KEYWORDS = {
                 "ENDDEF",
                 "ELSE",

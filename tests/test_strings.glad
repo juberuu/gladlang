@@ -53,10 +53,10 @@ FOR ch IN tamil_str
 ENDFOR
 PRINTLN ""
 
-LET combined = tamil_str + " & " + kannada_str
+combined = tamil_str + " & " + kannada_str
 PRINTLN "Concatenated: " + combined
 
-LET chars = [c FOR c IN "abc " + tamil_str]
+chars = [c FOR c IN "abc " + tamil_str]
 PRINTLN "Comprehension chars: " + STR(chars)
 
 PRINTLN "All Unicode (Tamil/Kannada) tests passed."

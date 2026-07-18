@@ -12,18 +12,17 @@ from gladlang.core.constants import (
     GL_QMARK,
 )
 from gladlang.core.errors import InvalidSyntaxError
+from gladlang.core.util.settings import Settings
 from gladlang.parser.ast import StatementListNode
 from gladlang.parser.parse_result import ParseResult
 
 
 class ParserBase:
-    MAX_NESTING = 200
-    MAX_TERNARY_CHAIN = 500
-
     def __init__(self, tokens):
         self.tokens = tokens
         self.tok_idx = -1
         self.loop_count = 0
+        self.func_count = 0
         self.advance()
 
     def advance(self):
@@ -58,7 +57,7 @@ class ParserBase:
                 ternary_count += 1
 
         worst = max(max_paren, max_brace, max_bracket)
-        if worst > self.MAX_NESTING:
+        if worst > Settings.MAX_NESTING:
             first = self.tokens[0] if self.tokens else None
 
             last = self.tokens[-1] if self.tokens else None
@@ -67,11 +66,11 @@ class ParserBase:
                 InvalidSyntaxError(
                     first.pos_start if first else None,
                     last.pos_end if last else None,
-                    f"Expression nesting depth ({worst}) exceeds limit ({self.MAX_NESTING})",
+                    f"Expression nesting depth ({worst}) exceeds limit ({Settings.MAX_NESTING})",
                 )
             )
 
-        if ternary_count > self.MAX_TERNARY_CHAIN:
+        if ternary_count > Settings.MAX_TERNARY_CHAIN:
             first = self.tokens[0] if self.tokens else None
             last = self.tokens[-1] if self.tokens else None
 
@@ -79,7 +78,7 @@ class ParserBase:
                 InvalidSyntaxError(
                     first.pos_start if first else None,
                     last.pos_end if last else None,
-                    f"Too many chained ternary expressions ({ternary_count}) exceeds limit ({self.MAX_TERNARY_CHAIN})",
+                    f"Too many chained ternary expressions ({ternary_count}) exceeds limit ({Settings.MAX_TERNARY_CHAIN})",
                 )
             )
 

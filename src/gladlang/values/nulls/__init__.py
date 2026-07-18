@@ -3,5 +3,6 @@
 from .frozen_null import FrozenNull
 from .mutable_null import MutableNull
 from .tailcall import TailCall
+from .null_base import NullBase
 
-__all__ = ["FrozenNull", "MutableNull", "TailCall"]
+__all__ = ["FrozenNull", "MutableNull", "TailCall", "NullBase"]

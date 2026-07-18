@@ -14,7 +14,7 @@ PRINTLN "--- Math Test ---"
 LET result = num_int * 2
 PRINTLN "INT * 2 = " + result
 
-LET result = num_float * 2
+result = num_float * 2
 PRINTLN "FLOAT * 2 = " + result
 
 PRINTLN "--- Error Test ---"

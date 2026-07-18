@@ -9,7 +9,7 @@ ENDWHILE
 PRINTLN "Loop 1 finished."
 
 PRINTLN "--- Test 2: CONTINUE (print even numbers) ---"
-LET i = 10
+i = 10
 WHILE i > 0
   i--
   # If the number is odd, skip the PRINTLN
@@ -21,7 +21,7 @@ ENDWHILE
 PRINTLN "Loop 2 finished."
 
 PRINTLN "--- Test 3: BREAK (find first multiple of 7) ---"
-LET i = 100
+i = 100
 LET found = NULL
 WHILE i > 0
   IF (i - (INT(i / 7) * 7)) == 0 THEN

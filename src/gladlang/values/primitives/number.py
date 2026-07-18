@@ -1,13 +1,13 @@
 """Number – numeric type (int/float) with arithmetic, bitwise, and comparison operations."""
 
 import math
+
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
 from gladlang.values.value import Value
 
 
 class Number(Value):
-    MAX_INT_BITS = 100_000
-
     __slots__ = ("value", "pos_start", "pos_end", "context")
 
     def __init__(self, value):
@@ -28,7 +28,7 @@ class Number(Value):
     def added_to(self, other):
         if isinstance(other, Number):
             result = self.value + other.value
-            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+            if isinstance(result, int) and result.bit_length() > Settings.MAX_INT_BITS:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -56,7 +56,7 @@ class Number(Value):
     def subbed_by(self, other):
         if isinstance(other, Number):
             result = self.value - other.value
-            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+            if isinstance(result, int) and result.bit_length() > Settings.MAX_INT_BITS:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -79,7 +79,7 @@ class Number(Value):
     def multed_by(self, other):
         if isinstance(other, Number):
             result = self.value * other.value
-            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+            if isinstance(result, int) and result.bit_length() > Settings.MAX_INT_BITS:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -96,6 +96,9 @@ class Number(Value):
                 )
 
             return Number(result).set_context(self.context), None
+
+        if hasattr(other, "multed_by"):
+            return other.multed_by(self)
 
         return None, self._illegal(other)
 
@@ -136,7 +139,7 @@ class Number(Value):
                 )
 
             result = self.value % other.value
-            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+            if isinstance(result, int) and result.bit_length() > Settings.MAX_INT_BITS:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -156,7 +159,7 @@ class Number(Value):
                 )
 
             result = self.value // other.value
-            if isinstance(result, int) and result.bit_length() > Number.MAX_INT_BITS:
+            if isinstance(result, int) and result.bit_length() > Settings.MAX_INT_BITS:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -171,7 +174,7 @@ class Number(Value):
     def powed_by(self, other):
         if isinstance(other, Number):
             exp = other.value
-            if exp > 1000:
+            if exp > Settings.MAX_EXPONENT:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -180,7 +183,11 @@ class Number(Value):
                 )
 
             base = self.value
-            if isinstance(base, int) and base.bit_length() > 1000 and exp > 2:
+            if (
+                isinstance(base, int)
+                and base.bit_length() > Settings.MAX_BASE_BITS_FOR_EXP
+                and exp > 2
+            ):
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
@@ -227,6 +234,9 @@ class Number(Value):
         return Number(1 if self is other else 0).set_context(self.context), None
 
     def get_comparison_eq(self, other, visited=None):
+        if hasattr(other, "_is_null") and other._is_null:
+            return Number(0).set_context(self.context), None
+
         if isinstance(other, Number):
             return (
                 Number(int(self.value == other.value)).set_context(self.context),
@@ -236,6 +246,9 @@ class Number(Value):
         return None, self._illegal(other)
 
     def get_comparison_ne(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return Number(1).set_context(self.context), None
+
         if isinstance(other, Number):
             return (
                 Number(int(self.value != other.value)).set_context(self.context),
@@ -245,18 +258,27 @@ class Number(Value):
         return None, self._illegal(other)
 
     def get_comparison_lt(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return None, self._illegal(other)
+
         if isinstance(other, Number):
             return Number(int(self.value < other.value)).set_context(self.context), None
 
         return None, self._illegal(other)
 
     def get_comparison_gt(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return None, self._illegal(other)
+
         if isinstance(other, Number):
             return Number(int(self.value > other.value)).set_context(self.context), None
 
         return None, self._illegal(other)
 
     def get_comparison_lte(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return None, self._illegal(other)
+
         if isinstance(other, Number):
             return (
                 Number(int(self.value <= other.value)).set_context(self.context),
@@ -266,6 +288,9 @@ class Number(Value):
         return None, self._illegal(other)
 
     def get_comparison_gte(self, other):
+        if hasattr(other, "_is_null") and other._is_null:
+            return None, self._illegal(other)
+
         if isinstance(other, Number):
             return (
                 Number(int(self.value >= other.value)).set_context(self.context),
@@ -275,13 +300,13 @@ class Number(Value):
         return None, self._illegal(other)
 
     def anded_by(self, other):
-        if isinstance(other, Number):
+        if hasattr(other, "is_true"):
             return Number(1 if (self.is_true() and other.is_true()) else 0), None
 
         return None, self._illegal(other)
 
     def ored_by(self, other):
-        if isinstance(other, Number):
+        if hasattr(other, "is_true"):
             return Number(1 if (self.is_true() or other.is_true()) else 0), None
 
         return None, self._illegal(other)
@@ -291,9 +316,9 @@ class Number(Value):
 
     def bitted_and_by(self, other):
         if isinstance(other, Number):
-            raw = (int(self.value) & int(other.value)) & 0xFFFFFFFF
-            if raw & 0x80000000:
-                raw -= 0x100000000
+            raw = (int(self.value) & int(other.value)) & Settings.BITWISE_MASK
+            if raw & Settings.BITWISE_SIGN_BIT:
+                raw -= Settings.BITWISE_COMPLEMENT
 
             return Number(raw).set_context(self.context), None
 
@@ -301,9 +326,9 @@ class Number(Value):
 
     def bitted_or_by(self, other):
         if isinstance(other, Number):
-            raw = (int(self.value) | int(other.value)) & 0xFFFFFFFF
-            if raw & 0x80000000:
-                raw -= 0x100000000
+            raw = (int(self.value) | int(other.value)) & Settings.BITWISE_MASK
+            if raw & Settings.BITWISE_SIGN_BIT:
+                raw -= Settings.BITWISE_COMPLEMENT
 
             return Number(raw).set_context(self.context), None
 
@@ -311,9 +336,9 @@ class Number(Value):
 
     def bitted_xor_by(self, other):
         if isinstance(other, Number):
-            raw = (int(self.value) ^ int(other.value)) & 0xFFFFFFFF
-            if raw & 0x80000000:
-                raw -= 0x100000000
+            raw = (int(self.value) ^ int(other.value)) & Settings.BITWISE_MASK
+            if raw & Settings.BITWISE_SIGN_BIT:
+                raw -= Settings.BITWISE_COMPLEMENT
 
             return Number(raw).set_context(self.context), None
 
@@ -327,12 +352,12 @@ class Number(Value):
                     other.pos_start, other.pos_end, "Negative shift count", self.context
                 )
 
-            if shift_amount >= 32:
+            if shift_amount >= Settings.BITWISE_MAX_SHIFT:
                 return Number(0).set_context(self.context), None
 
-            raw = (int(self.value) << shift_amount) & 0xFFFFFFFF
-            if raw & 0x80000000:
-                raw -= 0x100000000
+            raw = (int(self.value) << shift_amount) & Settings.BITWISE_MASK
+            if raw & Settings.BITWISE_SIGN_BIT:
+                raw -= Settings.BITWISE_COMPLEMENT
 
             return Number(raw).set_context(self.context), None
 
@@ -346,23 +371,27 @@ class Number(Value):
                     other.pos_start, other.pos_end, "Negative shift count", self.context
                 )
 
-            if shift_amount >= 32:
+            if shift_amount >= Settings.BITWISE_MAX_SHIFT:
                 return (Number(-1) if int(self.value) < 0 else Number(0)).set_context(
                     self.context
                 ), None
 
             raw = int(self.value) >> shift_amount
-            masked = raw & 0xFFFFFFFF
-            result = masked - 0x100000000 if masked & 0x80000000 else masked
+            masked = raw & Settings.BITWISE_MASK
+            result = (
+                masked - Settings.BITWISE_COMPLEMENT
+                if masked & Settings.BITWISE_SIGN_BIT
+                else masked
+            )
 
             return Number(result).set_context(self.context), None
 
         return None, self._illegal(other)
 
     def bitted_not(self):
-        raw = (~int(self.value)) & 0xFFFFFFFF
-        if raw & 0x80000000:
-            raw -= 0x100000000
+        raw = (~int(self.value)) & Settings.BITWISE_MASK
+        if raw & Settings.BITWISE_SIGN_BIT:
+            raw -= Settings.BITWISE_COMPLEMENT
 
         return Number(raw).set_context(self.context), None
 

@@ -2,6 +2,7 @@
 
 from gladlang.core.errors import RTError
 from gladlang.runtime.rt_result import RTResult
+from gladlang.values.classes.instance import Instance
 from gladlang.values.primitives.number import Number
 from gladlang.values.value import Value
 
@@ -64,8 +65,6 @@ class Super(Value):
                         if defining_class in context.active_class.mro:
                             allowed = True
                         elif not allowed:
-                            from gladlang.values.classes.instance import Instance
-
                             inst = context.symbol_table.get("THIS") if context else None
                             if (
                                 inst
@@ -93,6 +92,25 @@ class Super(Value):
 
     def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
+
+        in_constructor = (
+            calling_context is not None
+            and self.context is not None
+            and self.context.active_class is not None
+            and calling_context.display_name == self.context.active_class.name
+        )
+
+        if not in_constructor:
+            return res.failure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "'SUPER()' can only be called as a constructor call from within "
+                    "a constructor. To call a parent method use 'SUPER.<method>(...)' instead.",
+                    self.context,
+                )
+            )
+
         mro = self.instance.class_ref.mro
 
         try:
@@ -114,6 +132,7 @@ class Super(Value):
                 method = cls.methods[cls.name]
                 visibility = method.visibility
                 defining_class = method.defining_class
+
                 if visibility == "PRIVATE" and (
                     not self.context or self.context.active_class != defining_class
                 ):
@@ -132,8 +151,6 @@ class Super(Value):
                         if defining_class in self.context.active_class.mro:
                             allowed = True
                         elif not allowed:
-                            from gladlang.values.classes.instance import Instance
-
                             inst = (
                                 self.context.symbol_table.get("THIS")
                                 if self.context

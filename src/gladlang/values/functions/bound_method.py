@@ -1,14 +1,15 @@
 """BoundMethod – wraps a function with an instance (self)."""
 
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
 from gladlang.runtime.rt_result import RTResult
 from gladlang.values.functions.base_function import BaseFunction
+from gladlang.values.functions.function_group import FunctionGroup
+from gladlang.values.nulls.tailcall import TailCall
 from gladlang.values.primitives.number import Number
 
 
 class BoundMethod(BaseFunction):
-    MAX_TOTAL_RECURSION = 10000
-
     __slots__ = (
         "function_to_bind",
         "instance",
@@ -36,9 +37,6 @@ class BoundMethod(BaseFunction):
     def execute(self, args, interpreter, calling_context=None):
         res = RTResult()
 
-        from gladlang.values.functions.function_group import FunctionGroup
-        from gladlang.values.nulls.tailcall import TailCall
-
         if isinstance(self.function_to_bind, FunctionGroup):
             full_args = [self.instance] + args
             fg = self.function_to_bind
@@ -58,8 +56,6 @@ class BoundMethod(BaseFunction):
         base_depth = None
 
         while True:
-            from gladlang.values.functions.function_group import FunctionGroup
-
             if isinstance(current_func, FunctionGroup):
                 arity = len(current_args)
                 if arity in current_func.functions:
@@ -86,13 +82,13 @@ class BoundMethod(BaseFunction):
 
             self._call_count += 1
 
-            if self._call_count > BoundMethod.MAX_TOTAL_RECURSION:
+            if self._call_count > Settings.MAX_TOTAL_RECURSION:
                 self._call_count = 0
                 return res.failure(
                     RTError(
                         current_func.pos_start,
                         current_func.pos_end,
-                        f"Total recursion calls exceeded limit ({BoundMethod.MAX_TOTAL_RECURSION})",
+                        f"Total recursion calls exceeded limit ({Settings.MAX_TOTAL_RECURSION})",
                         new_context,
                     )
                 )
@@ -101,7 +97,7 @@ class BoundMethod(BaseFunction):
                 base_depth = new_context.depth
                 new_context.parent_entry_pos = self.pos_start
 
-            if new_context.depth > 2000:
+            if new_context.depth > Settings.MAX_CONTEXT_DEPTH:
                 self._call_count = 0
                 return res.failure(
                     RTError(
@@ -139,13 +135,16 @@ class BoundMethod(BaseFunction):
                     if isinstance(callee, BoundMethod):
                         current_func = callee.function_to_bind
                         current_instance = callee.instance
+                        current_args = ret_val.args
+
+                        res = RTResult()
+
+                        continue
                     else:
-                        current_func = callee
-
-                    current_args = ret_val.args
-                    res = RTResult()
-
-                    continue
+                        self._call_count = 0
+                        return callee.execute(
+                            ret_val.args, interpreter, calling_context
+                        )
 
                 self._call_count = 0
                 return res.success(ret_val)

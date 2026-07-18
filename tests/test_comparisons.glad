@@ -1,0 +1,356 @@
+# ================================================================
+#  COMPREHENSIVE COMPARISON OPERATOR TEST SUITE
+#  Tests IS, ==, !=, <, >, <=, >= across all types
+# ================================================================
+
+PRINTLN "=== GLADLANG COMPARISON OPERATOR TEST SUITE ==="
+
+LET pass_count = 0
+LET fail_count = 0
+
+DEF pass(name)
+    PRINTLN "[PASS] " + name
+    pass_count = pass_count + 1
+ENDDEF
+
+DEF fail(name, reason)
+    PRINTLN "[FAIL] " + name + " -> " + reason
+    fail_count = fail_count + 1
+ENDDEF
+
+DEF assert_eq(expected, actual, test_name)
+    IF expected == actual THEN
+        pass(test_name)
+    ELSE
+        fail(test_name, "Expected " + STR(expected) + ", got " + STR(actual))
+    ENDIF
+ENDDEF
+
+DEF assert_true(actual, test_name)
+    IF actual == TRUE THEN
+        pass(test_name)
+    ELSE
+        fail(test_name, "Expected TRUE, got " + STR(actual))
+    ENDIF
+ENDDEF
+
+DEF assert_false(actual, test_name)
+    IF actual == FALSE THEN
+        pass(test_name)
+    ELSE
+        fail(test_name, "Expected FALSE, got " + STR(actual))
+    ENDIF
+ENDDEF
+
+# ================================================================
+# SECTION 1: NUMBERS
+# ================================================================
+PRINTLN "\n--- 1. NUMBERS ---"
+
+LET a = 5
+LET b = 5
+LET c = 10
+
+# Equality / Inequality
+assert_eq(1, a == b, "5 == 5")
+assert_eq(0, a == c, "5 == 10")
+assert_eq(0, a != b, "5 != 5")
+assert_eq(1, a != c, "5 != 10")
+
+# Identity
+assert_eq(1, a IS a, "a IS a")
+assert_eq(0, a IS b, "a IS b (different objects with same value)")   # Note: ints are immutable so they may be interned, but we still test.
+
+# Ordering
+assert_eq(1, a < c, "5 < 10")
+assert_eq(0, c < a, "10 < 5")
+assert_eq(1, c > a, "10 > 5")
+assert_eq(0, a > c, "5 > 10")
+assert_eq(1, a <= b, "5 <= 5")
+assert_eq(1, a <= c, "5 <= 10")
+assert_eq(0, c <= a, "10 <= 5")
+assert_eq(1, c >= a, "10 >= 5")
+assert_eq(0, a >= c, "5 >= 10")
+
+# Chained comparisons
+assert_eq(1, 1 < 2 < 3, "1 < 2 < 3")
+assert_eq(0, 3 < 2 < 1, "3 < 2 < 1")
+assert_eq(1, 5 >= 5 >= 3, "5 >= 5 >= 3")
+assert_eq(0, 5 > 5 > 3, "5 > 5 > 3")
+
+# Float comparisons
+LET f1 = 1.5
+LET f2 = 1.5
+LET f3 = 2.0
+assert_eq(1, f1 == f2, "1.5 == 1.5")
+assert_eq(0, f1 == f3, "1.5 == 2.0")
+assert_eq(1, f1 < f3, "1.5 < 2.0")
+
+# Number vs NULL
+assert_false(5 == NULL, "5 == NULL")
+assert_true(5 != NULL, "5 != NULL")
+TRY
+    LET _ = 5 < NULL
+    fail("5 < NULL", "Did not raise error")
+CATCH e
+    pass("5 < NULL raises error")
+ENDTRY
+
+TRY
+    LET _ = NULL < 5
+    fail("NULL < 5", "Did not raise error")
+CATCH e
+    pass("NULL < 5 raises error")
+ENDTRY
+
+# ================================================================
+# SECTION 2: STRINGS
+# ================================================================
+PRINTLN "\n--- 2. STRINGS ---"
+
+LET s1 = "hello"
+LET s2 = "hello"
+LET s3 = "world"
+
+assert_eq(1, s1 == s2, `"hello" == "hello"`)
+assert_eq(0, s1 == s3, `"hello" == "world"`)
+assert_eq(0, s1 != s2, `"hello" != "hello"`)
+assert_eq(1, s1 != s3, `"hello" != "world"`)
+
+# Identity (different objects usually, but small strings might be interned; still we test)
+assert_eq(1, s1 IS s1, `s1 IS s1`)
+assert_eq(0, s1 IS s2, `s1 IS s2 (different objects)`)
+
+# Ordering
+assert_eq(1, s1 < s3, `"hello" < "world"`)
+assert_eq(0, s3 < s1, `"world" < "hello"`)
+assert_eq(1, s1 <= s2, `"hello" <= "hello"`)
+assert_eq(1, s1 >= s2, `"hello" >= "hello"`)
+
+# String vs NULL
+assert_false(s1 == NULL, `"hello" == NULL`)
+assert_true(s1 != NULL, `"hello" != NULL`)
+
+# ================================================================
+# SECTION 3: LISTS
+# ================================================================
+PRINTLN "\n--- 3. LISTS ---"
+
+LET l1 = [1, 2, 3]
+LET l2 = [1, 2, 3]
+LET l3 = [4, 5, 6]
+
+assert_eq(1, l1 == l2, `[1,2,3] == [1,2,3]`)
+assert_eq(0, l1 == l3, `[1,2,3] == [4,5,6]`)
+assert_eq(0, l1 != l2, `[1,2,3] != [1,2,3]`)
+assert_eq(1, l1 != l3, `[1,2,3] != [4,5,6]`)
+
+# Identity
+assert_eq(1, l1 IS l1, `l1 IS l1`)
+assert_eq(0, l1 IS l2, `l1 IS l2 (different objects)`)
+
+# Ordering not supported (should error)
+TRY
+    LET _ = l1 < l2
+    fail("List < List", "Did not raise error")
+CATCH e
+    pass("List < List raises error")
+ENDTRY
+
+# List vs NULL
+assert_false(l1 == NULL, `[1,2,3] == NULL`)
+assert_true(l1 != NULL, `[1,2,3] != NULL`)
+
+# ================================================================
+# SECTION 4: DICTS
+# ================================================================
+PRINTLN "\n--- 4. DICTS ---"
+
+LET d1 = {"a": 1, "b": 2}
+LET d2 = {"a": 1, "b": 2}
+LET d3 = {"c": 3}
+
+assert_eq(1, d1 == d2, `{"a":1,"b":2} == {"a":1,"b":2}`)
+assert_eq(0, d1 == d3, `{"a":1,"b":2} == {"c":3}`)
+assert_eq(0, d1 != d2, `{"a":1,"b":2} != {"a":1,"b":2}`)
+assert_eq(1, d1 != d3, `{"a":1,"b":2} != {"c":3}`)
+
+# Identity
+assert_eq(1, d1 IS d1, `d1 IS d1`)
+assert_eq(0, d1 IS d2, `d1 IS d2 (different objects)`)
+
+# Ordering not supported
+TRY
+    LET _ = d1 < d2
+    fail("Dict < Dict", "Did not raise error")
+CATCH e
+    pass("Dict < Dict raises error")
+ENDTRY
+
+# Dict vs NULL
+assert_false(d1 == NULL, `{"a":1} == NULL`)
+assert_true(d1 != NULL, `{"a":1} != NULL`)
+
+# ================================================================
+# SECTION 5: INSTANCES
+# ================================================================
+PRINTLN "\n--- 5. INSTANCES ---"
+
+CLASS Person
+    DEF Person(name)
+        THIS.name = name
+    ENDDEF
+ENDCLASS
+
+LET p1 = NEW Person("Alice")
+LET p2 = NEW Person("Alice")
+LET p3 = p1
+
+# Equality: instance equality is identity-based
+assert_eq(0, p1 == p2, `p1 == p2 (different objects)`)
+assert_eq(1, p1 == p3, `p1 == p3 (same object)`)
+assert_eq(1, p1 != p2, `p1 != p2 (different objects)`)
+assert_eq(0, p1 != p3, `p1 != p3 (same object)`)
+
+# Identity
+assert_true(p1 IS p1, `p1 IS p1`)
+assert_false(p1 IS p2, `p1 IS p2`)
+assert_true(p1 IS p3, `p1 IS p3`)
+
+# Ordering not supported
+TRY
+    LET _ = p1 < p2
+    fail("Instance < Instance", "Did not raise error")
+CATCH e
+    pass("Instance < Instance raises error")
+ENDTRY
+
+# Instance vs NULL
+assert_false(p1 == NULL, `instance == NULL`)
+assert_true(p1 != NULL, `instance != NULL`)
+
+# ================================================================
+# SECTION 6: ENUMS
+# ================================================================
+PRINTLN "\n--- 6. ENUMS ---"
+
+ENUM Colors
+    RED
+    GREEN
+    BLUE
+ENDENUM
+
+LET r1 = Colors.RED
+LET r2 = Colors.RED
+LET g = Colors.GREEN
+
+# Equality: enum members compare by enum name and member name
+assert_true(r1 == r2, `Colors.RED == Colors.RED`)
+assert_false(r1 == g, `Colors.RED == Colors.GREEN`)
+assert_false(r1 != r2, `Colors.RED != Colors.RED`)
+assert_true(r1 != g, `Colors.RED != Colors.GREEN`)
+
+# Identity: should also be true for same member (now fixed)
+assert_true(r1 IS r2, `Colors.RED IS Colors.RED (same member, different object)`)
+assert_false(r1 IS g, `Colors.RED IS Colors.GREEN`)
+
+# Enum vs number
+assert_false(r1 == 0, `Colors.RED == 0`)
+assert_true(r1 != 0, `Colors.RED != 0`)
+
+# Enum vs NULL
+assert_false(r1 == NULL, `Colors.RED == NULL`)
+assert_true(r1 != NULL, `Colors.RED != NULL`)
+
+# ================================================================
+# SECTION 7: FUNCTIONS
+# ================================================================
+PRINTLN "\n--- 7. FUNCTIONS ---"
+
+DEF func1(x) RETURN x ENDDEF
+DEF func2(x) RETURN x ENDDEF
+LET func3 = func1
+
+# Equality: functions compare by identity
+assert_false(func1 == func2, `func1 == func2 (different functions)`)
+assert_true(func1 == func3, `func1 == func3 (same function)`)
+assert_true(func1 != func2, `func1 != func2`)
+assert_false(func1 != func3, `func1 != func3`)
+
+# Identity
+assert_true(func1 IS func1, `func1 IS func1`)
+assert_false(func1 IS func2, `func1 IS func2`)
+assert_true(func1 IS func3, `func1 IS func3`)
+
+# Function vs NULL
+assert_false(func1 == NULL, `function == NULL`)
+assert_true(func1 != NULL, `function != NULL`)
+
+# ================================================================
+# SECTION 8: BOOLEANS (TRUE/FALSE)
+# ================================================================
+PRINTLN "\n--- 8. BOOLEANS ---"
+
+# TRUE/FALSE comparisons with numbers (should be distinct)
+assert_false(TRUE == 1, `TRUE == 1`)
+assert_true(TRUE == TRUE, `TRUE == TRUE`)
+assert_false(FALSE == 0, `FALSE == 0`)
+assert_true(FALSE == FALSE, `FALSE == FALSE`)
+assert_false(TRUE == FALSE, `TRUE == FALSE`)
+assert_true(TRUE != FALSE, `TRUE != FALSE`)
+
+# Identity
+assert_true(TRUE IS TRUE, `TRUE IS TRUE`)
+assert_false(TRUE IS FALSE, `TRUE IS FALSE`)
+
+# Booleans vs NULL
+assert_false(TRUE == NULL, `TRUE == NULL`)
+assert_true(TRUE != NULL, `TRUE != NULL`)
+assert_false(FALSE == NULL, `FALSE == NULL`)
+assert_true(FALSE != NULL, `FALSE != NULL`)
+
+# ================================================================
+# SECTION 9: NULL COMPARISONS (special cases)
+# ================================================================
+PRINTLN "\n--- 9. NULL COMPARISONS ---"
+
+assert_true(NULL == NULL, `NULL == NULL`)
+assert_false(NULL != NULL, `NULL != NULL`)
+assert_true(NULL IS NULL, `NULL IS NULL`)
+
+# NULL vs everything else (already tested, but we`ll re-emphasize)
+assert_false(NULL == 0, `NULL == 0`)
+assert_true(NULL != 0, `NULL != 0`)
+assert_false(NULL == "", `NULL == ""`)
+assert_true(NULL != "", `NULL != ""`)
+
+# NULL identity with copies: NULL is a singleton, so copies are same object?
+# Actually, MutableNull copies create new objects, but FrozenNull is shared.
+# We`ll just test that NULL IS NULL works.
+
+# ================================================================
+# SECTION 10: CHAINED COMPARISONS
+# ================================================================
+PRINTLN "\n--- 10. CHAINED COMPARISONS ---"
+
+LET x = 5
+assert_true(1 < x < 10, `1 < 5 < 10`)
+assert_false(10 < x < 20, `10 < 5 < 20`)
+assert_true(10 > x > 1, `10 > 5 > 1`)
+assert_false(1 > x > 0, `1 > 5 > 0`)
+assert_true(x <= 5 <= 6, `5 <= 5 <= 6`)
+assert_false(x < 5 < 6, `5 < 5 < 6`)
+
+# ================================================================
+# FINAL SUMMARY
+# ================================================================
+PRINTLN "\n============================================"
+PRINTLN " ALL COMPARISON TESTS COMPLETED"
+PRINTLN "============================================"
+PRINTLN "PASSED: " + pass_count
+PRINTLN "FAILED: " + fail_count
+IF fail_count == 0 THEN
+    PRINTLN "ALL COMPARISON OPERATORS WORK CORRECTLY!"
+ELSE
+    PRINTLN "SOME TESTS FAILED – CHECK OUTPUT ABOVE"
+ENDIF

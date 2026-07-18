@@ -1,13 +1,14 @@
 """String – immutable character sequence with concatenation, repetition, and indexing."""
 
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
+from gladlang.values.nulls.frozen_null import FrozenNull
+from gladlang.values.nulls.mutable_null import MutableNull
 from gladlang.values.primitives.number import Number
 from gladlang.values.value import Value
 
 
 class String(Value):
-    MAX_STRING_SIZE = 10_000_000
-
     __slots__ = ("value", "pos_start", "pos_end", "context")
 
     def __init__(self, value):
@@ -28,11 +29,11 @@ class String(Value):
     def added_to(self, other):
         if isinstance(other, String):
             new_len = len(self.value) + len(other.value)
-            if new_len > String.MAX_STRING_SIZE:
+            if new_len > Settings.MAX_STRING_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"String concatenation result ({new_len:,} chars) exceeds maximum allowed size ({String.MAX_STRING_SIZE:,} chars)",
+                    f"String concatenation result ({new_len:,} chars) exceeds maximum allowed size ({Settings.MAX_STRING_SIZE:,} chars)",
                     self.context,
                 )
 
@@ -41,11 +42,11 @@ class String(Value):
         elif isinstance(other, Number):
             suffix = str(other.value)
             new_len = len(self.value) + len(suffix)
-            if new_len > String.MAX_STRING_SIZE:
+            if new_len > Settings.MAX_STRING_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"String concatenation result exceeds maximum allowed size ({String.MAX_STRING_SIZE:,} chars)",
+                    f"String concatenation result exceeds maximum allowed size ({Settings.MAX_STRING_SIZE:,} chars)",
                     self.context,
                 )
 
@@ -74,11 +75,11 @@ class String(Value):
                 )
 
             new_len = len(self.value) * multiplier
-            if new_len > String.MAX_STRING_SIZE:
+            if new_len > Settings.MAX_STRING_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"String repetition result ({new_len:,} chars) exceeds maximum allowed size ({String.MAX_STRING_SIZE:,} chars)",
+                    f"String repetition result ({new_len:,} chars) exceeds maximum allowed size ({Settings.MAX_STRING_SIZE:,} chars)",
                     self.context,
                 )
 
@@ -87,6 +88,9 @@ class String(Value):
         return None, self._illegal(other)
 
     def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(0).set_context(self.context), None
+
         if isinstance(other, String):
             return (
                 Number(int(self.value == other.value)).set_context(self.context),
@@ -96,6 +100,9 @@ class String(Value):
         return None, self._illegal(other)
 
     def get_comparison_ne(self, other):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(1).set_context(self.context), None
+
         if isinstance(other, String):
             return (
                 Number(int(self.value != other.value)).set_context(self.context),
@@ -212,7 +219,7 @@ class String(Value):
         return None, self._illegal()
 
     def notted(self):
-        return None, self._illegal()
+        return Number(0 if self.is_true() else 1).set_context(self.context), None
 
     def _illegal(self, other=None):
         if not other:

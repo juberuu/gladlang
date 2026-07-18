@@ -3,10 +3,10 @@ PRINTLN "--- Operator Precedence Tester ---"
 LET math_result = 1 + 2 * 3 # Should be 1 + 6 = 7
 PRINTLN "1 + 2 * 3 = " + math_result
 
-LET math_result = (1 + 2) * 3 # Should be 3 * 3 = 9
+math_result = (1 + 2) * 3 # Should be 3 * 3 = 9
 PRINTLN "(1 + 2) * 3 = " + math_result
 
-LET math_result = 10 - 4 / 2 # Should be 10 - 2 = 8
+math_result = 10 - 4 / 2 # Should be 10 - 2 = 8
 PRINTLN "10 - 4 / 2 = " + math_result
 
 PRINTLN "--- String Comparison Tester ---"

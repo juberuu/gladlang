@@ -1,40 +1,44 @@
 """Memory limit management – sets process memory limits via resource or watchdog thread."""
 
+import os
 import sys
+import threading
 import time
+
+try:
+    import resource
+except ImportError:
+    resource = None
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+from gladlang.core.util.settings import Settings
 
 
 def start_memory_watchdog(max_mb):
-    try:
-        import psutil
-        import threading
-    except ImportError:
+    if psutil is None:
         return
 
     def watch():
-        import os as _os
-
-        proc = psutil.Process(_os.getpid())
+        proc = psutil.Process(os.getpid())
         limit = max_mb * 1024 * 1024
 
         while True:
             if proc.memory_info().rss > limit:
                 sys.stderr.write("System Error: Memory Limit Exceeded\n")
-                _os._exit(1)
+                os._exit(1)
 
-            time.sleep(0.05)
+            time.sleep(Settings.WATCHDOG_SLEEP_INTERVAL)
 
     t = threading.Thread(target=watch, daemon=True)
     t.start()
 
 
 def set_memory_limit(max_mb):
-    try:
-        import resource
-    except ImportError:
-        resource = None
-
-    if resource:
+    if resource is not None:
         try:
             soft, hard = resource.getrlimit(resource.RLIMIT_AS)
             limit_bytes = max_mb * 1024 * 1024

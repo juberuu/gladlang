@@ -106,7 +106,11 @@ class ParserFunctions:
 
         saved_loop_count = self.loop_count
         self.loop_count = 0
+        self.func_count += 1
+
         body = res.register(self.statement_list(("ENDDEF",)))
+
+        self.func_count -= 1
         self.loop_count = saved_loop_count
 
         if res.error:

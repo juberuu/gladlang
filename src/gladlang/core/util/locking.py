@@ -1,7 +1,7 @@
 """No-op lock – used when threading is disabled to avoid overhead."""
 
 
-class _NoLock:
+class NoLock:
     __slots__ = ()
 
     def __enter__(self):

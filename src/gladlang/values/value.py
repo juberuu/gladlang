@@ -1,5 +1,7 @@
 """Base Value class – defines the interface for all GladLang runtime objects."""
 
+from gladlang.core.errors import RTError
+
 
 class Value:
     __slots__ = ("pos_start", "pos_end", "context")
@@ -105,8 +107,6 @@ class Value:
         if isinstance(other, Class):
             return Number.false.copy(), None
 
-        from gladlang.core.errors import RTError
-
         return None, RTError(
             self.pos_start,
             self.pos_end,
@@ -173,8 +173,6 @@ class Value:
         return None, self.illegal_operation()
 
     def illegal_operation(self, other=None):
-        from gladlang.core.errors import RTError
-
         if not other:
             other = self
 

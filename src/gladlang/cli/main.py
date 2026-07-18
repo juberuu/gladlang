@@ -10,46 +10,34 @@ import re
 import io
 import os
 import shlex
+import threading
 from pathlib import Path
 
+from gladlang.core.util.settings import Settings
+
 if hasattr(sys, "set_int_max_str_digits"):
-    sys.set_int_max_str_digits(50_000)
+    sys.set_int_max_str_digits(Settings.MAX_INT_STR_DIGITS)
 
 if hasattr(sys, "setrecursionlimit"):
-    sys.setrecursionlimit(20_000)
+    sys.setrecursionlimit(Settings.PYTHON_RECURSION_LIMIT)
 
 from gladlang.core.util.global_scope import get_fresh_global_scope
 from gladlang.core.util.memory import set_memory_limit
 from gladlang.core.util.runner import run
 from gladlang.core.util.repl_helpers import is_complete
+from gladlang.core.util.terminal import set_terminal_title
 from gladlang.runtime.context import Context
-from gladlang.version import __version__
 
 
 def main():
-    MAX_MEMORY_MB = 512
-    MAX_INSTRUCTIONS = int(sys.maxsize)
-    MAX_SOURCE_BYTES = 1_000_000
-    MAX_REPL_BUFFER = 100_000
+    set_memory_limit(Settings.MAX_MEMORY_MB)
 
-    set_memory_limit(MAX_MEMORY_MB)
-
-    GLADLANG_VERSION = str(__version__)
-    GLADLANG_HELP = f"""
-Usage: gladlang [command] [filename/code] [args...]
-
-Commands:
-  <no arguments>           Start the interactive GladLang shell.
-  [filename.glad]          Execute a GladLang script file.
-  ["code string"]          Execute inline GladLang code directly.
-  [filename.glad] [args]   Execute script and pass args to INPUT().
-  ["code string"] [args]   Execute inline code and pass args to INPUT().
-  -h, --help               Show this help message and exit.
-  -v, --version            Show the interpreter version and exit.
-"""
+    threading.Thread(
+        target=set_terminal_title, args=(Settings.TITLE,), daemon=True
+    ).start()
 
     if len(sys.argv) == 1:
-        sys.stdout.write(f"Welcome to GladLang (v{GLADLANG_VERSION})\n")
+        sys.stdout.write(f"Welcome to GladLang (v{Settings.VERSION})\n")
         sys.stdout.write("Type 'exit' or 'quit' to close the shell.\n")
         sys.stdout.write("--------------------------------------------------\n")
 
@@ -94,6 +82,13 @@ Commands:
                     and "\n" not in stripped_line
                 ):
                     drop_path = Path(stripped_line)
+
+                    if drop_path.is_symlink():
+                        sys.stdout.write(
+                            f"Access denied: '{stripped_line}' is a symbolic link\n"
+                        )
+                        continue
+
                     try:
                         strict_path = drop_path.resolve(strict=False)
 
@@ -104,11 +99,11 @@ Commands:
                             fd = os.open(str(strict_path), os.O_RDONLY)
 
                         file_size = os.fstat(fd).st_size
-                        if file_size > MAX_SOURCE_BYTES:
+                        if file_size > Settings.MAX_SOURCE_BYTES:
                             os.close(fd)
                             sys.stdout.write(
                                 f"Error: File too large ({file_size:,} bytes). "
-                                f"Maximum allowed: {MAX_SOURCE_BYTES:,} bytes.\n"
+                                f"Maximum allowed: {Settings.MAX_SOURCE_BYTES:,} bytes.\n"
                             )
                             continue
 
@@ -144,19 +139,19 @@ Commands:
                             if drop_args:
                                 sys.stdin = io.StringIO("\n".join(drop_args) + "\n")
 
+                            repl_context.symbol_table = get_fresh_global_scope()
+
                             result, error = run(
                                 str(strict_path),
                                 dropped_source,
                                 repl_context,
-                                instruction_limit=MAX_INSTRUCTIONS,
+                                instruction_limit=Settings.MAX_INSTRUCTIONS,
                             )
                         finally:
                             sys.stdin = original_stdin
 
                         if error:
                             sys.stdout.write(error.as_string() + "\n")
-                        elif result is not None:
-                            sys.stdout.write(str(result) + "\n")
 
                         continue
 
@@ -172,7 +167,7 @@ Commands:
 
                 full_text += line + "\n"
 
-                if len(full_text) > MAX_REPL_BUFFER:
+                if len(full_text) > Settings.MAX_REPL_BUFFER:
                     sys.stdout.write(
                         "Error: Input buffer limit exceeded. Clearing buffer.\n"
                     )
@@ -188,7 +183,7 @@ Commands:
                         "<stdin>",
                         full_text,
                         repl_context,
-                        instruction_limit=MAX_INSTRUCTIONS,
+                        instruction_limit=Settings.MAX_INSTRUCTIONS,
                     )
 
                     if error:
@@ -296,10 +291,10 @@ Commands:
         arg = sys.argv[1]
 
         if arg == "--help" or arg == "-h":
-            sys.stdout.write(GLADLANG_HELP + "\n")
+            sys.stdout.write(f"{Settings.HELP}\n")
 
         elif arg == "--version" or arg == "-v":
-            sys.stdout.write(f"GladLang v{GLADLANG_VERSION}\n")
+            sys.stdout.write(f"GladLang v{Settings.VERSION}\n")
 
         else:
             arg_input = arg
@@ -322,6 +317,15 @@ Commands:
                         except AttributeError:
                             fd = os.open(str(strict_path), os.O_RDONLY)
 
+                        file_size = os.fstat(fd).st_size
+                        if file_size > Settings.MAX_SOURCE_BYTES:
+                            os.close(fd)
+                            sys.stderr.write(
+                                f"File too large: '{arg_input}' ({file_size:,} bytes). "
+                                f"Maximum allowed: {Settings.MAX_SOURCE_BYTES:,} bytes.\n"
+                            )
+                            sys.exit(1)
+
                         with os.fdopen(fd, "r", encoding="utf-8") as f:
                             text = f.read()
 
@@ -332,8 +336,15 @@ Commands:
                         sys.exit(1)
 
                     if is_file or arg_input.endswith(".glad"):
+                        candidate_path = Path(arg_input)
+                        if candidate_path.is_symlink():
+                            sys.stderr.write(
+                                f"Access denied: '{arg_input}' is a symbolic link\n"
+                            )
+                            sys.exit(1)
+
                         path_to_read = (
-                            resolved if resolved else Path(arg_input).resolve()
+                            resolved if resolved else candidate_path.resolve()
                         )
 
                         if not path_to_read.suffix == ".glad" and not is_file:
@@ -342,24 +353,28 @@ Commands:
                             )
                             sys.exit(1)
 
-                        if not is_file:
-                            file_size = path_to_read.stat().st_size
-                            if file_size > MAX_SOURCE_BYTES:
-                                sys.stderr.write(
-                                    f"File too large: '{arg_input}' ({file_size:,} bytes). Maximum allowed: {MAX_SOURCE_BYTES:,} bytes.\n"
-                                )
-                                sys.exit(1)
+                        try:
+                            O_NOFOLLOW = os.O_NOFOLLOW
+                            fd = os.open(str(path_to_read), os.O_RDONLY | O_NOFOLLOW)
+                        except AttributeError:
+                            fd = os.open(str(path_to_read), os.O_RDONLY)
 
-                            try:
-                                text = path_to_read.read_text(encoding="utf-8")
-                            except UnicodeDecodeError:
-                                sys.stderr.write(
-                                    f"Encoding error: '{arg_input}' is not valid UTF-8. Save the file as UTF-8 and try again.\n"
-                                )
-                                sys.exit(1)
-                            except Exception as e:
-                                sys.stderr.write(f"An unexpected error occurred: {e}\n")
-                                sys.exit(1)
+                        file_size = os.fstat(fd).st_size
+                        if file_size > Settings.MAX_SOURCE_BYTES:
+                            os.close(fd)
+                            sys.stderr.write(
+                                f"File too large: '{arg_input}' ({file_size:,} bytes). Maximum allowed: {Settings.MAX_SOURCE_BYTES:,} bytes.\n"
+                            )
+                            sys.exit(1)
+
+                        try:
+                            with os.fdopen(fd, "r", encoding="utf-8") as f:
+                                text = f.read()
+                        except UnicodeDecodeError:
+                            sys.stderr.write(
+                                f"Encoding error: '{arg_input}' is not valid UTF-8. Save the file as UTF-8 and try again.\n"
+                            )
+                            sys.exit(1)
 
                         source_name = str(path_to_read)
                     else:
@@ -367,11 +382,11 @@ Commands:
                         source_name = "<cmdline>"
 
                     result, error = run(
-                        source_name, text, instruction_limit=MAX_INSTRUCTIONS
+                        source_name, text, instruction_limit=Settings.MAX_INSTRUCTIONS
                     )
 
                     if error:
-                        sys.stderr.write(error.as_string() + "\n")
+                        sys.stderr.write(f"{error.as_string()}\n")
 
                 finally:
                     sys.stdin = original_stdin
@@ -385,4 +400,4 @@ Commands:
 
     else:
         sys.stdout.write("Error: Invalid arguments.\n")
-        sys.stdout.write(GLADLANG_HELP + "\n")
+        sys.stdout.write(Settings.HELP + "\n")

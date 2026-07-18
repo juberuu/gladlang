@@ -1,13 +1,15 @@
 """List – ordered collection with concatenation, repetition, indexing, and size limit."""
 
 from gladlang.core.errors import RTError
+from gladlang.core.util.settings import Settings
+from gladlang.values.nulls.frozen_null import FrozenNull
+from gladlang.values.nulls.mutable_null import MutableNull
 from gladlang.values.primitives.number import Number
+from gladlang.values.primitives.string import String
 from gladlang.values.value import Value
 
 
 class List(Value):
-    MAX_LIST_SIZE = 1_000_000
-
     __slots__ = ("elements", "pos_start", "pos_end", "context")
 
     def __init__(self, elements):
@@ -31,11 +33,11 @@ class List(Value):
     def added_to(self, other):
         if isinstance(other, List):
             new_len = len(self.elements) + len(other.elements)
-            if new_len > List.MAX_LIST_SIZE:
+            if new_len > Settings.MAX_LIST_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"List concatenation result ({new_len}) exceeds maximum allowed size ({List.MAX_LIST_SIZE})",
+                    f"List concatenation result ({new_len}) exceeds maximum allowed size ({Settings.MAX_LIST_SIZE})",
                     self.context,
                 )
 
@@ -66,11 +68,11 @@ class List(Value):
                 )
 
             result_len = len(self.elements) * multiplier
-            if result_len > List.MAX_LIST_SIZE:
+            if result_len > Settings.MAX_LIST_SIZE:
                 return None, RTError(
                     other.pos_start,
                     other.pos_end,
-                    f"List repetition result ({result_len}) exceeds maximum allowed size ({List.MAX_LIST_SIZE})",
+                    f"List repetition result ({result_len}) exceeds maximum allowed size ({Settings.MAX_LIST_SIZE})",
                     self.context,
                 )
 
@@ -120,18 +122,21 @@ class List(Value):
             )
 
     def get_comparison_eq(self, other, visited=None):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return (Number(0).set_context(self.context), None)
+
         if not isinstance(other, List):
-            return None, self._illegal(other)
+            return (None, self._illegal(other))
 
         if len(self.elements) != len(other.elements):
-            return Number(0).set_context(self.context), None
+            return (Number(0).set_context(self.context), None)
 
         if visited is None:
             visited = set()
 
         pair = (id(self), id(other))
         if pair in visited:
-            return Number(1).set_context(self.context), None
+            return (Number(1).set_context(self.context), None)
 
         visited.add(pair)
 
@@ -142,17 +147,20 @@ class List(Value):
                 )
 
                 if error:
-                    return None, error
+                    return (None, error)
 
                 if not result.is_true():
-                    return Number(0).set_context(self.context), None
+                    return (Number(0).set_context(self.context), None)
 
         finally:
             visited.remove(pair)
 
-        return Number(1).set_context(self.context), None
+        return (Number(1).set_context(self.context), None)
 
     def get_comparison_ne(self, other):
+        if isinstance(other, (FrozenNull, MutableNull)):
+            return Number(1).set_context(self.context), None
+
         if not isinstance(other, List):
             return None, self._illegal(other)
 
@@ -240,7 +248,7 @@ class List(Value):
         return None, self._illegal()
 
     def notted(self):
-        return None, self._illegal()
+        return Number(0 if self.is_true() else 1).set_context(self.context), None
 
     def _illegal(self, other=None):
         if not other:
@@ -262,7 +270,17 @@ class List(Value):
 
         visited.append(self)
 
-        s = f'[{", ".join([x.to_string(visited) if isinstance(x, (List, Dict)) else repr(x) for x in self.elements])}]'
+        def fmt(x):
+            if isinstance(x, (List, Dict)):
+                return x.to_string(visited)
+
+            if isinstance(x, String):
+                escaped = x.value.replace("\\", "\\\\").replace('"', '\\"')
+                return f'"{escaped}"'
+
+            return repr(x)
+
+        s = f'[{", ".join([fmt(x) for x in self.elements])}]'
 
         visited.pop()
         return s

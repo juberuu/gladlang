@@ -60,7 +60,7 @@ CLASS Dog INHERITS Animal
     ENDDEF
 ENDCLASS
 
-LET d = NEW Dog("Buddy")
+d = NEW Dog("Buddy")
 # Output:
 # Animal Constructor: Set name to Buddy
 # Dog Constructor: Ready
@@ -121,7 +121,7 @@ CLASS Dog INHERITS Animal, Human
     ENDDEF
 ENDCLASS
 
-LET d = NEW Dog()
+d = NEW Dog()
 # Expected:
 # --- Initializing Dog ---
 # Animal Constructor

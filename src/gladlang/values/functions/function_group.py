@@ -3,6 +3,7 @@
 from gladlang.core.errors import RTError
 from gladlang.runtime.rt_result import RTResult
 from gladlang.values.functions.base_function import BaseFunction
+from gladlang.values.primitives.number import Number
 
 
 class FunctionGroup(BaseFunction):
@@ -70,6 +71,9 @@ class FunctionGroup(BaseFunction):
         func.set_pos(self.pos_start, self.pos_end)
 
         return func.execute(args, interpreter, calling_context)
+
+    def notted(self):
+        return Number(0 if self.is_true() else 1).set_context(self.context), None
 
     def bind_to_instance(self, instance):
         from gladlang.values.functions.bound_method import BoundMethod

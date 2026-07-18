@@ -32,6 +32,27 @@ class LexerStrings:
                     chars.append('"')
                 elif self.current_char == "\\":
                     chars.append("\\")
+                elif self.current_char == "0":
+                    chars.append("\0")
+                elif self.current_char == "u":
+                    hex_chars = []
+                    for _ in range(4):
+                        self.advance()
+                        if self.current_char is None:
+                            return None, InvalidSyntaxError(
+                                pos_start, self.pos, "Unterminated \\u escape sequence"
+                            )
+
+                        hex_chars.append(self.current_char)
+
+                    try:
+                        chars.append(chr(int("".join(hex_chars), 16)))
+                    except ValueError:
+                        return None, InvalidSyntaxError(
+                            pos_start,
+                            self.pos,
+                            f"Invalid \\u escape: \\u{''.join(hex_chars)}",
+                        )
                 else:
                     chars.append(self.current_char)
 

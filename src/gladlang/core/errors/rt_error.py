@@ -1,11 +1,11 @@
 """Runtime error – includes traceback generation and thrown value support."""
 
+from gladlang.core.util.settings import Settings
+
 from .error import Error
 
 
 class RTError(Error):
-    MAX_TRACEBACK_FRAMES = 20
-
     __slots__ = ("context", "thrown_value")
 
     def __init__(self, pos_start, pos_end, details, context, thrown_value=None):
@@ -46,9 +46,9 @@ class RTError(Error):
 
         frames.reverse()
 
-        if len(frames) > RTError.MAX_TRACEBACK_FRAMES:
-            head = RTError.MAX_TRACEBACK_FRAMES // 2
-            tail = RTError.MAX_TRACEBACK_FRAMES - head
+        if len(frames) > Settings.MAX_TRACEBACK_FRAMES:
+            head = Settings.MAX_TRACEBACK_FRAMES // 2
+            tail = Settings.MAX_TRACEBACK_FRAMES - head
             omitted = len(frames) - (head + tail)
 
             frames = (

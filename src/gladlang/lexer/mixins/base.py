@@ -77,6 +77,12 @@ class LexerBase:
             self.advance()
 
     def make_tokens(self):
+        if self.text.startswith("\ufeff"):
+            self.text = self.text[1:]
+            self.pos = Position(-1, 0, -1, self.fn, self.text)
+            self.current_char = None
+            self.advance()
+
         if not hasattr(self, "_template_depth"):
             self._template_depth = 0
 

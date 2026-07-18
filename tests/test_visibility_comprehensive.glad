@@ -545,7 +545,7 @@ PRINTLN "  Access 1: Internal first"
 LET d1 = CacheProtectedField.get_data()
 PRINTLN "  Internal got: " + d1
 PRINTLN "  Direct external access (should fail):"
-LET err1 = ""
+err1 = ""
 TRY
     LET x = CacheProtectedField.data
     PRINTLN "  FAIL"
@@ -564,7 +564,7 @@ CLASS CacheProtectedField2
 ENDCLASS
 
 PRINTLN "  Direct external access (should fail):"
-LET err2 = ""
+err2 = ""
 TRY
     LET x = CacheProtectedField2.data
     PRINTLN "  FAIL"
@@ -597,7 +597,7 @@ PRINTLN "  Access 1: Internal first"
 LET r1 = CachePrivateMethod.call_helper()
 PRINTLN "  Internal result: " + r1
 PRINTLN "  Direct external call (should fail):"
-LET err1 = ""
+err1 = ""
 TRY
     LET x = CachePrivateMethod.helper()
     PRINTLN "  FAIL"
@@ -618,7 +618,7 @@ CLASS CachePrivateMethod2
 ENDCLASS
 
 PRINTLN "  Direct external call (should fail):"
-LET err2 = ""
+err2 = ""
 TRY
     LET x = CachePrivateMethod2.helper()
     PRINTLN "  FAIL"
